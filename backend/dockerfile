@@ -1,0 +1,20 @@
+# Imagem base leve do Node.js
+FROM node:18-alpine
+
+# Define o diretório de trabalho dentro do container
+WORKDIR /app
+
+# Copia os arquivos de dependências primeiro (para cachear o npm install)
+COPY package*.json ./
+
+# Instala as dependências
+RUN npm install --production
+
+# Copia o restante do código fonte
+COPY . .
+
+# Expõe a porta que o servidor usa (3000, conforme seus logs)
+EXPOSE 3000
+
+# Comando para iniciar o servidor
+CMD ["npm", "start"]

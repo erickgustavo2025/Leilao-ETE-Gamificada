@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Environment
+.env
+.env.local
+
+# Production Build
+dist/
+client/dist/
+
+# Uploads
+public/uploads/*
+!public/uploads/.gitkeep
+snapShotGen.py
+PROJECT_SNAPSHOT.md

@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ete-dark text-white font-poppins antialiased;
+    background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
+    background-size: 40px 40px; /* Efeito de Grid no fundo */
+  }
+}
+
+@layer utilities {
+  /* A classe mágica do Hostinger Horizons convertida pra CSS puro */
+  .pixel-borders {
+    position: relative;
+    border-style: solid;
+    border-width: 4px;
+    border-image-slice: 2;
+    border-image-width: 2;
+    border-image-outset: 0;
+    /* Truque pra simular borda pixelada via CSS puro se a imagem falhar */
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.5); 
+  }
+
+  /* Inputs estilo terminal */
+  .input-pixel {
+    @apply w-full bg-ete-light border-2 border-slate-600 p-3 text-white font-mono focus:border-ete-purple focus:outline-none transition-all shadow-pixel;
+  }
+
+  /* Esconde scrollbar mas mantém funcionalidade */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #0F172A;
+}
+::-webkit-scrollbar-thumb {
+  background: #4B5563;
+  border: 2px solid #0F172A;
+}
+
+/* Tap highlight removido no mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Utilitários 3D */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
+.text-shadow-glow {
+  text-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
