@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 150;
 const chatHistory = {
     'global': [],
     'auction': []

@@ -1,0 +1,2 @@
+// [REMOVIDO TEMPORARIAMENTE]
+module.exports = {};

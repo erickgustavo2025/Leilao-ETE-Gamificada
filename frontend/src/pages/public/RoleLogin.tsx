@@ -185,6 +185,8 @@ export function RoleLogin() {
       const response = await api.post('/auth/login', credentials);
       return response.data as { user: any; token: string };
     },
+    // SUBSTITUA o bloco onSuccess do loginMutation (linhas 34684-34711) por este:
+
     onSuccess: (data) => {
       const { user: userData, token } = data;
       const userRole = userData.role;
@@ -199,19 +201,30 @@ export function RoleLogin() {
         throw new Error('Permissão de Monitor necessária.');
       }
 
+      // Destino baseado na PÁGINA de login escolhida pelo usuário,
+      // nunca no role real — isso evita que monitor/admin logando
+      // pela página de aluno sejam redirecionados para /monitor ou /admin
+      const targetPath =
+        currentPageRole === 'monitor' ? '/monitor' :
+        currentPageRole === 'dev'     ? '/dev'     :
+        currentPageRole === 'admin'   ? '/admin'   :
+        '/dashboard';
+
+      // ⚠️ CRÍTICO: salva o lastPath ANTES de updateUser.
+      // updateUser dispara re-render do PublicRoute — se ele rodar sem
+      // lastPath definido, cai em getDashboardByRole(user.role) e
+      // redireciona pelo role real, ignorando a página de login escolhida.
+      localStorage.setItem('@ETEGamificada:lastPath', targetPath);
+      localStorage.setItem('@ETEGamificada:token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      updateUser(userData);
+
       playSuccess();
       toast.success(`BEM-VINDO(A), ${userData.nome.split(' ')[0]}!`, {
         style: { borderColor: roleData.color, color: roleData.color },
       });
 
-      localStorage.setItem('@ETEGamificada:token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      updateUser(userData);
-
-      if (currentPageRole === 'monitor') navigate('/monitor');
-      else if (currentPageRole === 'dev') navigate('/dev');
-      else if (currentPageRole === 'admin') navigate('/admin');
-      else navigate('/dashboard');
+      navigate(targetPath);
     },
     onError: (err: any) => {
       playError();

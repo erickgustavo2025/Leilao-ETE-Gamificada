@@ -13,5 +13,3 @@ client/dist/
 # Uploads
 public/uploads/*
 !public/uploads/.gitkeep
-snapShotGen.py
-PROJECT_SNAPSHOT.md

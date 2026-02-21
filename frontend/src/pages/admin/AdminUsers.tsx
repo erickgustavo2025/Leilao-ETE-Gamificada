@@ -1,9 +1,10 @@
 // frontend/src/pages/admin/AdminUsers.tsx
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   Search, Lock, Unlock, Pencil, Trash2, UserCog, Shield, X,
-  Crown, Zap, BookOpen, Music, Users as UsersIcon, Dumbbell, ChevronDown
+  Crown, Zap, BookOpen, Music, Users as UsersIcon, Dumbbell, ChevronDown, Eye, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +12,7 @@ import { AdminLayout } from '../../components/layout/AdminLayout';
 import { PixelCard } from '../../components/ui/PixelCard';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { api } from '../../api/axios-config';
+import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
 import { PageTransition } from '../../components/layout/PageTransition';
 import { queryKeys } from '../../utils/queryKeys';
@@ -34,13 +36,17 @@ interface User {
   turma: string;
   saldoPc: number;
   rank: string;
+  role: 'student' | 'monitor' | 'admin' | 'dev'; // necessário pro guard do impersonate
   isBlocked: boolean;
   avatar?: string;
   cargosEspeciais?: string[];
 }
 
 export function AdminUsers() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isImpersonating, impersonate } = useAuth();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTurma, setSelectedTurma] = useState<string>('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -73,6 +79,8 @@ export function AdminUsers() {
     });
   }, [users, searchTerm, selectedTurma]);
 
+  // ── Mutations ─────────────────────────────────────────────
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
       await api.put(`/users/${id}`, data);
@@ -87,9 +95,7 @@ export function AdminUsers() {
       return { previous };
     },
     onError: (_err: any, _vars: any, context: any) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.admin.users(), context.previous);
-      }
+      if (context?.previous) queryClient.setQueryData(queryKeys.admin.users(), context.previous);
       toast.error("Erro ao atualizar usuário.");
     },
     onSuccess: () => {
@@ -112,9 +118,7 @@ export function AdminUsers() {
       return { previous };
     },
     onError: (_err: any, _vars: any, context: any) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.admin.users(), context.previous);
-      }
+      if (context?.previous) queryClient.setQueryData(queryKeys.admin.users(), context.previous);
       toast.error("Erro ao bloquear/desbloquear.");
     },
     onSuccess: (_data: any, { block }) => {
@@ -149,15 +153,27 @@ export function AdminUsers() {
       return { previous };
     },
     onError: (_err: any, _vars: any, context: any) => {
-      if (context?.previous) {
-        queryClient.setQueryData(queryKeys.admin.users(), context.previous);
-      }
+      if (context?.previous) queryClient.setQueryData(queryKeys.admin.users(), context.previous);
       toast.error("Erro ao atualizar cargos.");
     },
     onSuccess: () => {
       toast.success("Cargos atualizados!");
       setShowRolesModal(false);
       setSelectedUserRoles(null);
+    }
+  });
+
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data } = await api.post('/dev/impersonate', { userId });
+      return data;
+    },
+    onSuccess: (data) => {
+      impersonate(data.token, data.user);
+      navigate('/dashboard');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Erro ao iniciar impersonate');
     }
   });
 
@@ -209,6 +225,14 @@ export function AdminUsers() {
       id: selectedUserRoles._id,
       roles: selectedUserRoles.cargosEspeciais || []
     });
+  };
+
+  const handleImpersonate = (user: User) => {
+    if (isImpersonating) {
+      toast.error("Saia do impersonate atual antes de iniciar outro.");
+      return;
+    }
+    impersonateMutation.mutate(user._id);
   };
 
   // ── Render ────────────────────────────────────────────────
@@ -271,165 +295,199 @@ export function AdminUsers() {
               </div>
             ) : (
               <AnimatePresence>
-                {filteredUsers.map((user, idx) => (
-                  <motion.div
-                    key={user._id}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.02 }}
-                  >
-                    {/* ══════════════════════════════════════════════
-                        CARD DO ALUNO — Mobile-First
-                        ══════════════════════════════════════════════ */}
-                    <PixelCard
-                      className={cn(
-                        '!p-0 overflow-hidden border-l-4 transition-all',
-                        user.isBlocked
-                          ? 'border-l-red-500 bg-red-950/40'
-                          : 'border-l-green-500 bg-slate-900'
-                      )}
+                {filteredUsers.map((user, idx) => {
+                  const canImpersonateThis = ['student', 'monitor'].includes(user.role);
+                  const isPending = impersonateMutation.isPending && impersonateMutation.variables === user._id;
+
+                  return (
+                    <motion.div
+                      key={user._id}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.02 }}
                     >
-                      {/* ── Conteúdo principal ── */}
-                      <div className="flex items-start gap-3 p-3 md:p-4 md:items-center">
-                        {/* Avatar */}
-                        <div
-                          className={cn(
-                            'w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-vt323 text-xl md:text-2xl flex-shrink-0 shadow-lg',
-                            user.isBlocked
-                              ? 'bg-red-900/80'
-                              : 'bg-gradient-to-br from-green-600 to-blue-600'
-                          )}
-                        >
-                          {user.nome.charAt(0).toUpperCase()}
-                        </div>
-
-                        {/* Info — min-w-0 garante truncate */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-vt323 text-xl md:text-2xl text-white truncate leading-tight">
-                            {user.nome}
-                          </h3>
-
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            <span className="font-mono text-[11px] text-slate-400">
-                              {user.matricula}
-                            </span>
-                            <span className="text-slate-700 text-[10px]">•</span>
-                            <span className="font-vt323 text-sm text-green-400">
-                              {user.turma}
-                            </span>
-                            <span className="text-slate-700 text-[10px]">•</span>
-                            <span className="font-vt323 text-sm text-yellow-400">
-                              {user.saldoPc} PC$
-                            </span>
-                            <span className="text-slate-700 text-[10px]">•</span>
-                            <span className="font-press text-[9px] text-purple-400 uppercase">
-                              {user.rank}
-                            </span>
+                      <PixelCard
+                        className={cn(
+                          '!p-0 overflow-hidden border-l-4 transition-all',
+                          user.isBlocked
+                            ? 'border-l-red-500 bg-red-950/40'
+                            : 'border-l-green-500 bg-slate-900'
+                        )}
+                      >
+                        {/* ── Conteúdo principal ── */}
+                        <div className="flex items-start gap-3 p-3 md:p-4 md:items-center">
+                          {/* Avatar */}
+                          <div
+                            className={cn(
+                              'w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white font-vt323 text-xl md:text-2xl flex-shrink-0 shadow-lg',
+                              user.isBlocked
+                                ? 'bg-red-900/80'
+                                : 'bg-gradient-to-br from-green-600 to-blue-600'
+                            )}
+                          >
+                            {user.nome.charAt(0).toUpperCase()}
                           </div>
 
-                          {/* Badges de cargos */}
-                          {user.cargosEspeciais && user.cargosEspeciais.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {user.cargosEspeciais.map(roleId => {
-                                const role = SPECIAL_ROLES.find(r => r.id === roleId);
-                                if (!role) return null;
-                                const Icon = role.icon;
-                                return (
-                                  <span
-                                    key={roleId}
-                                    className={cn(
-                                      'text-[8px] font-press px-1.5 py-0.5 rounded border flex items-center gap-1',
-                                      role.color,
-                                      'bg-slate-950 border-slate-800'
-                                    )}
-                                  >
-                                    <Icon size={9} /> {role.label}
-                                  </span>
-                                );
-                              })}
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-vt323 text-xl md:text-2xl text-white truncate leading-tight">
+                                {user.nome}
+                              </h3>
+                              {/* Tag de monitor inline com o nome */}
+                              {user.role === 'monitor' && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-press border border-cyan-700/60 text-cyan-400 bg-cyan-900/20 flex-shrink-0">
+                                  <span className="w-1 h-1 rounded-full bg-cyan-400 animate-ping" />
+                                  MONITOR
+                                </span>
+                              )}
                             </div>
-                          )}
+
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                              <span className="font-mono text-[11px] text-slate-400">{user.matricula}</span>
+                              <span className="text-slate-700 text-[10px]">•</span>
+                              <span className="font-vt323 text-sm text-green-400">{user.turma}</span>
+                              <span className="text-slate-700 text-[10px]">•</span>
+                              <span className="font-vt323 text-sm text-yellow-400">{user.saldoPc} PC$</span>
+                              <span className="text-slate-700 text-[10px]">•</span>
+                              <span className="font-press text-[9px] text-purple-400 uppercase">{user.rank}</span>
+                            </div>
+
+                            {/* Badges de cargos */}
+                            {user.cargosEspeciais && user.cargosEspeciais.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {user.cargosEspeciais.map(roleId => {
+                                  const role = SPECIAL_ROLES.find(r => r.id === roleId);
+                                  if (!role) return null;
+                                  const Icon = role.icon;
+                                  return (
+                                    <span
+                                      key={roleId}
+                                      className={cn(
+                                        'text-[8px] font-press px-1.5 py-0.5 rounded border flex items-center gap-1',
+                                        role.color,
+                                        'bg-slate-950 border-slate-800'
+                                      )}
+                                    >
+                                      <Icon size={9} /> {role.label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ── Desktop: botões inline ── */}
+                          <div className="hidden md:flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleOpenRoles(user)}
+                              className="p-2 bg-slate-800 text-purple-400 hover:bg-purple-500/20 rounded border border-slate-700 transition-colors"
+                              title="Cargos Especiais"
+                            >
+                              <UserCog size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleEditProfile(user)}
+                              className="p-2 bg-slate-800 text-blue-400 hover:bg-blue-500/20 rounded border border-slate-700 transition-colors"
+                              title="Editar Perfil"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleToggleBlock(user)}
+                              className={cn(
+                                'p-2 rounded border transition-colors',
+                                user.isBlocked
+                                  ? 'bg-green-900/30 text-green-400 hover:bg-green-500/20 border-green-700'
+                                  : 'bg-red-900/30 text-red-400 hover:bg-red-500/20 border-red-700'
+                              )}
+                              title={user.isBlocked ? 'Desbloquear' : 'Bloquear'}
+                            >
+                              {user.isBlocked ? <Unlock size={18} /> : <Lock size={18} />}
+                            </button>
+                            <button
+                              onClick={() => handleResetAccess(user)}
+                              className="p-2 bg-slate-800 text-orange-400 hover:bg-orange-500/20 rounded border border-slate-700 transition-colors"
+                              title="Resetar Acesso"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                            {canImpersonateThis && (
+                              <button
+                                onClick={() => handleImpersonate(user)}
+                                disabled={isPending || isImpersonating}
+                                className={cn(
+                                  'p-2 rounded border transition-colors',
+                                  isImpersonating
+                                    ? 'bg-slate-800/30 text-slate-700 border-slate-800 cursor-not-allowed'
+                                    : 'bg-slate-800 text-cyan-400 hover:bg-cyan-500/20 border-slate-700'
+                                )}
+                                title={isImpersonating ? 'Já em modo impersonate' : `Visualizar como ${user.nome}`}
+                              >
+                                {isPending ? <Loader2 size={18} className="animate-spin" /> : <Eye size={18} />}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        {/* ── Desktop: botões inline ── */}
-                        <div className="hidden md:flex gap-2 flex-shrink-0">
+                        {/* ── Mobile: toolbar de ações na base do card ── */}
+                        <div className={cn(
+                          "md:hidden border-t border-slate-800/80",
+                          canImpersonateThis ? "grid grid-cols-5" : "grid grid-cols-4"
+                        )}>
                           <button
                             onClick={() => handleOpenRoles(user)}
-                            className="p-2 bg-slate-800 text-purple-400 hover:bg-purple-500/20 rounded border border-slate-700 transition-colors"
-                            title="Cargos Especiais"
+                            className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-purple-400 active:bg-purple-500/10 transition-colors"
                           >
-                            <UserCog size={18} />
+                            <UserCog size={15} />
+                            <span className="font-press text-[7px] leading-none">CARGOS</span>
                           </button>
                           <button
                             onClick={() => handleEditProfile(user)}
-                            className="p-2 bg-slate-800 text-blue-400 hover:bg-blue-500/20 rounded border border-slate-700 transition-colors"
-                            title="Editar Perfil"
+                            className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-blue-400 active:bg-blue-500/10 transition-colors border-l border-slate-800/80"
                           >
-                            <Pencil size={18} />
+                            <Pencil size={15} />
+                            <span className="font-press text-[7px] leading-none">EDITAR</span>
                           </button>
                           <button
                             onClick={() => handleToggleBlock(user)}
                             className={cn(
-                              'p-2 rounded border transition-colors',
-                              user.isBlocked
-                                ? 'bg-green-900/30 text-green-400 hover:bg-green-500/20 border-green-700'
-                                : 'bg-red-900/30 text-red-400 hover:bg-red-500/20 border-red-700'
+                              'flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors border-l border-slate-800/80',
+                              user.isBlocked ? 'text-green-400 active:bg-green-500/10' : 'text-red-400 active:bg-red-500/10'
                             )}
-                            title={user.isBlocked ? 'Desbloquear' : 'Bloquear'}
                           >
-                            {user.isBlocked ? <Unlock size={18} /> : <Lock size={18} />}
+                            {user.isBlocked ? <Unlock size={15} /> : <Lock size={15} />}
+                            <span className="font-press text-[7px] leading-none">
+                              {user.isBlocked ? 'LIBERAR' : 'BLOQUEAR'}
+                            </span>
                           </button>
                           <button
                             onClick={() => handleResetAccess(user)}
-                            className="p-2 bg-slate-800 text-orange-400 hover:bg-orange-500/20 rounded border border-slate-700 transition-colors"
-                            title="Resetar Acesso"
+                            className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-orange-400 active:bg-orange-500/10 transition-colors border-l border-slate-800/80"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={15} />
+                            <span className="font-press text-[7px] leading-none">RESETAR</span>
                           </button>
-                        </div>
-                      </div>
-
-                      {/* ── Mobile: toolbar de ações na base do card ── */}
-                      <div className="grid grid-cols-4 md:hidden border-t border-slate-800/80">
-                        <button
-                          onClick={() => handleOpenRoles(user)}
-                          className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-purple-400 active:bg-purple-500/10 transition-colors"
-                        >
-                          <UserCog size={15} />
-                          <span className="font-press text-[7px] leading-none">CARGOS</span>
-                        </button>
-                        <button
-                          onClick={() => handleEditProfile(user)}
-                          className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-blue-400 active:bg-blue-500/10 transition-colors border-l border-slate-800/80"
-                        >
-                          <Pencil size={15} />
-                          <span className="font-press text-[7px] leading-none">EDITAR</span>
-                        </button>
-                        <button
-                          onClick={() => handleToggleBlock(user)}
-                          className={cn(
-                            'flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors border-l border-slate-800/80',
-                            user.isBlocked
-                              ? 'text-green-400 active:bg-green-500/10'
-                              : 'text-red-400 active:bg-red-500/10'
+                          {canImpersonateThis && (
+                            <button
+                              onClick={() => handleImpersonate(user)}
+                              disabled={isPending || isImpersonating}
+                              className={cn(
+                                'flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors border-l border-slate-800/80',
+                                isImpersonating
+                                  ? 'text-slate-700 cursor-not-allowed'
+                                  : 'text-cyan-400 active:bg-cyan-500/10'
+                              )}
+                            >
+                              {isPending ? <Loader2 size={15} className="animate-spin" /> : <Eye size={15} />}
+                              <span className="font-press text-[7px] leading-none">VER COMO</span>
+                            </button>
                           )}
-                        >
-                          {user.isBlocked ? <Unlock size={15} /> : <Lock size={15} />}
-                          <span className="font-press text-[7px] leading-none">
-                            {user.isBlocked ? 'LIBERAR' : 'BLOQUEAR'}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => handleResetAccess(user)}
-                          className="flex flex-col items-center justify-center gap-0.5 py-2.5 text-orange-400 active:bg-orange-500/10 transition-colors border-l border-slate-800/80"
-                        >
-                          <Trash2 size={15} />
-                          <span className="font-press text-[7px] leading-none">RESETAR</span>
-                        </button>
-                      </div>
-                    </PixelCard>
-                  </motion.div>
-                ))}
+                        </div>
+                      </PixelCard>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             )}
           </div>
@@ -455,41 +513,30 @@ export function AdminUsers() {
                 <PixelCard className="bg-slate-900 border-2 border-blue-500 rounded-b-none sm:rounded-b-lg">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="font-vt323 text-2xl md:text-3xl text-white">EDITAR PERFIL</h2>
-                    <button
-                      onClick={() => setEditingUser(null)}
-                      className="text-slate-400 hover:text-white p-1"
-                    >
+                    <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-white p-1">
                       <X size={22} />
                     </button>
                   </div>
 
                   <form onSubmit={handleSaveProfile} className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-press text-slate-400 block mb-1">
-                        NOME COMPLETO
-                      </label>
+                      <label className="text-[10px] font-press text-slate-400 block mb-1">NOME COMPLETO</label>
                       <input
                         name="nome"
                         defaultValue={editingUser.nome}
                         className="w-full bg-black border border-slate-700 rounded-lg p-3 text-white font-vt323 text-xl focus:border-blue-500 outline-none"
                       />
                     </div>
-
                     <div>
-                      <label className="text-[10px] font-press text-slate-400 block mb-1">
-                        MATRÍCULA
-                      </label>
+                      <label className="text-[10px] font-press text-slate-400 block mb-1">MATRÍCULA</label>
                       <input
                         name="matricula"
                         defaultValue={editingUser.matricula}
                         className="w-full bg-black border border-slate-700 rounded-lg p-3 text-white font-vt323 text-xl focus:border-blue-500 outline-none"
                       />
                     </div>
-
                     <div>
-                      <label className="text-[10px] font-press text-slate-400 block mb-1">
-                        TURMA
-                      </label>
+                      <label className="text-[10px] font-press text-slate-400 block mb-1">TURMA</label>
                       <select
                         name="turma"
                         defaultValue={editingUser.turma}
@@ -500,12 +547,7 @@ export function AdminUsers() {
                         ))}
                       </select>
                     </div>
-
-                    <PixelButton
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-500"
-                      isLoading={updateMutation.isPending}
-                    >
+                    <PixelButton type="submit" className="w-full bg-blue-600 hover:bg-blue-500" isLoading={updateMutation.isPending}>
                       SALVAR ALTERAÇÕES
                     </PixelButton>
                   </form>
@@ -536,9 +578,7 @@ export function AdminUsers() {
                   <div className="flex justify-between items-center mb-4">
                     <div className="min-w-0 flex-1">
                       <h2 className="font-vt323 text-2xl md:text-3xl text-white">CARGOS ESPECIAIS</h2>
-                      <p className="font-mono text-xs text-slate-400 truncate">
-                        {selectedUserRoles.nome}
-                      </p>
+                      <p className="font-mono text-xs text-slate-400 truncate">{selectedUserRoles.nome}</p>
                     </div>
                     <button
                       onClick={() => { setShowRolesModal(false); setSelectedUserRoles(null); }}
@@ -559,22 +599,14 @@ export function AdminUsers() {
                           onClick={() => handleToggleRole(role.id)}
                           className={cn(
                             'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left active:scale-[0.98]',
-                            isActive
-                              ? 'bg-purple-900/30 border-purple-500'
-                              : 'bg-slate-950 border-slate-700 hover:border-slate-500'
+                            isActive ? 'bg-purple-900/30 border-purple-500' : 'bg-slate-950 border-slate-700 hover:border-slate-500'
                           )}
                         >
                           <Icon className={cn(role.color, 'flex-shrink-0')} size={22} />
-                          <p className={cn(
-                            'font-press text-[10px] md:text-xs flex-1 min-w-0',
-                            isActive ? 'text-white' : 'text-slate-400'
-                          )}>
+                          <p className={cn('font-press text-[10px] md:text-xs flex-1 min-w-0', isActive ? 'text-white' : 'text-slate-400')}>
                             {role.label}
                           </p>
-                          <div className={cn(
-                            'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0',
-                            isActive ? 'bg-purple-600 border-purple-400' : 'border-slate-600'
-                          )}>
+                          <div className={cn('w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0', isActive ? 'bg-purple-600 border-purple-400' : 'border-slate-600')}>
                             {isActive && <div className="w-2 h-2 bg-white rounded-sm" />}
                           </div>
                         </button>
@@ -582,11 +614,7 @@ export function AdminUsers() {
                     })}
                   </div>
 
-                  <PixelButton
-                    onClick={handleSaveRoles}
-                    className="w-full bg-purple-600 hover:bg-purple-500"
-                    isLoading={updateRolesMutation.isPending}
-                  >
+                  <PixelButton onClick={handleSaveRoles} className="w-full bg-purple-600 hover:bg-purple-500" isLoading={updateRolesMutation.isPending}>
                     SALVAR CARGOS
                   </PixelButton>
                 </PixelCard>

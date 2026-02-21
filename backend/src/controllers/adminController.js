@@ -3,6 +3,7 @@ const Log = require('../models/Log');
 const SystemConfig = require('../models/SystemConfig');
 const path = require('path');
 const fs = require('fs');
+const BUFF_PC_CAP = 500;
 
 // Ações que o professor/gestor precisa monitorar
 const BUSINESS_ACTIONS = [
@@ -25,75 +26,97 @@ module.exports = {
         }
     },
 
-   async updateBalance(req, res) {
-        try {
-            const { id } = req.params; // ID do aluno
-            const { amount, reason } = req.body; // Valor e Motivo
-            const baseValue = Number(amount);
+  // ── Substitua a função updateBalance por esta: ──────────────────
+async updateBalance(req, res) {
+    try {
+        const { id } = req.params;
+        const { amount, reason } = req.body;
+        const baseValue = Number(amount);
 
-            const user = await User.findById(id);
-            if (!user) return res.status(404).json({ message: 'Aluno não encontrado' });
-
-            let finalValue = baseValue;
-            let bonusTag = '';
-
-            // Lógica de Multiplicador (Apenas para ADIÇÃO de pontos)
-            if (baseValue > 0) {
-                let multiplier = 1;
-
-                // 1. Verifica Triplicador
-                const hasTriple = user.inventory.find(i => 
-                    i.name && (i.name.includes("Triplicador de PC$") || i.name.includes("Triplicador")) && 
-                    (i.category === 'RANK_SKILL' || i.category === 'PERMANENTE')
-                );
-
-                // 2. Verifica Dobrador
-                const hasDouble = !hasTriple && user.inventory.find(i => 
-                    i.name && (i.name.includes("Dobrador de PC$") || i.name.includes("Dobrador")) && 
-                    (i.category === 'RANK_SKILL' || i.category === 'PERMANENTE')
-                );
-
-                if (hasTriple) multiplier = 3;
-                else if (hasDouble) multiplier = 2;
-
-                // 🔥 A BÊNÇÃO DE MERLIN (SOMA +0.5 NO MULTIPLICADOR) 🔥
-                if (user.cargos && user.cargos.includes('bencao_de_merlin')) {
-                    multiplier += 0.5; // 1 vira 1.5 | 2 vira 2.5 | 3 vira 3.5
-                }
-
-                if (multiplier > 1) {
-                    finalValue = Math.floor(baseValue * multiplier);
-                    bonusTag = ` [Bônus ${multiplier}x 🔥]`;
-                }
-            }
-
-            // Atualiza saldo
-            user.saldoPc += finalValue;
-            
-            // Se for ganho positivo, atualiza o Rank histórico também
-            if (finalValue > 0) {
-                user.maxPcAchieved = (user.maxPcAchieved || 0) + finalValue;
-            }
-
-            await user.save();
-
-            // Log de Auditoria
-            await Log.create({
-                user: req.user._id, // Professor que deu o ponto
-                target: user._id,   // Aluno que recebeu
-                action: baseValue > 0 ? 'ADMIN_GIVE_POINTS' : 'ADMIN_REMOVE_POINTS',
-                details: `${baseValue > 0 ? 'Deu' : 'Removeu'} ${Math.abs(finalValue)} PC$${bonusTag} (Base: ${Math.abs(baseValue)}). Motivo: ${reason}`,
-                ip: req.ip
-            });
-
-            res.json({ message: `Saldo atualizado! ${bonusTag}`, novoSaldo: user.saldoPc });
-
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'Erro ao atualizar saldo', error: error.message });
+        // ── Validação básica ──
+        if (isNaN(baseValue)) {
+            return res.status(400).json({ message: 'Valor inválido.' });
         }
-    },
-    
+
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ message: 'Aluno não encontrado' });
+
+        let finalValue = baseValue;
+        let bonusTag = '';
+
+        // Lógica de Multiplicador (Apenas para ADIÇÃO de pontos)
+        if (baseValue > 0) {
+            let multiplier = 1;
+
+            // 1. Verifica Triplicador (via activeBuffs — forma canônica)
+            const now = new Date();
+            const activeBuffs = (user.activeBuffs || []).filter(b =>
+                !b.expiresAt || new Date(b.expiresAt) > now
+            );
+
+            const hasTriple = activeBuffs.some(b => b.effect === 'TRIPLICADOR')
+                // Fallback legado: verifica inventory
+                || !!user.inventory.find(i =>
+                    i.name && (i.name.includes("Triplicador de PC$") || i.name.includes("Triplicador")) &&
+                    (i.category === 'RANK_SKILL' || i.category === 'PERMANENTE')
+                );
+
+            const hasDouble = !hasTriple && (
+                activeBuffs.some(b => b.effect === 'DUPLICADOR')
+                || !!user.inventory.find(i =>
+                    i.name && (i.name.includes("Dobrador de PC$") || i.name.includes("Dobrador")) &&
+                    (i.category === 'RANK_SKILL' || i.category === 'PERMANENTE')
+                )
+            );
+
+            if (hasTriple) multiplier = 3;
+            else if (hasDouble) multiplier = 2;
+
+            // 🔥 A BÊNÇÃO DE MERLIN (+0.5 no multiplicador)
+            if (user.cargos && user.cargos.includes('bencao_de_merlin')) {
+                multiplier += 0.5;
+            }
+
+            if (multiplier > 1) {
+                const rawValue = Math.floor(baseValue * multiplier);
+
+                // 🔒 Aplica o teto de BUFF_PC_CAP
+                const capped = rawValue > BUFF_PC_CAP;
+                finalValue = capped ? BUFF_PC_CAP : rawValue;
+
+                bonusTag = capped
+                    ? ` [Bônus ${multiplier}x 🔥 → Cap: ${BUFF_PC_CAP} PC$]`
+                    : ` [Bônus ${multiplier}x 🔥]`;
+            }
+        }
+
+        // Atualiza saldo
+        user.saldoPc += finalValue;
+
+        // Se for ganho positivo, atualiza o Rank histórico
+        if (finalValue > 0) {
+            user.maxPcAchieved = Math.max(user.maxPcAchieved || 0, user.saldoPc);
+        }
+
+        await user.save();
+
+        // Log de Auditoria
+        await Log.create({
+            user: req.user._id,
+            target: user._id,
+            action: baseValue > 0 ? 'ADMIN_GIVE_POINTS' : 'ADMIN_REMOVE_POINTS',
+            details: `${baseValue > 0 ? 'Deu' : 'Removeu'} ${Math.abs(finalValue)} PC$${bonusTag} (Base: ${Math.abs(baseValue)}). Motivo: ${reason || 'N/A'}`,
+            ip: req.ip
+        });
+
+        res.json({ message: `Saldo atualizado! ${bonusTag}`, novoSaldo: user.saldoPc });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao atualizar saldo', error: error.message });
+    }
+},
+
     // 🔄 RESETAR ALUNO (Para quando o aluno esquece a senha ou cadastra errado)
     async resetStudent(req, res) {
         try {

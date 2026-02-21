@@ -113,12 +113,30 @@ module.exports = {
     // 🕵️ IMPERSONATE
     async impersonateUser(req, res) {
         try {
+            // Apenas admin pode impersonar (dev será habilitado futuramente)
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Apenas administradores podem impersonar usuários.' });
+            }
+
             const { userId } = req.body;
             const user = await User.findById(userId);
-            
+
             if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
 
+            // Admin não pode impersonar admin ou dev — apenas student e monitor
+            if (!['student', 'monitor'].includes(user.role)) {
+                return res.status(403).json({ error: `Não é possível impersonar um usuário com role "${user.role}".` });
+            }
+
             const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+            // Log ANTES de enviar a resposta para garantir que é registrado mesmo se o cliente cair
+            await Log.create({
+                user: req.user._id,
+                action: 'SECURITY_IMPERSONATE',
+                details: `Acessou a conta de: ${user.nome} (${user.matricula})`,
+                ip: req.ip
+            });
 
             res.json({
                 token,
@@ -132,15 +150,9 @@ module.exports = {
                 }
             });
 
-            await Log.create({
-                user: req.user._id,
-                action: 'SECURITY_IMPERSONATE',
-                details: `Acessou a conta de: ${user.nome} (${user.matricula})`,
-                ip: req.ip
-            });
-
         } catch (error) {
             res.status(500).json({ error: 'Erro no impersonate' });
         }
     }
+
 };

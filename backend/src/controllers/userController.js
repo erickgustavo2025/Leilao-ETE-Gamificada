@@ -32,16 +32,17 @@ const SPECIAL_ROLES = {
     'estudante_honorario': '😎'
 };
 
+const BUFF_PC_CAP = 500;
+
 // ============================================================
-// ✅ RELATÓRIO: HELPER — Calcula multiplicador de um aluno
-// Encapsula a lógica de buff para reutilização futura
+// ✅ HELPER — Calcula multiplicador de um aluno
 // Ordem: TRIPLICADOR > DUPLICADOR > BASE (1x)
 // Bênção de Merlin: +0.5 sobre qualquer multiplicador
 // ============================================================
 const getMultiplier = (user) => {
     const now = new Date();
 
-    // ✅ Limpa buffs expirados antes de calcular (defesa em profundidade)
+    // Limpa buffs expirados antes de calcular (defesa em profundidade)
     const activeBuffs = (user.activeBuffs || []).filter(b => 
         !b.expiresAt || new Date(b.expiresAt) > now
     );
@@ -53,13 +54,13 @@ const getMultiplier = (user) => {
     if (hasTriple) multiplier = 3;
     else if (hasDouble) multiplier = 2;
 
-    // ✅ RELATÓRIO: A Bênção de Merlin soma +0.5 SOBRE qualquer multiplicador ativo
-    // Ex: Triplicador(3x) + Merlin = 3.5x | Duplicador(2x) + Merlin = 2.5x | Base(1x) + Merlin = 1.5x
+    // A Bênção de Merlin soma +0.5 sobre qualquer multiplicador ativo
     const hasMerlin = user.cargos && user.cargos.includes('bencao_de_merlin');
     if (hasMerlin) multiplier += 0.5;
 
     return multiplier;
 };
+
 
 module.exports = {
     // 1. LISTAR TURMAS
@@ -214,94 +215,108 @@ module.exports = {
         }
     },
 
-    // ============================================================
-    // ✅ FIX: BULK UPDATE — markModified garante persistência no MongoDB
-    // O bug anterior: syncRankSkills modificava arrays em memória mas
-    // Mongoose não detectava a mudança sem markModified() → não salvava.
-    // ============================================================
     async bulkUpdatePoints(req, res) {
-        const session = await mongoose.startSession();
-        session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-        try {
-            const { studentIds, amount, action, description } = req.body;
-            const baseValue = Number(amount);
-            const author = req.user;
+    try {
+        const { studentIds, amount, action, description } = req.body;
+        const baseValue = Number(amount);
+        const author = req.user;
 
-            const users = await User.find({ _id: { $in: studentIds } }).session(session);
+        // ── Validações básicas de entrada ──
+        if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+            await session.abortTransaction(); session.endSession();
+            return res.status(400).json({ error: 'Nenhum aluno selecionado.' });
+        }
+        if (!baseValue || baseValue <= 0) {
+            await session.abortTransaction(); session.endSession();
+            return res.status(400).json({ error: 'Valor inválido.' });
+        }
+        if (!['add', 'remove'].includes(action)) {
+            await session.abortTransaction(); session.endSession();
+            return res.status(400).json({ error: 'Ação inválida.' });
+        }
 
-            if (action === 'add') {
-                // --- MODO ADIÇÃO (COM BÔNUS E SKILLS) ---
-                for (const user of users) {
-                    // ✅ Usa o helper centralizado de multiplicador
-                    const multiplier = getMultiplier(user);
-                    const finalValue = Math.floor(baseValue * multiplier);
+        const users = await User.find({ _id: { $in: studentIds } }).session(session);
 
-                    // Monta a tag de bônus pro log
-                    let bonusTag = '';
-                    if (multiplier > 1) bonusTag = ` [Bônus ${multiplier}x 🔥]`;
+        if (action === 'add') {
+            // --- MODO ADIÇÃO (COM BÔNUS E SKILLS) ---
+            for (const user of users) {
+                const multiplier = getMultiplier(user);
+                const rawValue   = Math.floor(baseValue * multiplier);
 
-                    user.saldoPc += finalValue;
+                // 🔒 Aplica o teto de BUFF_PC_CAP apenas quando há buff ativo
+                const capped     = multiplier > 1 && rawValue > BUFF_PC_CAP;
+                const finalValue = capped ? BUFF_PC_CAP : rawValue;
 
-                    // ✅ FIX: Atualiza rank histórico e sincroniza skills com markModified
-                    // Usamos (|| 0) para segurança caso maxPcAchieved ainda seja null/undefined
-                    if (user.saldoPc > (user.maxPcAchieved || 0)) {
-                        user.maxPcAchieved = user.saldoPc;
+                // Monta a tag de bônus pro log
+                let bonusTag = '';
+                if (multiplier > 1) {
+                    bonusTag = capped
+                        ? ` [Bônus ${multiplier}x 🔥 → Cap: ${BUFF_PC_CAP} PC$]`
+                        : ` [Bônus ${multiplier}x 🔥]`;
+                }
+
+                user.saldoPc += finalValue;
+
+                // ✅ FIX: Atualiza rank histórico e sincroniza skills com markModified
+                if (user.saldoPc > (user.maxPcAchieved || 0)) {
+                    user.maxPcAchieved = user.saldoPc;
+                    if (skillService && skillService.syncRankSkills) {
                         const hasNewSkills = await skillService.syncRankSkills(user);
                         if (hasNewSkills) {
-                            // 🔑 CRÍTICO: Mongoose não detecta mudanças em arrays aninhados
-                            // automaticamente. Sem markModified(), o save() ignora as skills
-                            // novas e elas se perdem. Com ele, o MongoDB recebe o array completo.
                             user.markModified('inventory');
                             user.markModified('activeBuffs');
                         }
                     }
-
-                    await user.save({ session });
-
-                    if (Log) {
-                        await Log.create([{
-                            user: author._id,
-                            target: user._id,
-                            action: 'MANUAL_POINT_UPDATE',
-                            details: `Adicionou ${finalValue} PC$${bonusTag}. (Base: ${baseValue}). Motivo: ${description || 'N/A'}`,
-                            ip: req.ip
-                        }], { session });
-                    }
                 }
 
-            } else {
-                // --- MODO REMOÇÃO (MULTA — sem multiplicador) ---
-                await User.updateMany(
-                    { _id: { $in: studentIds } },
-                    { $inc: { saldoPc: -baseValue } },
-                    { session }
-                );
+                await user.save({ session });
 
                 if (Log) {
-                    const target = studentIds.length === 1 ? studentIds[0] : null;
                     await Log.create([{
                         user: author._id,
-                        target: target,
+                        target: user._id,
                         action: 'MANUAL_POINT_UPDATE',
-                        details: `Removeu ${baseValue} PC$. Motivo: ${description || 'N/A'} [${studentIds.length} alunos]`,
+                        details: `Adicionou ${finalValue} PC$${bonusTag}. (Base: ${baseValue}). Motivo: ${description || 'N/A'}`,
                         ip: req.ip
                     }], { session });
                 }
             }
 
-            await session.commitTransaction();
-            session.endSession();
+        } else {
+            // --- MODO REMOÇÃO (MULTA — sem multiplicador, sem cap) ---
+            await User.updateMany(
+                { _id: { $in: studentIds } },
+                { $inc: { saldoPc: -baseValue } },
+                { session }
+            );
 
-            res.json({ message: 'Pontos atualizados com sucesso!' });
-
-        } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
-            console.error('Erro bulkUpdatePoints:', error);
-            res.status(500).json({ error: 'Erro ao atualizar pontos' });
+            if (Log) {
+                const target = studentIds.length === 1 ? studentIds[0] : null;
+                await Log.create([{
+                    user: author._id,
+                    target: target,
+                    action: 'MANUAL_POINT_UPDATE',
+                    details: `Removeu ${baseValue} PC$. Motivo: ${description || 'N/A'} [${studentIds.length} alunos]`,
+                    ip: req.ip
+                }], { session });
+            }
         }
-    },
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.json({ message: 'Pontos atualizados com sucesso!' });
+
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Erro bulkUpdatePoints:', error);
+        res.status(500).json({ error: 'Erro ao atualizar pontos' });
+    }
+},
 
     // 6. LISTAR TODOS (Admin)
     async index(req, res) {

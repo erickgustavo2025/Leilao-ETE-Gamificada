@@ -1,14 +1,19 @@
-// ARQUIVO: backend/src/server.js
-
+// backend/src/server.js
 require('dotenv').config({ quiet: true });
 const app = require('./app');
 const connectDB = require('./config/db');
 const cronService = require('./services/cronService');
 const http = require('http');
 const { Server } = require('socket.io');
-const chatSocket = require('./services/chatSocket'); // ✅ IMPORTAÇÃO CORRETA
+const chatSocket = require('./services/chatSocket');
 
 const PORT = process.env.PORT || 3000;
+
+// ✅ FIX: CORS do Socket.io restrito aos domínios autorizados
+// Antes era origin: "*" — qualquer site podia conectar no WS
+const ALLOWED_ORIGINS = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(s => s.trim())
+    : ['http://localhost:5173'];
 
 const startServer = async () => {
     try {
@@ -16,36 +21,31 @@ const startServer = async () => {
         await connectDB();
         console.log('✅ MongoDB Conectado!');
 
-        // Cron Job
         cronService.initCron();
 
-        // Cria servidor HTTP
         const server = http.createServer(app);
 
-        // Configura Socket.io
         const io = new Server(server, {
             cors: {
-                origin: "*", 
-                methods: ["GET", "POST"]
+                origin: ALLOWED_ORIGINS, // ✅ Só os domínios do .env passam
+                methods: ['GET', 'POST'],
+                credentials: true
             }
         });
 
-        // ✅ Torna o IO global UMA VEZ
         global.io = io;
 
-        // ✅ Inicializa Módulos de Socket
-        chatSocket(io); // Lógica do Chat
+        chatSocket(io);
 
         io.on('connection', (socket) => {
             console.log(`📡 Novo cliente conectado: ${socket.id}`);
 
-            // Sala pessoal (Notificações)
             socket.on('join_user_room', (userId) => {
                 socket.join(userId);
             });
 
             socket.on('disconnect', () => {
-                // console.log(`❌ Cliente desconectado: ${socket.id}`);
+                // silencioso em produção
             });
         });
 

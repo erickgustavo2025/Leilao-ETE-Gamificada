@@ -2,21 +2,31 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { api } from '../api/axios-config';
 import { toast } from 'sonner';
 
+// --- CHAVES DO LOCALSTORAGE ---
+const KEYS = {
+  token:            '@ETEGamificada:token',
+  user:             '@ETEGamificada:user',
+  lastPath:         '@ETEGamificada:lastPath',
+  originalToken:    '@ETEGamificada:originalToken',
+  originalUser:     '@ETEGamificada:originalUser',
+  originalLastPath: '@ETEGamificada:originalLastPath',
+} as const;
+
 // --- TIPAGEM DO USUÁRIO ---
 export interface InventoryItem {
     _id: string;
-    itemId?: string; // ID de referência da StoreItem
-    skillCode?: string; // 🔥 ADICIONE ESTA LINHA (Identificador da Skill)
+    itemId?: string;
+    skillCode?: string;
     name: string;
-    descricao?: string; // 🔥 ADICione para evitar erro na descrição
-    image: string; // Padrão novo
-    imagem?: string; // Legado para compatibilidade
-    rarity: string; // Padrão novo (Bronze, Ouro, etc)
-    raridade?: string; // Legado para compatibilidade
+    descricao?: string;
+    image: string;
+    imagem?: string;
+    rarity: string;
+    raridade?: string;
     category: 'CONSUMIVEL' | 'PERMANENTE' | 'RANK_SKILL' | 'TICKET';
     quantity: number;
-    usesMax?: number; // Para skills
-    usesLeft?: number; // Para skills
+    usesMax?: number;
+    usesLeft?: number;
     expiresAt?: string;
     acquiredAt: string;
     origin?: string;
@@ -64,11 +74,14 @@ interface AuthContextData {
     loading: boolean;
     ranks: RankRule[];
     soundEnabled: boolean;
+    isImpersonating: boolean;
     toggleSound: () => void;
     signIn: (matricula: string, senha: string) => Promise<void>;
     logout: () => void;
     refreshUser: () => Promise<void>;
     updateUser: (userData: User) => void;
+    impersonate: (token: string, targetUser: User) => void;
+    exitImpersonate: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -77,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [ranks, setRanks] = useState<RankRule[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Impersonating é derivado de ter o token original salvo
+    const [isImpersonating, setIsImpersonating] = useState(
+        () => !!localStorage.getItem(KEYS.originalToken)
+    );
 
     const [soundEnabled, setSoundEnabled] = useState(() => {
         const stored = localStorage.getItem('@ETEGamificada:sound');
@@ -91,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     };
 
-    // Função para buscar regras (isolada para usar em vários lugares)
     const fetchRules = useCallback(async () => {
         try {
             const res = await api.get('/auth/rules');
@@ -106,15 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Carregamento Inicial
     useEffect(() => {
         async function loadStorageData() {
-            const storedToken = localStorage.getItem('@ETEGamificada:token');
-            const storedUser = localStorage.getItem('@ETEGamificada:user');
+            const storedToken = localStorage.getItem(KEYS.token);
+            const storedUser = localStorage.getItem(KEYS.user);
 
             if (storedToken) {
                 api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
                 if (storedUser) {
                     setUser(JSON.parse(storedUser));
                 }
-                // Tenta atualizar tudo
                 try {
                     await Promise.all([refreshUser(), fetchRules()]);
                 } catch (error) {
@@ -125,9 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         loadStorageData();
-    }, []); // Executa apenas uma vez no mount
+    }, []);
 
-    // 🔥 GARANTIA: Se estiver logado mas sem ranks, busca os ranks
     useEffect(() => {
         if (user && ranks.length === 0) {
             fetchRules();
@@ -140,11 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { token, user: userData } = response.data;
 
             updateUser(userData);
-            localStorage.setItem('@ETEGamificada:token', token);
+            localStorage.setItem(KEYS.token, token);
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
             toast.success(`Bem-vindo, ${userData.nome.split(' ')[0]}!`);
-            await fetchRules(); // Garante que as regras venham no login
+            await fetchRules();
 
         } catch (error: any) {
             console.error("Erro Login:", error);
@@ -157,16 +172,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     function logout() {
-        localStorage.removeItem('@ETEGamificada:token');
-        localStorage.removeItem('@ETEGamificada:user');
+        // Remove TUDO — incluindo lastPath e qualquer resquício de impersonate
+        localStorage.removeItem(KEYS.token);
+        localStorage.removeItem(KEYS.user);
+        localStorage.removeItem(KEYS.lastPath);
+        localStorage.removeItem(KEYS.originalToken);
+        localStorage.removeItem(KEYS.originalUser);
+        localStorage.removeItem(KEYS.originalLastPath);
+
         delete api.defaults.headers.common['Authorization'];
         setUser(null);
         setRanks([]);
+        setIsImpersonating(false);
         window.location.href = '/';
     }
 
-    // 🔥 CORREÇÃO: useCallback impede que essa função mude a cada render,
-    // evitando o loop infinito no useEffect do DashboardHome
     const refreshUser = useCallback(async () => {
         try {
             const response = await api.get('/auth/me');
@@ -189,17 +209,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setTimeout(() => {
             try {
-                localStorage.setItem('@ETEGamificada:user', JSON.stringify(safeUser));
+                localStorage.setItem(KEYS.user, JSON.stringify(safeUser));
             } catch (error) {
                 console.warn("Erro ao salvar cache", error);
             }
         }, 0);
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // IMPERSONATE — entra na sessão de outro usuário
+    // Salva TUDO do dev (token, user, lastPath) antes de trocar
+    // ─────────────────────────────────────────────────────────────
+    function impersonate(newToken: string, targetUser: User) {
+        // Bloqueia duplo impersonate
+        if (isImpersonating) {
+            toast.error("Já existe uma sessão ativa de impersonate. Saia antes de impersonar outro usuário.");
+            return;
+        }
+
+        // Salva o estado completo do dev
+        localStorage.setItem(KEYS.originalToken,    localStorage.getItem(KEYS.token) ?? '');
+        localStorage.setItem(KEYS.originalUser,     localStorage.getItem(KEYS.user) ?? '');
+        localStorage.setItem(KEYS.originalLastPath, localStorage.getItem(KEYS.lastPath) ?? '');
+
+        // Troca para a sessão do aluno
+        localStorage.setItem(KEYS.token, newToken);
+        api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        updateUser(targetUser);
+
+        // Limpa o lastPath para o PathTracker começar do zero
+        // (evita que o dev vá pro lastPath do aluno ao sair)
+        localStorage.removeItem(KEYS.lastPath);
+
+        setIsImpersonating(true);
+        toast.success(`👁️ Visualizando como: ${targetUser.nome}`);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // EXIT IMPERSONATE — restaura a sessão original do dev
+    // ─────────────────────────────────────────────────────────────
+    // Retorna o path para onde navegar — lido ANTES de setIsImpersonating(false)
+    // para evitar que o PathTracker sobrescreva o lastPath restaurado
+    async function exitImpersonate(): Promise<string> {
+        const originalToken    = localStorage.getItem(KEYS.originalToken);
+        const originalUser     = localStorage.getItem(KEYS.originalUser);
+        const originalLastPath = localStorage.getItem(KEYS.originalLastPath);
+
+        if (!originalToken) {
+            logout();
+            return '/';
+        }
+
+        // Restaura o token no axios ANTES de qualquer chamada
+        api.defaults.headers.common['Authorization'] = `Bearer ${originalToken}`;
+        localStorage.setItem(KEYS.token, originalToken);
+
+        // Restaura o lastPath do admin
+        if (originalLastPath) {
+            localStorage.setItem(KEYS.lastPath, originalLastPath);
+        } else {
+            localStorage.removeItem(KEYS.lastPath);
+        }
+
+        // Limpa os dados de impersonate
+        localStorage.removeItem(KEYS.originalToken);
+        localStorage.removeItem(KEYS.originalUser);
+        localStorage.removeItem(KEYS.originalLastPath);
+
+        // ⚠️ setIsImpersonating(false) dispara re-render do PathTracker
+        // que salvaria /dashboard como lastPath — por isso capturamos
+        // o destino ANTES e o retornamos para o chamador usar diretamente
+        setIsImpersonating(false);
+
+        if (originalUser) {
+            try {
+                updateUser(JSON.parse(originalUser));
+            } catch {
+                // cache corrompido — refreshUser vai resolver
+            }
+        }
+
+        try {
+            await refreshUser();
+            toast.success("Sessão restaurada.");
+        } catch {
+            toast.error("Token expirou. Faça login novamente.");
+            logout();
+            return '/';
+        }
+
+        // Retorna o path original capturado antes do re-render
+        return originalLastPath || '/admin/users';
+    }
+
     return (
         <AuthContext.Provider value={{
-            signed: !!user, user, loading, ranks, soundEnabled, toggleSound,
-            signIn, logout, refreshUser, updateUser
+            signed: !!user,
+            user,
+            loading,
+            ranks,
+            soundEnabled,
+            isImpersonating,
+            toggleSound,
+            signIn,
+            logout,
+            refreshUser,
+            updateUser,
+            impersonate,
+            exitImpersonate,
         }}>
             {children}
         </AuthContext.Provider>

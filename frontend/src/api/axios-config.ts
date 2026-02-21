@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// 👇 MUDANÇA AQUI: Pega do .env ou usa o padrão
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export const api = axios.create({
@@ -8,35 +7,37 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor (Para enviar o token automaticamente se existir)
+// Interceptor de Request — injeta o token automaticamente
 api.interceptors.request.use((config: any) => {
-  const token = localStorage.getItem('@ETEGamificada:token'); // ⚠️ GARANTINDO QUE A CHAVE É A MESMA DO AUTH CONTEXT
-  
+  const token = localStorage.getItem('@ETEGamificada:token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
   return config;
-}, (error) => {
-  return Promise.reject(error);
-});
+}, (error) => Promise.reject(error));
 
-// Interceptor de Response (Tratamento Global de Erros)
+// Interceptor de Response — tratamento global de erros
 api.interceptors.response.use(
     response => response,
     error => {
-        // Erro 503 = Manutenção
+        // 503 = Manutenção
         if (error.response?.status === 503) {
-            // Redireciona para página de manutenção
             if (!window.location.pathname.includes('/maintenance')) {
                 window.location.href = '/maintenance';
             }
         }
-        
-        // Erro 401 = Token expirado (logout automático)
+
+        // 401 = Token expirado — logout automático
+        // Remove TUDO, incluindo lastPath e dados de impersonate
+        // para não contaminar a próxima sessão
         if (error.response?.status === 401) {
             localStorage.removeItem('@ETEGamificada:token');
             localStorage.removeItem('@ETEGamificada:user');
+            localStorage.removeItem('@ETEGamificada:lastPath');
+            localStorage.removeItem('@ETEGamificada:originalToken');
+            localStorage.removeItem('@ETEGamificada:originalUser');
+            localStorage.removeItem('@ETEGamificada:originalLastPath');
+
             if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/';
             }
