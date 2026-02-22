@@ -36,7 +36,7 @@ const useIsMobile = () => {
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener('resize', checkMobile, { passive: true });
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -77,25 +77,25 @@ FloatingParticle.displayName = 'FloatingParticle';
 const roleConfig = {
   aluno: {
     title: 'PORTAL DO ALUNO',
-    color: '#3B82F6', // Azul
+    color: '#3B82F6',
     glowColor: 'rgba(59, 130, 246, 0.4)',
     icon: GraduationCap,
   },
   monitor: {
     title: 'ÁREA DO MONITOR',
-    color: '#EAB308', // Amarelo
+    color: '#EAB308',
     glowColor: 'rgba(234, 179, 8, 0.4)',
     icon: Shield,
   },
   admin: {
     title: 'SALA DOS PROFESSORES',
-    color: '#EC4899', // Rosa
+    color: '#EC4899',
     glowColor: 'rgba(236, 72, 153, 0.4)',
     icon: Lock,
   },
   dev: {
     title: 'GOD MODE',
-    color: '#22c55e', // Verde
+    color: '#22c55e',
     glowColor: 'rgba(34, 197, 94, 0.4)',
     icon: Terminal,
   },
@@ -126,7 +126,7 @@ export function RoleLogin() {
       const response = await api.get('/public/config');
       return response.data as { siteName?: string; logoUrl?: string };
     },
-    staleTime: 1000 * 60 * 5, // Cache por 5 minutos
+    staleTime: 1000 * 60 * 5,
   });
 
   const currentPageRole = role || 'aluno';
@@ -183,10 +183,8 @@ export function RoleLogin() {
   const loginMutation = useMutation({
     mutationFn: async (credentials: { matricula: string; senha: string }) => {
       const response = await api.post('/auth/login', credentials);
-      return response.data as { user: any; token: string };
+      return response.data as { user: { nome: string; role: string }; token: string };
     },
-    // SUBSTITUA o bloco onSuccess do loginMutation (linhas 34684-34711) por este:
-
     onSuccess: (data) => {
       const { user: userData, token } = data;
       const userRole = userData.role;
@@ -201,19 +199,12 @@ export function RoleLogin() {
         throw new Error('Permissão de Monitor necessária.');
       }
 
-      // Destino baseado na PÁGINA de login escolhida pelo usuário,
-      // nunca no role real — isso evita que monitor/admin logando
-      // pela página de aluno sejam redirecionados para /monitor ou /admin
       const targetPath =
         currentPageRole === 'monitor' ? '/monitor' :
         currentPageRole === 'dev'     ? '/dev'     :
         currentPageRole === 'admin'   ? '/admin'   :
         '/dashboard';
 
-      // ⚠️ CRÍTICO: salva o lastPath ANTES de updateUser.
-      // updateUser dispara re-render do PublicRoute — se ele rodar sem
-      // lastPath definido, cai em getDashboardByRole(user.role) e
-      // redireciona pelo role real, ignorando a página de login escolhida.
       localStorage.setItem('@ETEGamificada:lastPath', targetPath);
       localStorage.setItem('@ETEGamificada:token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -226,13 +217,13 @@ export function RoleLogin() {
 
       navigate(targetPath);
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { issues?: { message: string }[]; error?: string; message?: string }; status?: number }; message?: string }) => {
       playError();
       let msg = 'Falha no login.';
 
       if (err.response) {
         if (err.response.data?.issues) {
-          msg = err.response.data.issues.map((i: any) => i.message).join('. ');
+          msg = err.response.data.issues.map((i) => i.message).join('. ');
         } else if (err.response.data?.error) {
           msg = err.response.data.error;
         } else if (err.response.data?.message) {
@@ -258,7 +249,6 @@ export function RoleLogin() {
     async (e: FormEvent) => {
       e.preventDefault();
       setError('');
-      
       loginMutation.mutate({ matricula, senha });
     },
     [matricula, senha, loginMutation]
@@ -280,7 +270,7 @@ export function RoleLogin() {
 
   return (
     <PageTransition className="min-h-screen flex items-center justify-center p-4 md:p-6 relative bg-[#050505] overflow-hidden">
-      {/* BACKGROUND E PARTÍCULAS */}
+      {/* ── BACKGROUND E PARTÍCULAS ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full ${isMobile ? '' : 'blur-[120px]'}`}
@@ -307,14 +297,17 @@ export function RoleLogin() {
         />
       </div>
 
+      {/* ── PARTÍCULAS FLUTUANTES ── */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(particleCount)].map((_, i) => (
           <FloatingParticle
             key={i}
             delay={i * 0.4}
-            color={roleData.color.includes('#3B82F6') ? 'bg-blue-500' : 
-                   roleData.color.includes('#EAB308') ? 'bg-yellow-500' :
-                   roleData.color.includes('#EC4899') ? 'bg-pink-500' : 'bg-green-500'}
+            color={
+              roleData.color.includes('#3B82F6') ? 'bg-blue-500' :
+              roleData.color.includes('#EAB308') ? 'bg-yellow-500' :
+              roleData.color.includes('#EC4899') ? 'bg-pink-500' : 'bg-green-500'
+            }
             size={Math.random() * 6 + 2}
           />
         ))}
@@ -326,12 +319,15 @@ export function RoleLogin() {
         transition={{ duration: 0.6, type: 'spring', stiffness: 200 }}
         className="w-full max-w-md relative z-10"
       >
-        <motion.div
-          className="absolute -inset-1 rounded-2xl opacity-0"
-          style={{ background: `linear-gradient(45deg, ${roleData.glowColor}, transparent)` }}
-          animate={{ opacity: [0, 0.3, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        {/* ── BORDA PULSANTE — DESATIVADA EM MOBILE (economiza GPU) ── */}
+        {!isMobile && (
+          <motion.div
+            className="absolute -inset-1 rounded-2xl opacity-0"
+            style={{ background: `linear-gradient(45deg, ${roleData.glowColor}, transparent)` }}
+            animate={{ opacity: [0, 0.3, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
 
         <PixelCard className={`relative ${cardBlurClass} border-slate-700/50`}>
           <Link

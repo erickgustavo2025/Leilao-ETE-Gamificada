@@ -1,26 +1,31 @@
+// ARQUIVO: frontend/src/pages/dashboard/taca-das-casas/index.tsx
 import { useState, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Scroll, ShieldAlert, History, Loader2, AlertCircle, EyeOff, ShieldCheck} from 'lucide-react';
+import {
+    ShoppingBag, Scroll, ShieldAlert, History,
+    Loader2, AlertCircle, EyeOff, ShieldCheck, Clock
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// Components Leves
-import { ParticleBackground } from './components/ParticleBackground';
-import { HouseCupHeader } from './components/HouseCupHeader';
-import { HousePodium } from './components/HousePodium';
-import { MenuCard } from './components/MenuCard';
-import { HouseCupFooter } from './components/HouseCupFooter';
+import { ParticleBackground }  from './components/ParticleBackground';
+import { HouseCupHeader }      from './components/HouseCupHeader';
+import { HousePodium }         from './components/HousePodium';
+import { MenuCard }            from './components/MenuCard';
+import { HouseCupFooter }      from './components/HouseCupFooter';
 
-// Lazy Load do Modal Pesado
-const HouseHistoryModal = lazy(() => import('./components/HouseHistoryModal').then(m => ({ default: m.HouseHistoryModal })));
+const HouseHistoryModal = lazy(() =>
+    import('./components/HouseHistoryModal').then(m => ({ default: m.HouseHistoryModal }))
+);
 
-import { useAuth } from '../../../contexts/AuthContext';
-import { useGameSound } from '../../../hooks/useGameSound';
-import { api } from '../../../api/axios-config';
+import { useAuth }        from '../../../contexts/AuthContext';
+import { useGameSound }   from '../../../hooks/useGameSound';
+import { api }            from '../../../api/axios-config';
 import { PageTransition } from '../../../components/layout/PageTransition';
-import { cn } from '../../../utils/cn';
-import { getImageUrl } from '../../../utils/imageHelper';
+import { cn }             from '../../../utils/cn';
+import { getImageUrl }    from '../../../utils/imageHelper';
 
+// ── Tipos ──────────────────────────────────────────────────────
 interface HouseData {
     _id: string;
     nome: string;
@@ -30,6 +35,27 @@ interface HouseData {
     cor?: string;
 }
 
+interface HouseConfig {
+    isVisible: boolean;
+    houses: HouseData[];
+}
+
+interface HistoryEntry {
+    _id: string;
+    tipo: string;
+    valor: number;
+    motivo: string;
+    autor: { nome: string };
+    data: string;
+}
+
+interface AuthUser {
+    role: string;
+    cargos?: string[];
+    turma?: string;
+}
+
+// ── Componente ─────────────────────────────────────────────────
 export function HouseCupHub() {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -37,59 +63,59 @@ export function HouseCupHub() {
 
     const [selectedHouse, setSelectedHouse] = useState<HouseData | null>(null);
     const [selectedYear, setSelectedYear] = useState<string>(() => {
-        const userYear = user?.turma?.charAt(0);
-        return ['1', '2', '3'].includes(userYear || '') ? userYear! : '1';
+        const typedUser = user as AuthUser | undefined;
+        const userYear = typedUser?.turma?.charAt(0);
+        return ['1', '2', '3'].includes(userYear ?? '') ? userYear! : '1';
     });
 
-    // ==================== QUERIES ====================
-    
-    // Query 1: Config + Houses (combinadas)
-    const { 
-        data: housesData, 
-        isLoading, 
-        isError 
-    } = useQuery({
+    // ── QUERIES ───────────────────────────────────────────────
+
+    const {
+        data: housesData,
+        isLoading,
+        isError
+    } = useQuery<HouseConfig>({
         queryKey: ['houseCup'],
         queryFn: async () => {
             const [configRes, listRes] = await Promise.all([
                 api.get('/house/config'),
                 api.get('/classrooms')
             ]);
-            
+
             return {
-                isVisible: configRes.data.houseCupVisible,
+                isVisible: configRes.data.houseCupVisible as boolean,
                 houses: listRes.data as HouseData[]
             };
         },
-        staleTime: 5 * 60 * 1000, // 5 minutos
+        staleTime: 5 * 60 * 1000,
     });
 
-    // Query 2: Histórico da Casa (condicional - só busca quando modal abre)
-    const { 
-        data: historyData = [], 
-        isLoading: historyLoading 
-    } = useQuery({
+    const {
+        data: historyData = [],
+        isLoading: historyLoading
+    } = useQuery<HistoryEntry[]>({
         queryKey: ['houseHistory', selectedHouse?.serie],
         queryFn: async () => {
             if (!selectedHouse) return [];
             const turmaEncoded = encodeURIComponent(selectedHouse.serie);
             const res = await api.get(`/house/${turmaEncoded}/history`);
-            return res.data;
+            return res.data as HistoryEntry[];
         },
-        enabled: !!selectedHouse, // Auto-fetch quando selectedHouse muda
+        enabled: !!selectedHouse,
         staleTime: 5 * 60 * 1000,
     });
 
-    // ==================== DERIVAÇÕES ====================
-    
-    const houses = housesData?.houses || [];
-    const isRankingHidden = housesData?.isVisible === false && user?.role !== 'admin';
+    // ── DERIVAÇÕES ────────────────────────────────────────────
 
-    // ==================== HANDLERS ====================
+    const houses = housesData?.houses ?? [];
+    const typedUser = user as AuthUser | undefined;
+    const isRankingHidden = housesData?.isVisible === false && typedUser?.role !== 'admin';
+
+    // ── HANDLERS ─────────────────────────────────────────────
 
     const handleOpenHistory = (house: HouseData) => {
         playClick();
-        setSelectedHouse(house); // Isso vai disparar a query automaticamente
+        setSelectedHouse(house);
     };
 
     const handleNavigation = (path: string) => {
@@ -97,18 +123,17 @@ export function HouseCupHub() {
         navigate(path);
     };
 
-    // ==================== FILTROS LOCAIS ====================
-    
-    const filteredHouses = houses.filter(house => house.serie.trim().startsWith(selectedYear));
-    const sortedHouses = [...filteredHouses].sort((a, b) => b.pontuacaoAtual - a.pontuacaoAtual);
+    // ── FILTROS ───────────────────────────────────────────────
 
-    // ==================== RENDER ====================
+    const filteredHouses = houses.filter(house => house.serie.trim().startsWith(selectedYear));
+    const sortedHouses   = [...filteredHouses].sort((a, b) => b.pontuacaoAtual - a.pontuacaoAtual);
+
+    // ── RENDER ────────────────────────────────────────────────
 
     return (
         <PageTransition className="min-h-screen bg-[#050505] relative overflow-hidden">
             <ParticleBackground />
 
-            {/* Background Otimizado (Radial simples, sem blur pesado) */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full"
                     style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.15) 0%, rgba(0,0,0,0) 70%)' }} />
@@ -122,7 +147,7 @@ export function HouseCupHub() {
                 <main className="flex-1 px-4 pb-24 md:pl-28 pt-6 space-y-8">
 
                     <section className="max-w-7xl mx-auto">
-                        {/* Header da Seção */}
+                        {/* Header */}
                         <div className="text-center mb-8">
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-900/30 border border-purple-500/30 rounded-full mb-4">
                                 <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
@@ -182,7 +207,7 @@ export function HouseCupHub() {
                                             </div>
                                         </div>
 
-                                        {/* LISTA DE OUTRAS CASAS */}
+                                        {/* LISTA */}
                                         {sortedHouses.length > 3 && (
                                             <div className="mt-8 max-w-3xl mx-auto space-y-2">
                                                 {sortedHouses.slice(3).map((house, index) => (
@@ -194,7 +219,7 @@ export function HouseCupHub() {
                                                         <div className="flex items-center gap-3">
                                                             <span className="font-press text-xs text-slate-500 w-6">#{index + 4}</span>
                                                             <div className="w-8 h-8 rounded-full overflow-hidden bg-black">
-                                                                <img src={getImageUrl(house.logo)} className="w-full h-full object-cover" />
+                                                                <img src={getImageUrl(house.logo)} className="w-full h-full object-cover" alt={house.nome} />
                                                             </div>
                                                             <div>
                                                                 <h4 className="font-vt323 text-xl text-white uppercase leading-none">{house.nome}</h4>
@@ -214,13 +239,18 @@ export function HouseCupHub() {
                         )}
                     </section>
 
-                    {/* Menu de Navegação Rápida */}
+                    {/* Menu de Navegação */}
                     <section className="max-w-6xl mx-auto pb-10">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             <MenuCard
                                 title="BECO DIAGONAL" desc="Loja Mágica"
                                 icon={ShoppingBag} color="text-purple-400" borderColor="border-purple-600"
                                 onClick={() => handleNavigation('/taca-das-casas/beco-diagonal')} delay={0}
+                            />
+                            <MenuCard
+                                title="HALL DA FAMA" desc="Linha do Tempo"
+                                icon={Clock} color="text-yellow-400" borderColor="border-yellow-600"
+                                onClick={() => handleNavigation('/taca-das-casas/linha-do-tempo')} delay={0}
                             />
                             <MenuCard
                                 title="SALA COMUNAL" desc="Inventário da Sala"
@@ -238,18 +268,13 @@ export function HouseCupHub() {
                                 onClick={() => handleNavigation('/taca-das-casas/historico')} delay={0}
                             />
 
-                            {(user?.cargos?.includes('armada_dumbledore') || user?.role === 'admin') && (
+                            {(typedUser?.cargos?.includes('armada_dumbledore') || typedUser?.role === 'admin') && (
                                 <MenuCard
-                                    title="ARMADA"
-                                    desc="Área Restrita"
-                                    icon={ShieldCheck}
-                                    color="text-blue-400"
-                                    borderColor="border-blue-600"
-                                    onClick={() => handleNavigation('/armada/login')}
-                                    delay={0.4}
+                                    title="ARMADA" desc="Área Restrita"
+                                    icon={ShieldCheck} color="text-blue-400" borderColor="border-blue-600"
+                                    onClick={() => handleNavigation('/armada/login')} delay={0.4}
                                 />
                             )}
-
                         </div>
                     </section>
 
@@ -257,7 +282,6 @@ export function HouseCupHub() {
 
                 <HouseCupFooter />
 
-                {/* MODAL COM LAZY LOADING */}
                 <Suspense fallback={null}>
                     <HouseHistoryModal
                         isOpen={!!selectedHouse}

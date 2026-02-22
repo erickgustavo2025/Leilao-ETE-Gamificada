@@ -26,6 +26,7 @@ const rouletteRoutes = require('./routes/rouletteRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const houseHistoryRoutes = require('./routes/houseHistoryRoutes');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -110,6 +111,8 @@ app.use('/api/public', publicRoutes);
 app.use('/api/house', houseRoutes);
 app.use('/api/beco', houseShopRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/house-history', houseHistoryRoutes);
+
 
 // Fallback da API
 app.use((req, res) => {
