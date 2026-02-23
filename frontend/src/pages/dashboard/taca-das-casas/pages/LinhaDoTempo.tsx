@@ -145,7 +145,7 @@ export function LinhaDoTempo() {
 
                                 {/* Anos */}
                                 <div className="flex">
-                                    {years.map((year, yi) => (
+                                    {years.map((year) => (
                                         <div key={year} className="flex-shrink-0 w-20 mx-1 flex flex-col items-center">
                                             {/* Marcador do ano */}
                                             <div className="w-3 h-3 rounded-full bg-yellow-500/60 border border-yellow-400 mb-1 mt-[54px]" />

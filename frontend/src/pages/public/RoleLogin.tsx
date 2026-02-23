@@ -208,7 +208,7 @@ export function RoleLogin() {
       localStorage.setItem('@ETEGamificada:lastPath', targetPath);
       localStorage.setItem('@ETEGamificada:token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      updateUser(userData);
+      updateUser(userData as any);
 
       playSuccess();
       toast.success(`BEM-VINDO(A), ${userData.nome.split(' ')[0]}!`, {

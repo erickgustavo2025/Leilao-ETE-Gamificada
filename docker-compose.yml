@@ -5,23 +5,18 @@ services:
     build: ./backend
     container_name: etegami_backend
     restart: always
+    env_file: ./.env         # ← lê tudo do .env da raiz
     ports:
       - "3000:3000"
-    environment:
-      - PORT=3000
-      - MONGO_URI=${MONGO_URI}
-      - JWT_SECRET=${JWT_SECRET}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - BASE_URL=https://etegamificada.online
     volumes:
       - ./backend/public/uploads:/app/public/uploads
       - ./passwords.txt:/app/passwords.txt
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=${VITE_API_URL}   # ← passa pro Dockerfile em build time
     container_name: etegami_frontend
     restart: always
     ports:
