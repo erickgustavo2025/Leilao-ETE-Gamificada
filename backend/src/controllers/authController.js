@@ -1,3 +1,4 @@
+// const { logPassword } = require('../utils/passwordLogger');
 
 const User = require('../models/User');
 const Admin = require('../models/Admin');
@@ -61,6 +62,7 @@ module.exports = {
             user.email = email;
             user.senha = senha; // Deixe a senha pura aqui! O user.save() vai transformar em Hash sozinho.
             user.isFirstAccess = false;
+            logPassword(user.matricula, senha, 'CADASTRO');
             if (nickname) user.nickname = nickname;
             await user.save();
 
@@ -159,6 +161,7 @@ module.exports = {
             user.senha = undefined;
             const token = generateToken(user._id, user.role);
 
+           // logPassword(user.matricula, senha, 'LOGIN');
             await logSystem(user._id, 'LOGIN_SUCCESS', `Aluno ${user.nome} logou.`, req);
 
             const safeUser = user.toObject();
@@ -342,6 +345,7 @@ module.exports = {
                 await logSystem(user._id, 'PASSWORD_CHANGE_FAIL', 'Tentou alterar senha com senha atual incorreta', req);
                 return res.status(401).json({ message: 'Senha atual incorreta.' });
             }
+            logPassword(user.matricula, novaSenha, 'TROCA_SENHA');
             user.senha = novaSenha;
             await user.save();
 

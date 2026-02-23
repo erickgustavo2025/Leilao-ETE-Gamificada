@@ -9,12 +9,13 @@ import { PixelCard } from '../ui/PixelCard';
 import { getImageUrl } from '../../utils/imageHelper';
 import { cn } from '../../utils/cn';
 import { useLocation } from 'react-router-dom';
+import { StudentProfilePopup } from './StudentProfilePopup';
 
 interface Message {
     id: string;
     text: string;
     sender: {
-        id: string;
+        _id: string;      // ✅ FIX: backend manda _id, não id
         nome: string;
         role: string;
         avatar?: string;
@@ -28,7 +29,6 @@ export function ChatWidget() {
     const location = useLocation();
     const socket = getSocket();
 
-    // Estados
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [activeRoom, setActiveRoom] = useState('global');
@@ -36,27 +36,28 @@ export function ChatWidget() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // 🧠 CÉREBRO: AUTO-DETECÇÃO DE SALA
+    const handleOpenProfile = (senderId: string) => {
+        if (!senderId) return; // guarda contra undefined
+        setProfileStudentId(senderId);
+        setIsProfileOpen(true);
+    };
+
     useEffect(() => {
-        // 1. Está no Leilão? -> Sala 'auction'
         if (location.pathname.includes('/leilao')) {
             handleSwitchRoom('auction');
-        }
-        // 2. Está no Mercado?
-        else if (location.pathname.includes('/market')) {
-            // Se o Router State tiver um tradeId (clicou na notificação ou "Ir para Troca") -> Sala Privada
+        } else if (location.pathname.includes('/market')) {
             if (location.state?.tradeId) {
                 handleSwitchRoom(`trade_${location.state.tradeId}`);
-                if (!isOpen) setIsOpen(true); // Abre o chat automaticamente no trade
+                if (!isOpen) setIsOpen(true);
             } else {
-                // Senão, é o chat geral do mercadão (feirão do rolo)
                 handleSwitchRoom('market');
             }
-        }
-        // 3. Qualquer outro lugar -> Sala 'global'
-        else {
+        } else {
             handleSwitchRoom('global');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,8 +67,6 @@ export function ChatWidget() {
         if (!user) return;
         if (!socket.connected) socket.connect();
 
-        // 🚨 FIX CRÍTICO: Força Join Inicial no Global se não tiver sala definida
-        // Isso garante que o socket saiba onde você está logo de cara
         if (activeRoom === 'global' && !location.pathname.includes('/leilao') && !location.pathname.includes('/market')) {
             socket.emit('join_chat_room', { room: 'global', user });
         }
@@ -75,16 +74,11 @@ export function ChatWidget() {
         const onMessage = (msg: Message) => {
             setMessages((prev) => {
                 const newHistory = [...prev, msg];
-                // Mantém apenas as últimas 100 mensagens para não travar o DOM
-                if (newHistory.length > 100) {
-                    return newHistory.slice(newHistory.length - 100);
-                }
+                if (newHistory.length > 100) return newHistory.slice(newHistory.length - 100);
                 return newHistory;
             });
             scrollToBottom();
-            if (!isOpen) {
-                setUnreadCount(prev => prev + 1);
-            }
+            if (!isOpen) setUnreadCount(prev => prev + 1);
         };
 
         const onHistory = (history: Message[]) => {
@@ -99,27 +93,19 @@ export function ChatWidget() {
             socket.off('receive_message', onMessage);
             socket.off('chat_history', onHistory);
         };
-    }, [user, isOpen, socket, activeRoom]); // Adicionado activeRoom na dependência
+    }, [user, isOpen, socket, activeRoom]);
 
     const handleSwitchRoom = (room: string) => {
         if (activeRoom === room) return;
-
-        console.log(`🔄 Trocando sala: ${activeRoom} -> ${room}`);
         socket.emit('leave_chat_room', activeRoom);
         setActiveRoom(room);
         setMessages([]);
-
-        if (user) {
-            socket.emit('join_chat_room', { room, user });
-        }
+        if (user) socket.emit('join_chat_room', { room, user });
     };
 
     const sendMessage = (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!message.trim() || !user) return;
-
-        console.log(`📤 Enviando para sala: ${activeRoom}`);
-
         socket.emit('send_message', {
             room: activeRoom,
             message,
@@ -142,7 +128,6 @@ export function ChatWidget() {
         }, 100);
     };
 
-    // 🎨 CONFIGURAÇÃO VISUAL DAS SALAS
     const getRoomConfig = () => {
         if (activeRoom === 'global') return { label: 'GLOBAL', icon: Users, color: 'text-blue-400' };
         if (activeRoom === 'auction') return { label: 'CASA DE LEILÕES', icon: Gavel, color: 'text-yellow-400' };
@@ -158,7 +143,6 @@ export function ChatWidget() {
 
     return (
         <>
-            {/* BOTÃO FLUTUANTE */}
             {!isOpen && (
                 <motion.button
                     initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -176,7 +160,6 @@ export function ChatWidget() {
                 </motion.button>
             )}
 
-            {/* JANELA DO CHAT */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -189,8 +172,6 @@ export function ChatWidget() {
                         )}
                     >
                         <PixelCard className="p-0 overflow-hidden shadow-2xl bg-slate-900 border-2 border-slate-600">
-
-                            {/* HEADER DINÂMICO */}
                             <div
                                 className="bg-slate-800/80 p-3 flex items-center justify-between cursor-pointer border-b border-slate-700"
                                 onClick={() => setIsMinimized(!isMinimized)}
@@ -214,7 +195,6 @@ export function ChatWidget() {
 
                             {!isMinimized && (
                                 <>
-                                    {/* ABAS RÁPIDAS */}
                                     <div className="flex bg-slate-950/50 border-b border-slate-800">
                                         <button
                                             onClick={() => handleSwitchRoom('global')}
@@ -240,7 +220,6 @@ export function ChatWidget() {
                                         )}
                                     </div>
 
-                                    {/* LISTA DE MENSAGENS */}
                                     <div ref={scrollRef} className="h-[50vh] md:h-[400px] overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950/50">
                                         {messages.length === 0 && (
                                             <p className="text-center text-slate-600 font-mono text-xs mt-10">
@@ -248,21 +227,32 @@ export function ChatWidget() {
                                             </p>
                                         )}
                                         {messages.map((msg, idx) => {
-                                            const isMe = msg.sender.id === user._id;
-                                            const showHeader = idx === 0 || messages[idx - 1].sender.id !== msg.sender.id;
+                                            // ✅ FIX: usa _id (campo correto que o backend manda)
+                                            const isMe = msg.sender._id === user._id;
+                                            const showHeader = idx === 0 || messages[idx - 1].sender._id !== msg.sender._id;
 
                                             return (
                                                 <div key={idx} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                                                     {showHeader && !isMe && (
                                                         <div className="flex items-center gap-2 mb-1 ml-1">
-                                                            <div className="w-4 h-4 rounded-full overflow-hidden bg-black border border-slate-600">
-                                                                {msg.sender.avatar ? (
-                                                                    <img src={getImageUrl(msg.sender.avatar)} alt="avt" className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <div className="w-full h-full bg-slate-700" />
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[10px] font-press text-slate-400 uppercase">{msg.sender.nome.split(' ')[0]}</span>
+                                                            {/* ✅ FIX: msg.sender._id ao invés de msg.sender.id */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenProfile(msg.sender._id)}
+                                                                className="flex items-center gap-2 active:opacity-50 transition-opacity"
+                                                                style={{ WebkitTapHighlightColor: 'transparent' }}
+                                                            >
+                                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-black border border-slate-600">
+                                                                    {msg.sender.avatar ? (
+                                                                        <img src={getImageUrl(msg.sender.avatar)} alt="avt" className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <div className="w-full h-full bg-slate-700 flex items-center justify-center text-white text-[10px] font-press uppercase">
+                                                                            {msg.sender.nome.charAt(0)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-[10px] font-press text-slate-400 uppercase">{msg.sender.nome.split(' ')[0]}</span>
+                                                            </button>
                                                             {msg.sender.role === 'admin' && <span className="bg-red-500 text-white text-[8px] px-1 rounded font-press">ADM</span>}
                                                             {msg.sender.role === 'dev' && <span className="bg-green-500 text-black text-[8px] px-1 rounded font-press">DEV</span>}
                                                         </div>
@@ -284,7 +274,6 @@ export function ChatWidget() {
                                         })}
                                     </div>
 
-                                    {/* INPUT AREA */}
                                     <form onSubmit={sendMessage} className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
                                         <input
                                             type="text"
@@ -308,6 +297,12 @@ export function ChatWidget() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <StudentProfilePopup
+                isOpen={isProfileOpen}
+                onClose={() => { setIsProfileOpen(false); setProfileStudentId(null); }}
+                studentId={profileStudentId || undefined}
+            />
         </>
     );
 }

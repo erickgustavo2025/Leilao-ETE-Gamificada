@@ -43,3 +43,37 @@ exports.getPublicStats = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar stats públicos' });
     }
 };
+
+// Perfil público de um aluno — usado pelo popup de perfil no chat e ranking
+exports.getPublicProfile = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await User.findById(userId)
+            .select('nome turma saldoPc maxPcAchieved avatar isVip');
+
+        if (!user) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        // Posição no ranking = quantos alunos têm MAIS PCs que esse + 1
+        const rankPosition = await User.countDocuments({
+            role: { $in: ['student', 'monitor'] },
+            saldoPc: { $gt: user.saldoPc }
+        }) + 1;
+
+        res.json({
+            _id: user._id,
+            nome: user.nome,
+            turma: user.turma,
+            saldoPc: user.saldoPc,
+            maxPcAchieved: user.maxPcAchieved || 0,
+            avatar: user.avatar,
+            isVip: user.isVip || false,
+            rankPosition
+        });
+    } catch (error) {
+        console.error('Erro getPublicProfile:', error);
+        res.status(500).json({ error: 'Erro ao buscar perfil' });
+    }
+};
