@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, admin, devOnly } = require('../middlewares/authMiddleware');
 const validate = require('../middlewares/validateMiddleware');
-const upload = require('../config/upload');
+const { upload, processImageToWebp } = require('../config/upload');
 const notifController = require('../controllers/notificationController');
 const schemas = require('../validators/schemas');
 
@@ -19,7 +19,7 @@ router.put('/notifications/read', protect, notifController.markAsRead);
 
 // --- ROTAS PROTEGIDAS (ALUNO/MONITOR/ADMIN) ---
 router.get('/my-inventory', protect, userController.getMyInventory);
-router.put('/avatar', protect, upload.single('avatar'), userController.updateAvatar);
+router.put('/avatar', protect, upload.single('avatar'), processImageToWebp, userController.updateAvatar);
 
 // Inventário Público (para o Trade)
 router.get('/:userId/inventory-public', protect, userController.getUserInventoryPublic);
@@ -50,6 +50,8 @@ router.put('/promote', protect, admin, userController.toggleMonitor);
 router.get('/logs', protect, admin, userController.getAdminLogs);
 router.post('/manual', protect, devOnly, userController.createManualUser);
 router.put('/block', protect, admin, validate(schemas.user.block), userController.toggleBlock);
-router.put('/special-role', protect, admin, userController.toggleSpecialRole);
+// Aceita tanto POST quanto PUT para não brigar com o Frontend
+router.post('/:id/special-roles', protect, admin, userController.toggleSpecialRole);
+router.put('/:id/special-roles', protect, admin, userController.toggleSpecialRole);
 
 module.exports = router;

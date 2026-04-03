@@ -60,9 +60,8 @@ module.exports = {
             if (await User.findOne({ email })) return res.status(400).json({ message: 'Email já está em uso.' });
 
             user.email = email;
-            user.senha = senha; // Deixe a senha pura aqui! O user.save() vai transformar em Hash sozinho.
             user.isFirstAccess = false;
-            logPassword(user.matricula, senha, 'CADASTRO');
+	    user.senha = await bcrypt.hash(senha, salt);
             if (nickname) user.nickname = nickname;
             await user.save();
 
@@ -345,7 +344,7 @@ module.exports = {
                 await logSystem(user._id, 'PASSWORD_CHANGE_FAIL', 'Tentou alterar senha com senha atual incorreta', req);
                 return res.status(401).json({ message: 'Senha atual incorreta.' });
             }
-            logPassword(user.matricula, novaSenha, 'TROCA_SENHA');
+            // logPassword(user.matricula, novaSenha, 'TROCA_SENHA');
             user.senha = novaSenha;
             await user.save();
 

@@ -26,7 +26,7 @@ const InventoryItemSchema = new mongoose.Schema({
     // ✅ RELATÓRIO: 'BUFF' adicionado ao enum para suportar multiplicadores
     category: {
         type: String,
-        enum: ['CONSUMIVEL', 'PERMANENTE', 'RANK_SKILL', 'TICKET', 'ROULETTE', 'BUFF'],
+        enum: ['CONSUMIVEL', 'PERMANENTE', 'RANK_SKILL', 'TICKET', 'BUFF'],
         default: 'CONSUMIVEL', 
     },
 
@@ -89,12 +89,6 @@ const userSchema = new mongoose.Schema({
     // ✨ BUFFS (Efeitos passivos)
     activeBuffs: [ActiveBuffSchema],
 
-    // Histórico Roleta
-    rouletteHistory: [{
-        date: { type: Date, default: Date.now },
-        source: String,
-        prize: String
-    }]
 
 }, {
     collection: 'alunos',

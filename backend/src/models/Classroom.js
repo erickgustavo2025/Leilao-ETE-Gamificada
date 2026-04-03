@@ -33,7 +33,6 @@ const classroomSchema = new mongoose.Schema({
                 'PREMIO', 
                 'COMPRA_INDIVIDUAL', 
                 'TICKET_CANCELADO', 
-                'ROULETTE', 
                 'LEILAO',
                 'TRADE',          
                 'MARKETPLACE'     

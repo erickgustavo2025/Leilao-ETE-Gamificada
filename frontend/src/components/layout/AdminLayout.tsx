@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  Dices, Settings, Gift, QrCode, ShieldCheck, Grid, 
+  Settings, Gift, QrCode, ShieldCheck, Grid, 
   Coins, Users, Scroll, LogOut, Menu, X, Gavel, 
   Image as ImageIcon, Trophy // <--- ADICIONE O TROPHY AQUI
 } from 'lucide-react';
@@ -25,7 +25,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     { label: 'CASA DE LEILÕES', path: '/admin/auctions', icon: Gavel, color: 'text-orange-400' },
     { label: 'PRESENTES', path: '/admin/gifts', icon: Gift, color: 'text-pink-400' },
-    { icon: Dices, label: 'ROLETA', path: '/admin/roulette' },
     { label: 'ALUNOS', path: '/admin/users', icon: Users, color: 'text-blue-400' },
     { label: 'LOJA E ITENS', path: '/admin/store', icon: Coins, color: 'text-purple-400' },
     { icon: Gavel, label: 'PUNIÇÕES', path: '/admin/punishments' },

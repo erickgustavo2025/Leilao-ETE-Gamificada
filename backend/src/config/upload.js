@@ -1,40 +1,53 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
+// Garante que a pasta uploads existe
 const uploadDir = path.join(__dirname, '../../public/uploads');
-
-// Garante que a pasta existe
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+// Usamos memoryStorage para o Sharp poder processar a imagem ANTES de salvar no HD
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|webp|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) return cb(null, true);
+        cb(new Error('Apenas imagens (jpeg, jpg, png, webp, gif) são permitidas!'));
     }
 });
 
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+// Middleware mágico do CTO que converte para WEBP
+const processImageToWebp = async (req, res, next) => {
+    if (!req.file) return next();
 
-    if (extname && mimetype) {
-        return cb(null, true);
-    } else {
-        cb(new Error('Apenas imagens (jpeg, jpg, png, gif) são permitidas!'));
+    try {
+        // Cria um nome único com a extensão .webp
+        const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}.webp`;
+        const filepath = path.join(uploadDir, filename);
+
+        // O Sharp pega a imagem da memória, converte para webp (qualidade 80%) e salva no HD
+        await sharp(req.file.buffer)
+            .webp({ quality: 80 })
+            .toFile(filepath);
+
+        // Engana o req.file para o resto do sistema achar que o multer salvou normalmente
+        req.file.filename = filename;
+        req.file.path = filepath;
+        
+        next();
+    } catch (error) {
+        console.error('Erro ao converter imagem para WEBP:', error);
+        next(error);
     }
 };
 
-const upload = multer({ 
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 } // Limite de 5MB
-});
-
-module.exports = upload;
+module.exports = { upload, processImageToWebp };

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Gift, Landmark, LogOut, Store, ShoppingBag, Backpack,
   Trophy, User, Calendar, Gavel, BookOpen, ArrowRightLeft,
-  Dices, MessageSquare, GraduationCap, Loader2
+  MessageSquare, GraduationCap, Loader2
 } from 'lucide-react';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { PageTransition } from '../../components/layout/PageTransition';
@@ -131,8 +131,6 @@ export function DashboardHome() {
       items: [
         { label: "HUB DE EVENTOS", icon: Calendar, color: "text-yellow-500", desc: "Taça, Intergil & Gincanas", action: () => toggleModal('events', true) },
         { label: "MEUS PRESENTES", icon: Gift, color: "text-pink-500", desc: "Itens recebidos", path: "/dashboard/gifts" },
-        { label: "GILBET APOSTAS", icon: Dices, color: "text-emerald-500", desc: "Aposte e Ganhe", path: "/coming-soon?module=GILBET" },
-        { label: "ROLETADA & SORTEIOS", icon: Dices, color: "text-cyan-400", desc: "Ganhe prêmios", path: "/roleta" },
         { label: "RANKING GERAL", icon: Trophy, color: "text-orange-400", desc: "Top Global", path: "/ranking" },
         { label: "RANKING EGRESSOS", icon: GraduationCap, color: "text-violet-400", desc: "Lendas da Escola", path: "/coming-soon?module=EGRESSOS" },
       ]

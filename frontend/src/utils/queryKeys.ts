@@ -29,7 +29,7 @@ export const queryKeys = {
     logs: (filter?: string) => 
       filter ? ['admin', 'logs', filter] as const : ['admin', 'logs'] as const,
     
-    roulettes: ['admin', 'roulettes'] as const,
+
     
     users: (turma?: string) => 
       turma ? ['admin', 'users', turma] as const : ['admin', 'users'] as const,

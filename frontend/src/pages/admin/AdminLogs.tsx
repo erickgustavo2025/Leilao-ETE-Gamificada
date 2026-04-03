@@ -43,7 +43,7 @@ export function AdminLogs() {
         return logs.filter(log => {
             // Filtro por Categoria
             if (activeFilter === 'GAMEPLAY') {
-                const gameActions = ['ROULETTE', 'ROULETTE_SPIN', 'ROULETTE_WIN', 'TICKET_CREATED', 'TICKET_CANCELLED', 'TICKET_VALIDATED', 'GIFT_CLAIM', 'USE_ITEM'];
+                const gameActions = ['TICKET_CREATED', 'TICKET_CANCELLED', 'TICKET_VALIDATED', 'GIFT_CLAIM', 'USE_ITEM'];
                 if (!gameActions.some(act => log.action.includes(act))) return false;
             }
             
@@ -94,8 +94,7 @@ export function AdminLogs() {
         if (act.includes('COMPRA') || act.includes('BUY')) return { icon: ShoppingBag, color: 'text-pink-400', border: 'border-pink-700', bg: 'bg-pink-900/10', label: 'COMPRA' };
         if (act === 'TRADE_COMPLETED') return { icon: ArrowRightLeft, color: 'text-blue-400', border: 'border-blue-700', bg: 'bg-blue-900/10', label: 'TROCA' };
 
-        // 🎮 GAMEPLAY
-        if (act.includes('ROULETTE')) return { icon: Star, color: 'text-fuchsia-400', border: 'border-fuchsia-900', bg: 'bg-fuchsia-900/10', label: 'ROLETA' };
+       
         if (act.includes('TICKET')) return { icon: Ticket, color: 'text-purple-400', border: 'border-purple-900', bg: 'bg-purple-900/10', label: 'TICKET' };
         if (act.includes('GIFT')) return { icon: Gift, color: 'text-orange-400', border: 'border-orange-900', bg: 'bg-orange-900/10', label: 'PRESENTE' };
         if (act.includes('USE_ITEM')) return { icon: CheckCircle, color: 'text-cyan-400', border: 'border-cyan-900', bg: 'bg-cyan-900/10', label: 'USOU ITEM' };

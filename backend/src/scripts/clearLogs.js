@@ -9,7 +9,6 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const Log = require('../models/Log');
 const Item = require('../models/Item'); // <-- AQUI ERA O AUCTION!
 const Bid = require('../models/Bid');
-const Roulette = require('../models/Roulette');
 const Notification = require('../models/Notification');
 const Ticket = require('../models/Ticket');
 const HouseAction = require('../models/HouseAction');
@@ -26,12 +25,11 @@ async function wipeForProduction() {
         await Log.deleteMany({});
         await Item.deleteMany({}); // <-- Limpando os leilões
         await Bid.deleteMany({});
-        await Roulette.deleteMany({});
         await Notification.deleteMany({});
         await Ticket.deleteMany({});
         await HouseAction.deleteMany({});
         await Punishment.deleteMany({});
-        console.log("✅ Logs, Leilões, Roletas, Tickets e Tribunal limpos!");
+        console.log("✅ Logs, Leilões, Tickets e Tribunal limpos!");
 
         console.log("\n🧹 [2/2] ZERANDO A TAÇA DAS CASAS...");
         // Zera APENAS a pontuação das turmas e esvazia o Beco Diagonal da sala

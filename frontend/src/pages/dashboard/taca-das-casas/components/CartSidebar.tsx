@@ -4,7 +4,6 @@ import { cn } from '../../../../utils/cn';
 import { getImageUrl } from '../../../../utils/imageHelper';
 import { PixelButton } from '../../../../components/ui/PixelButton';
 
-// Interface auxiliar para tipagem do item no carrinho (opcional, mas bom ter)
 interface CartItem {
     item: {
         _id: string;
@@ -14,6 +13,8 @@ interface CartItem {
     };
     qtd: number;
 }
+
+const LIMITE_COLETIVO = 10000;
 
 export function CartSidebar({
     cart,
@@ -26,6 +27,8 @@ export function CartSidebar({
     onUpdateQty,
     onCheckout
 }: any) {
+    const ultrapassouLimite = total > LIMITE_COLETIVO;
+
     return (
         <>
             {/* Header */}
@@ -142,8 +145,20 @@ export function CartSidebar({
                         <Info className="text-blue-400 shrink-0" size={20} />
                         <p className="font-mono text-xs text-blue-200 leading-relaxed">
                             O valor será dividido igualmente entre <strong>{numAlunos} alunos</strong> ativos da sua sala.
+                            <br />
+                            <span className="text-yellow-400">Limite máximo: <strong>10.000 PC$</strong></span>
                         </p>
                     </div>
+
+                    {/* Aviso de limite ultrapassado */}
+                    {ultrapassouLimite && (
+                        <div className="bg-red-900/40 border-2 border-red-600 rounded-xl p-3 flex gap-2 items-center">
+                            <X className="text-red-400 shrink-0" size={16} />
+                            <p className="font-mono text-xs text-red-300">
+                                Total excede o limite de <strong>10.000 PC$</strong>. Remova itens para continuar.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Totals */}
                     <div className="space-y-3">
@@ -152,7 +167,10 @@ export function CartSidebar({
                                 <Coins size={16} />
                                 TOTAL GERAL
                             </span>
-                            <span className="font-press text-2xl text-yellow-400">
+                            <span className={cn(
+                                "font-press text-2xl",
+                                ultrapassouLimite ? "text-red-400" : "text-yellow-400"
+                            )}>
                                 {total.toLocaleString()} PC$
                             </span>
                         </div>
@@ -168,14 +186,15 @@ export function CartSidebar({
                         </div>
                     </div>
 
-                    {/* Checkout Button (PixelButton) */}
+                    {/* Checkout Button */}
                     <PixelButton
                         onClick={onCheckout}
-                        disabled={processing}
+                        disabled={processing || ultrapassouLimite}
                         className={cn(
                             "w-full flex items-center justify-center gap-3 py-4 font-press text-sm",
-                            "bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500",
-                            "border-yellow-400 text-black shadow-[0_0_30px_rgba(234,179,8,0.4)]"
+                            ultrapassouLimite
+                                ? "bg-red-900/60 border-red-700 text-red-300 cursor-not-allowed opacity-60"
+                                : "bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 border-yellow-400 text-black shadow-[0_0_30px_rgba(234,179,8,0.4)]"
                         )}
                     >
                         {processing ? (

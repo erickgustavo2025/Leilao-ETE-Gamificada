@@ -35,7 +35,7 @@ const Ranking       = lazy(() => import('./pages/dashboard/Ranking').then(m => (
 const Mochila       = lazy(() => import('./pages/dashboard/Mochila').then(m => ({ default: m.Mochila })));
 const Loja          = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m.Loja })));
 const Leilao        = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
-const Roleta        = lazy(() => import('./pages/dashboard/Roleta').then(m => ({ default: m.Roleta })));
+
 const Marketplace   = lazy(() => import('./pages/dashboard/Marketplace').then(m => ({ default: m.Marketplace })));
 const Profile       = lazy(() => import('./pages/dashboard/Profile').then(m => ({ default: m.Profile })));
 const Banco         = lazy(() => import('./pages/dashboard/Banco').then(m => ({ default: m.Banco })));
@@ -73,7 +73,7 @@ const AdminGifts       = lazy(() => import('./pages/admin/AdminGifts').then(m =>
 const AdminConfig      = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ default: m.AdminConfig })));
 const AdminImages      = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
-const AdminRoulette    = lazy(() => import('./pages/admin/AdminRoulette').then(m => ({ default: m.AdminRoulette })));
+
 const AdminHouse       = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
 
 // ─────────────────────────────────────────────────────────────
@@ -421,7 +421,6 @@ function AppContent() {
             <Route path="/mochila"         element={<PrivateRoute><Mochila /></PrivateRoute>} />
             <Route path="/loja"            element={<PrivateRoute><Loja /></PrivateRoute>} />
             <Route path="/leilao"          element={<PrivateRoute><Leilao /></PrivateRoute>} />
-            <Route path="/roleta"          element={<PrivateRoute><Roleta /></PrivateRoute>} />
             <Route path="/market"          element={<PrivateRoute><Marketplace /></PrivateRoute>} />
             <Route path="/perfil"          element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/banco"           element={<PrivateRoute><Banco /></PrivateRoute>} />
@@ -462,7 +461,6 @@ function AppContent() {
             <Route path="/admin/config"      element={<PrivateRoute roles={['admin']}><AdminConfig /></PrivateRoute>} />
             <Route path="/admin/images"      element={<PrivateRoute roles={['admin']}><AdminImages /></PrivateRoute>} />
             <Route path="/admin/punishments" element={<PrivateRoute roles={['admin']}><AdminPunishments /></PrivateRoute>} />
-            <Route path="/admin/roulette"    element={<PrivateRoute roles={['admin']}><AdminRoulette /></PrivateRoute>} />
             <Route path="/admin/house"       element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

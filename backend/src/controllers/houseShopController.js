@@ -67,6 +67,11 @@ module.exports = {
                 });
             }
 
+            // 🔒 LIMITE DE 10.000 PC$ por compra coletiva
+            if (totalCost > 10000) {
+                throw new Error('O valor total da compra coletiva não pode ultrapassar 10.000 PC$.');
+            }
+
             const students = await User.find({ turma: representante.turma, isBlocked: false }).session(session);
             if (students.length === 0) throw new Error('Nenhum aluno ativo na turma.');
 
@@ -103,7 +108,7 @@ module.exports = {
             session.endSession();
         }
     },
-
+    
     // 👤 COMPRA INDIVIDUAL BECO (Com regra de validade 14 dias blindada)
     async buyIndividual(req, res) {
         const session = await mongoose.startSession();

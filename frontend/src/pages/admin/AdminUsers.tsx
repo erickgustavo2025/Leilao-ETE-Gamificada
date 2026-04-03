@@ -18,14 +18,14 @@ import { PageTransition } from '../../components/layout/PageTransition';
 import { queryKeys } from '../../utils/queryKeys';
 
 const SPECIAL_ROLES = [
-  { id: 'estudanteHonorario', label: 'Estudante Honorário', icon: Crown, color: 'text-yellow-500' },
-  { id: 'monitorDisciplina', label: 'Monitor de Disciplina', icon: Shield, color: 'text-blue-500' },
-  { id: 'monitorEscola', label: 'Monitor da Escola', icon: Zap, color: 'text-purple-500' },
-  { id: 'armadaDumbledore', label: 'Armada de Dumbledore', icon: Shield, color: 'text-red-500' },
-  { id: 'monitorBiblioteca', label: 'Monitor da Biblioteca', icon: BookOpen, color: 'text-green-500' },
-  { id: 'monitorQuadra', label: 'Monitor da Quadra', icon: Dumbbell, color: 'text-orange-500' },
-  { id: 'integranteBanda', label: 'Integrante da Banda', icon: Music, color: 'text-pink-500' },
-  { id: 'representanteSala', label: 'Representante de Sala', icon: UsersIcon, color: 'text-cyan-500' },
+  { id: 'estudante_honorario', label: 'Estudante Honorário', icon: Crown, color: 'text-yellow-500' },
+  { id: 'monitor_disciplina', label: 'Monitor de Disciplina', icon: Shield, color: 'text-blue-500' },
+  { id: 'monitor_escola', label: 'Monitor da Escola', icon: Zap, color: 'text-purple-500' },
+  { id: 'armada_dumbledore', label: 'Armada de Dumbledore', icon: Shield, color: 'text-red-500' },
+  { id: 'monitor_biblioteca', label: 'Monitor da Biblioteca', icon: BookOpen, color: 'text-green-500' },
+  { id: 'monitor_quadra', label: 'Monitor da Quadra', icon: Dumbbell, color: 'text-orange-500' },
+  { id: 'banda', label: 'Integrante da Banda', icon: Music, color: 'text-pink-500' },
+  { id: 'representante', label: 'Representante de Sala', icon: UsersIcon, color: 'text-cyan-500' },
   { id: 'colaborador', label: 'Colaborador', icon: Crown, color: 'text-indigo-500' },
 ];
 

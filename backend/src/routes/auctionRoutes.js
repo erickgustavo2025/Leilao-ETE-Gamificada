@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auctionController = require('../controllers/auctionController');
 const { protect, admin } = require('../middlewares/authMiddleware');
-const upload = require('../config/upload');
+const { upload, processImageToWebp } = require('../config/upload');
 const validate = require('../middlewares/validateMiddleware');
 const schemas = require('../validators/schemas'); // <--- Importando a central
 
@@ -26,6 +26,7 @@ router.post('/',
     protect, 
     admin, 
     upload.single('image'), 
+    processImageToWebp,
     validate(schemas.auction.createItem), 
     auctionController.createItem
 );
@@ -38,6 +39,7 @@ router.put('/:id',
     protect, 
     admin, 
     upload.single('image'), 
+    processImageToWebp,
     auctionController.updateItem
 );
 

@@ -333,7 +333,6 @@ export function Ranking() {
 
   // Handler do popup de perfil — calcula posição global e abre
   const handleProfileClick = (student: Student) => {
-    alert('CLICOU: ' + student.nome);  // teste temporário
     const globalIndex = allStudents.findIndex((s: Student) => s._id === student._id);
     const rankPosition = globalIndex >= 0 ? globalIndex + 1 : 0;
     setProfilePopup({

@@ -130,6 +130,26 @@ export function AdminConfig() {
         });
     };
 
+    // ✅ NOVA MUTATION: Reset Trimestral
+    const resetTrimestreMutation = useMutation({
+        mutationFn: async () => {
+            const confirm = window.confirm("⚠️ ATENÇÃO: Isso zerará o saldo de TODOS os alunos e todas as salas. Esta ação não pode ser desfeita. Deseja continuar?");
+            if (!confirm) throw new Error("Cancelado");
+
+            const { data } = await api.post('/admin/system/reset-trimestre');
+            return data;
+        },
+        onSuccess: () => {
+            toast.success('💥 O GRANDE RESET FOI EXECUTADO! A economia foi reiniciada.');
+            queryClient.invalidateQueries(); // Recarrega tudo
+        },
+        onError: (error: any) => {
+            if (error.message !== "Cancelado") {
+                toast.error('Erro ao executar o reset do sistema.');
+            }
+        }
+    });
+
     if (fetching) {
         return (
             <AdminLayout>
@@ -327,6 +347,31 @@ export function AdminConfig() {
                                             ? "👻 Alunos podem acessar a seção Beco da loja."
                                             : "🔒 A aba Beco está oculta para todos os alunos."}
                                     </p>
+                                </div>
+                            </PixelCard>
+
+                            <h2 className="font-press text-xs text-red-500 mt-10 mb-2 flex items-center gap-2">
+                                <ShieldAlert size={16} /> ZONA DE PERIGO (ECA DIGITAL)
+                            </h2>
+
+                            <PixelCard className="p-6 space-y-4 bg-red-950/10 border-red-900/30">
+                                <div className="flex flex-col gap-4">
+                                    <div>
+                                        <h3 className="font-press text-[10px] text-red-400">RESET TRIMESTRAL DE ECONOMIA</h3>
+                                        <p className="font-mono text-[10px] text-slate-500 mt-1">
+                                            Zera o saldo de todos os alunos e salas. Mantém XP e Cargos.
+                                            Use apenas no final de cada trimestre conforme a Lei da ECA Digital.
+                                        </p>
+                                    </div>
+
+                                    <PixelButton
+                                        type="button"
+                                        onClick={() => resetTrimestreMutation.mutate()}
+                                        isLoading={resetTrimestreMutation.isPending}
+                                        className="bg-red-600 hover:bg-red-700 text-[10px] py-2"
+                                    >
+                                        <Power size={14} className="mr-2" /> EXECUTAR RESET AGORA
+                                    </PixelButton>
                                 </div>
                             </PixelCard>
 

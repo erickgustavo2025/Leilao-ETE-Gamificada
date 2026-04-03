@@ -43,7 +43,7 @@ const getMultiplier = (user) => {
     const now = new Date();
 
     // Limpa buffs expirados antes de calcular (defesa em profundidade)
-    const activeBuffs = (user.activeBuffs || []).filter(b => 
+    const activeBuffs = (user.activeBuffs || []).filter(b =>
         !b.expiresAt || new Date(b.expiresAt) > now
     );
 
@@ -216,107 +216,107 @@ module.exports = {
     },
 
     async bulkUpdatePoints(req, res) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-    try {
-        const { studentIds, amount, action, description } = req.body;
-        const baseValue = Number(amount);
-        const author = req.user;
+        try {
+            const { studentIds, amount, action, description } = req.body;
+            const baseValue = Number(amount);
+            const author = req.user;
 
-        // ── Validações básicas de entrada ──
-        if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-            await session.abortTransaction(); session.endSession();
-            return res.status(400).json({ error: 'Nenhum aluno selecionado.' });
-        }
-        if (!baseValue || baseValue <= 0) {
-            await session.abortTransaction(); session.endSession();
-            return res.status(400).json({ error: 'Valor inválido.' });
-        }
-        if (!['add', 'remove'].includes(action)) {
-            await session.abortTransaction(); session.endSession();
-            return res.status(400).json({ error: 'Ação inválida.' });
-        }
+            // ── Validações básicas de entrada ──
+            if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+                await session.abortTransaction(); session.endSession();
+                return res.status(400).json({ error: 'Nenhum aluno selecionado.' });
+            }
+            if (!baseValue || baseValue <= 0) {
+                await session.abortTransaction(); session.endSession();
+                return res.status(400).json({ error: 'Valor inválido.' });
+            }
+            if (!['add', 'remove'].includes(action)) {
+                await session.abortTransaction(); session.endSession();
+                return res.status(400).json({ error: 'Ação inválida.' });
+            }
 
-        const users = await User.find({ _id: { $in: studentIds } }).session(session);
+            const users = await User.find({ _id: { $in: studentIds } }).session(session);
 
-        if (action === 'add') {
-            // --- MODO ADIÇÃO (COM BÔNUS E SKILLS) ---
-            for (const user of users) {
-                const multiplier = getMultiplier(user);
-                const rawValue   = Math.floor(baseValue * multiplier);
+            if (action === 'add') {
+                // --- MODO ADIÇÃO (COM BÔNUS E SKILLS) ---
+                for (const user of users) {
+                    const multiplier = getMultiplier(user);
+                    const rawValue = Math.floor(baseValue * multiplier);
 
-                // 🔒 Aplica o teto de BUFF_PC_CAP apenas quando há buff ativo
-                const capped     = multiplier > 1 && rawValue > BUFF_PC_CAP;
-                const finalValue = capped ? BUFF_PC_CAP : rawValue;
+                    // 🔒 Aplica o teto de BUFF_PC_CAP apenas quando há buff ativo
+                    const capped = multiplier > 1 && rawValue > BUFF_PC_CAP;
+                    const finalValue = capped ? BUFF_PC_CAP : rawValue;
 
-                // Monta a tag de bônus pro log
-                let bonusTag = '';
-                if (multiplier > 1) {
-                    bonusTag = capped
-                        ? ` [Bônus ${multiplier}x 🔥 → Cap: ${BUFF_PC_CAP} PC$]`
-                        : ` [Bônus ${multiplier}x 🔥]`;
-                }
+                    // Monta a tag de bônus pro log
+                    let bonusTag = '';
+                    if (multiplier > 1) {
+                        bonusTag = capped
+                            ? ` [Bônus ${multiplier}x 🔥 → Cap: ${BUFF_PC_CAP} PC$]`
+                            : ` [Bônus ${multiplier}x 🔥]`;
+                    }
 
-                user.saldoPc += finalValue;
+                    user.saldoPc += finalValue;
 
-                // ✅ FIX: Atualiza rank histórico e sincroniza skills com markModified
-                if (user.saldoPc > (user.maxPcAchieved || 0)) {
-                    user.maxPcAchieved = user.saldoPc;
-                    if (skillService && skillService.syncRankSkills) {
-                        const hasNewSkills = await skillService.syncRankSkills(user);
-                        if (hasNewSkills) {
-                            user.markModified('inventory');
-                            user.markModified('activeBuffs');
+                    // ✅ FIX: Atualiza rank histórico e sincroniza skills com markModified
+                    if (user.saldoPc > (user.maxPcAchieved || 0)) {
+                        user.maxPcAchieved = user.saldoPc;
+                        if (skillService && skillService.syncRankSkills) {
+                            const hasNewSkills = await skillService.syncRankSkills(user);
+                            if (hasNewSkills) {
+                                user.markModified('inventory');
+                                user.markModified('activeBuffs');
+                            }
                         }
+                    }
+
+                    await user.save({ session });
+
+                    if (Log) {
+                        await Log.create([{
+                            user: author._id,
+                            target: user._id,
+                            action: 'MANUAL_POINT_UPDATE',
+                            details: `Adicionou ${finalValue} PC$${bonusTag}. (Base: ${baseValue}). Motivo: ${description || 'N/A'}`,
+                            ip: req.ip
+                        }], { session });
                     }
                 }
 
-                await user.save({ session });
+            } else {
+                // --- MODO REMOÇÃO (MULTA — sem multiplicador, sem cap) ---
+                await User.updateMany(
+                    { _id: { $in: studentIds } },
+                    { $inc: { saldoPc: -baseValue } },
+                    { session }
+                );
 
                 if (Log) {
+                    const target = studentIds.length === 1 ? studentIds[0] : null;
                     await Log.create([{
                         user: author._id,
-                        target: user._id,
+                        target: target,
                         action: 'MANUAL_POINT_UPDATE',
-                        details: `Adicionou ${finalValue} PC$${bonusTag}. (Base: ${baseValue}). Motivo: ${description || 'N/A'}`,
+                        details: `Removeu ${baseValue} PC$. Motivo: ${description || 'N/A'} [${studentIds.length} alunos]`,
                         ip: req.ip
                     }], { session });
                 }
             }
 
-        } else {
-            // --- MODO REMOÇÃO (MULTA — sem multiplicador, sem cap) ---
-            await User.updateMany(
-                { _id: { $in: studentIds } },
-                { $inc: { saldoPc: -baseValue } },
-                { session }
-            );
+            await session.commitTransaction();
+            session.endSession();
 
-            if (Log) {
-                const target = studentIds.length === 1 ? studentIds[0] : null;
-                await Log.create([{
-                    user: author._id,
-                    target: target,
-                    action: 'MANUAL_POINT_UPDATE',
-                    details: `Removeu ${baseValue} PC$. Motivo: ${description || 'N/A'} [${studentIds.length} alunos]`,
-                    ip: req.ip
-                }], { session });
-            }
+            res.json({ message: 'Pontos atualizados com sucesso!' });
+
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('Erro bulkUpdatePoints:', error);
+            res.status(500).json({ error: 'Erro ao atualizar pontos' });
         }
-
-        await session.commitTransaction();
-        session.endSession();
-
-        res.json({ message: 'Pontos atualizados com sucesso!' });
-
-    } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error('Erro bulkUpdatePoints:', error);
-        res.status(500).json({ error: 'Erro ao atualizar pontos' });
-    }
-},
+    },
 
     // 6. LISTAR TODOS (Admin)
     async index(req, res) {
@@ -448,7 +448,7 @@ module.exports = {
             const importantActions = [
                 'BLOCK', 'UNBLOCK', 'PROMOTE', 'DEMOTE', 'UPDATE_PROFILE', 'SECURITY_IMPERSONATE',
                 'MANUAL_POINT_UPDATE', 'BID_PLACED', 'AUCTION_WIN', 'COMPRA_LOJA',
-                'ROULETTE_WIN', 'TICKET_CREATED', 'TICKET_CANCELLED', 'TICKET_VALIDATED', 'ROLE_UPDATE',
+                'TICKET_CREATED', 'TICKET_CANCELLED', 'TICKET_VALIDATED', 'ROLE_UPDATE',
                 'BUFF_ACTIVATED'
             ];
 
@@ -494,25 +494,30 @@ module.exports = {
         }
     },
 
-    // 12. TOGGLE SPECIAL ROLE
+    // 12. UPDATE SPECIAL ROLES (Sincronização Bulk + Lógica de Monitor)
     async toggleSpecialRole(req, res) {
         try {
-            const { userId, roleKey } = req.body;
+            const userId = req.params.id;
+            const { cargosEspeciais } = req.body; // Pega a lista enviada pelo Modal
 
-            if (!SPECIAL_ROLES[roleKey]) {
-                return res.status(400).json({ error: 'Cargo inválido.' });
+            if (!userId || !Array.isArray(cargosEspeciais)) {
+                return res.status(400).json({ error: 'Dados inválidos ou lista de cargos ausente.' });
             }
 
             const user = await User.findById(userId);
-            if (!user) return res.status(404).json({ error: 'Aluno não encontrado' });
+            if (!user) return res.status(404).json({ error: 'Aluno não encontrado.' });
 
-            const roleTag = roleKey;
-
-            if (user.cargos.includes(roleTag)) {
-                user.cargos = user.cargos.filter(c => c !== roleTag);
-            } else {
-                user.cargos.push(roleTag);
+            // 🚀 LÓGICA DO COLABORADOR -> MONITOR
+            // Se 'colaborador' está na nova lista, ele vira monitor. Se não, volta a ser student.
+            if (cargosEspeciais.includes('colaborador')) {
+                user.role = 'monitor';
+            } else if (user.role === 'monitor') {
+                // Se ele era monitor mas tiraram o cargo de colaborador, ele volta a ser aluno normal
+                user.role = 'student';
             }
+
+            // Sobrescreve a lista de cargos com a nova seleção do Admin
+            user.cargos = cargosEspeciais;
 
             await user.save();
 
@@ -521,16 +526,16 @@ module.exports = {
                     user: req.user._id,
                     target: user._id,
                     action: 'ROLE_UPDATE',
-                    details: `Alterou cargos: ${user.cargos.join(', ')}`,
+                    details: `Sincronizou cargos: [${cargosEspeciais.join(', ')}]. Role definido como: ${user.role}`,
                     ip: req.ip
                 });
             }
 
-            res.json({ message: 'Cargos atualizados', cargos: user.cargos });
+            res.json({ message: 'Cargos e permissões atualizados!', cargos: user.cargos, role: user.role });
 
         } catch (error) {
-            console.error(error);
-            res.status(500).json({ error: 'Erro ao atualizar cargo' });
+            console.error("Erro ao sincronizar cargos:", error);
+            res.status(500).json({ error: 'Erro interno ao atualizar cargos.' });
         }
     },
 
