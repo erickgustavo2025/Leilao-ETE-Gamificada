@@ -130,7 +130,7 @@ export function DashboardHome() {
       title: "ATIVIDADES & RANK",
       items: [
         { label: "HUB DE EVENTOS", icon: Calendar, color: "text-yellow-500", desc: "Taça, Intergil & Gincanas", action: () => toggleModal('events', true) },
-        { label: "MISSOES", icon: Scroll, color: "text-purple-400", desc: "Campanha e Side Quests", path: "/missoes" },
+        { label: "MISSÕES", icon: Scroll, color: "text-purple-400", desc: "Campanha e Side Quests", path: "/missoes" },
         { label: "MEUS PRESENTES", icon: Gift, color: "text-pink-500", desc: "Itens recebidos", path: "/dashboard/gifts" },
         { label: "RANKING GERAL", icon: Trophy, color: "text-orange-400", desc: "Top Global", path: "/ranking" },
         { label: "RANKING EGRESSOS", icon: GraduationCap, color: "text-violet-400", desc: "Lendas da Escola", path: "/coming-soon?module=EGRESSOS" },

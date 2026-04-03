@@ -1,9 +1,10 @@
 // ARQUIVO: frontend/src/pages/admin/AdminQuests.tsx
 // ─────────────────────────────────────────────────────────────────
-// 🔌 PONTOS DE INTEGRAÇÃO COM O BACKEND estão marcados com 🔌
+// 🔌 PONTOS DE INTEGRAÇÃO COM O BACKEND CONECTADOS COM REACT QUERY
 // ─────────────────────────────────────────────────────────────────
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import { PageTransition } from '../../components/layout/PageTransition';
 import { api } from '../../api/axios-config';
@@ -11,19 +12,18 @@ import { toast } from 'sonner';
 import { cn } from '../../utils/cn';
 import {
     Plus, Scroll, Key, Copy, Check, X, ChevronDown,
-    Eye, EyeOff, Trash2, ToggleLeft, ToggleRight,
+    Eye, Trash2, ToggleLeft, ToggleRight,
     Clock, Calendar, Flame, Crown, Search,
-    Loader2, Shield, AlertTriangle, Printer,
-    Gift, Hash, Users, CheckCircle2, XCircle,
-    Filter, RefreshCw, Sword,
+    Loader2, Shield, AlertTriangle,
+    Gift, Users, Sword, CheckCircle2
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────
 // TIPOS
 // ─────────────────────────────────────────────────────────────────
-type QuestType       = 'DIARIA' | 'SEMANAL' | 'EVENTO' | 'EPICA';
-type ValidationType  = 'SECRET_CODE' | 'MANUAL_ADMIN';
-type QuestStatus     = 'active' | 'inactive' | 'expired';
+type QuestType = 'DIARIA' | 'SEMANAL' | 'EVENTO' | 'EPICA';
+type ValidationType = 'SECRET_CODE' | 'MANUAL_ADMIN';
+type QuestStatus = 'active' | 'inactive' | 'expired';
 
 interface QuestKey {
     code: string;
@@ -32,7 +32,7 @@ interface QuestKey {
 }
 
 interface Quest {
-    id: string;
+    _id: string; // Backend usa _id do MongoDB
     title: string;
     description: string;
     type: QuestType;
@@ -42,9 +42,9 @@ interface Quest {
     status: QuestStatus;
     expiresAt?: string;
     createdAt: string;
-    keys: QuestKey[];         // vazio se MANUAL_ADMIN
-    usedCount: number;        // quantos alunos já completaram
-    targetCount?: number;     // capacidade máxima (= keys.length)
+    validCodes?: string[]; // Suporte a Steam Keys (array de códigos)
+    keys: QuestKey[];      // Mapeado para exibição no front
+    usedCount: number;     // quantos alunos já completaram
 }
 
 interface FormState {
@@ -59,68 +59,13 @@ interface FormState {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MOCK DATA — substituir por useQuery
-// 🔌 BACKEND: GET /api/admin/quests
-// ─────────────────────────────────────────────────────────────────
-const MOCK_QUESTS: Quest[] = [
-    {
-        id: 'q1', title: 'Presença Impecável', description: 'Chegue no horário em todas as aulas do dia.',
-        type: 'DIARIA', rewardPc: 30, rewardXp: 10, validationType: 'SECRET_CODE',
-        status: 'active', expiresAt: new Date(Date.now() + 18 * 3600000).toISOString(),
-        createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), usedCount: 12,
-        keys: [
-            { code: 'PRES-A1B2', usedBy: 'Pedro Alves',   usedAt: new Date().toISOString() },
-            { code: 'PRES-C3D4', usedBy: 'Ana Souza',     usedAt: new Date().toISOString() },
-            { code: 'PRES-E5F6' },
-            { code: 'PRES-G7H8' },
-            { code: 'PRES-I9J0' },
-            { code: 'PRES-K1L2', usedBy: 'João Lima',     usedAt: new Date().toISOString() },
-            { code: 'PRES-M3N4' },
-            { code: 'PRES-O5P6' },
-        ],
-    },
-    {
-        id: 'q2', title: 'Guardião do Saber', description: 'Tire nota acima de 7 em todas as avaliações da semana.',
-        type: 'SEMANAL', rewardPc: 150, rewardXp: 50, validationType: 'SECRET_CODE',
-        status: 'active', expiresAt: new Date(Date.now() + 4 * 86400000).toISOString(),
-        createdAt: new Date(Date.now() - 86400000).toISOString(), usedCount: 4,
-        keys: [
-            { code: 'SABER-ZZ01' },
-            { code: 'SABER-ZZ02', usedBy: 'Maria Costa', usedAt: new Date().toISOString() },
-            { code: 'SABER-ZZ03' },
-            { code: 'SABER-ZZ04', usedBy: 'Lucas Neto',  usedAt: new Date().toISOString() },
-            { code: 'SABER-ZZ05' },
-        ],
-    },
-    {
-        id: 'q3', title: 'Colaborador do Dia', description: 'Ajude um colega de turma com alguma atividade.',
-        type: 'DIARIA', rewardPc: 20, rewardXp: 15, validationType: 'MANUAL_ADMIN',
-        status: 'active', expiresAt: new Date(Date.now() + 6 * 3600000).toISOString(),
-        createdAt: new Date().toISOString(), usedCount: 7, keys: [],
-    },
-    {
-        id: 'q4', title: 'EVENTO: Gincana Científica', description: 'Participe da gincana e contribua com pelo menos 3 respostas corretas.',
-        type: 'EVENTO', rewardPc: 500, rewardXp: 200, validationType: 'SECRET_CODE',
-        status: 'active', expiresAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-        createdAt: new Date(Date.now() - 3600000).toISOString(), usedCount: 0,
-        keys: Array.from({ length: 30 }, (_, i) => ({ code: `GINCA-${String(i + 1).padStart(3, '0')}${Math.random().toString(36).slice(2,5).toUpperCase()}` })),
-    },
-    {
-        id: 'q5', title: 'Missão Elite — Rank Ouro', description: 'Complete o desafio épico do rank Ouro.',
-        type: 'EPICA', rewardPc: 0, rewardXp: 0, validationType: 'SECRET_CODE',
-        status: 'inactive', createdAt: new Date(Date.now() - 7 * 86400000).toISOString(), usedCount: 2,
-        keys: [{ code: 'ELITE-OURO-001' }, { code: 'ELITE-OURO-002', usedBy: 'Felipe Dias', usedAt: new Date().toISOString() }],
-    },
-];
-
-// ─────────────────────────────────────────────────────────────────
 // CONFIG VISUAL POR TIPO
 // ─────────────────────────────────────────────────────────────────
 const TYPE_CFG: Record<QuestType, { label: string; icon: any; color: string; border: string; bg: string }> = {
-    DIARIA:  { label: 'DIARIA',   icon: Clock,    color: 'text-blue-400',   border: 'border-blue-500/50',   bg: 'bg-blue-500/10'   },
-    SEMANAL: { label: 'SEMANAL',  icon: Calendar, color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
-    EVENTO:  { label: 'EVENTO',   icon: Flame,    color: 'text-rose-400',   border: 'border-rose-500/50',   bg: 'bg-rose-500/10'   },
-    EPICA:   { label: 'EPICA',    icon: Crown,    color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
+    DIARIA: { label: 'DIARIA', icon: Clock, color: 'text-blue-400', border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
+    SEMANAL: { label: 'SEMANAL', icon: Calendar, color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
+    EVENTO: { label: 'EVENTO', icon: Flame, color: 'text-rose-400', border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
+    EPICA: { label: 'EPICA', icon: Crown, color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -164,16 +109,15 @@ function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
     const [filter, setFilter] = useState<'all' | 'used' | 'free'>('all');
     const [copied, setCopied] = useState<string | null>(null);
 
-    const filtered = quest.keys.filter(k => {
+    const filtered = (quest.keys || []).filter(k => {
         const matchSearch = k.code.toLowerCase().includes(search.toLowerCase())
             || (k.usedBy || '').toLowerCase().includes(search.toLowerCase());
         const matchFilter = filter === 'all' ? true : filter === 'used' ? !!k.usedBy : !k.usedBy;
         return matchSearch && matchFilter;
     });
 
-    const usedCount  = quest.keys.filter(k => !!k.usedBy).length;
-    const freeCount  = quest.keys.length - usedCount;
-    const usedPct    = quest.keys.length > 0 ? Math.round((usedCount / quest.keys.length) * 100) : 0;
+    const usedCount = (quest.keys || []).filter(k => !!k.usedBy).length;
+    const freeCount = (quest.keys || []).length - usedCount;
 
     function copyCode(code: string) {
         navigator.clipboard.writeText(code);
@@ -182,7 +126,7 @@ function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
     }
 
     function copyAllFree() {
-        const freeCodes = quest.keys.filter(k => !k.usedBy).map(k => k.code).join('\n');
+        const freeCodes = (quest.keys || []).filter(k => !k.usedBy).map(k => k.code).join('\n');
         navigator.clipboard.writeText(freeCodes);
         toast.success(`${freeCount} códigos copiados!`);
     }
@@ -227,149 +171,119 @@ function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
                 style={{ maxHeight: '90vh' }}
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-white/5">
+                {/* Header do Modal */}
+                <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-purple-900/20 to-transparent">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                            <Key size={16} className="text-yellow-400" />
+                        <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                            <Key size={20} className="text-yellow-400" />
                         </div>
                         <div>
-                            <p className="font-press text-[9px] text-slate-500 uppercase">CHAVES DA MISSAO</p>
-                            {/* COM ACENTO → font-vt323 */}
                             <h3 className="font-vt323 text-2xl text-white leading-none">{quest.title}</h3>
+                            <p className="font-press text-[7px] text-slate-500 uppercase mt-1">Gerenciamento de Chaves</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors">
-                        <X size={16} />
+                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
+                        <X size={20} />
                     </button>
                 </div>
 
-                {/* Stats bar */}
-                <div className="p-4 border-b border-white/5 space-y-3">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20">
-                            <CheckCircle2 size={12} className="text-green-400" />
-                            <span className="font-press text-[8px] text-green-400">{freeCount} LIVRES</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20">
-                            <XCircle size={12} className="text-red-400" />
-                            <span className="font-press text-[8px] text-red-400">{usedCount} USADAS</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700">
-                            <Hash size={12} className="text-slate-400" />
-                            <span className="font-press text-[8px] text-slate-400">{quest.keys.length} TOTAL</span>
-                        </div>
-                        <div className="ml-auto flex gap-2">
-                            <button
-                                onClick={copyAllFree}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-press text-[8px] text-slate-300 transition-colors"
-                            >
-                                <Copy size={11} /> COPIAR LIVRES
-                            </button>
-                            <button
-                                onClick={handlePrint}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-press text-[8px] text-slate-300 transition-colors"
-                            >
-                                <Printer size={11} /> IMPRIMIR
-                            </button>
-                        </div>
+                {/* Filtros e Busca */}
+                <div className="p-4 bg-black/20 border-b border-white/5 flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                        <input
+                            type="text"
+                            placeholder="Buscar código ou aluno..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full bg-black/40 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-white text-xs font-mono outline-none focus:border-slate-600"
+                        />
                     </div>
-
-                    {/* Barra de uso */}
-                    <div>
-                        <div className="flex justify-between font-mono text-[9px] text-slate-600 mb-1">
-                            <span>Uso das chaves</span>
-                            <span>{usedPct}%</span>
-                        </div>
-                        <div className="h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
-                            <motion.div
-                                className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${usedPct}%` }}
-                                transition={{ duration: 0.6, ease: 'easeOut' }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Filtros */}
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                            <input
-                                type="text"
-                                placeholder="Buscar código ou aluno..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="w-full bg-black/40 border border-slate-700 rounded-lg py-2 pl-8 pr-3 text-white text-xs font-mono outline-none focus:border-slate-500 placeholder:text-slate-700"
-                            />
-                        </div>
-                        {(['all','free','used'] as const).map(f => (
+                    <div className="flex gap-1 bg-black/40 p-1 rounded-xl border border-slate-800">
+                        {(['all', 'free', 'used'] as const).map(f => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={cn(
-                                    'px-3 py-2 rounded-lg border font-press text-[8px] transition-all',
-                                    filter === f
-                                        ? 'border-purple-500 bg-purple-500/20 text-purple-300'
-                                        : 'border-slate-700 text-slate-500 hover:border-slate-600'
+                                    'px-3 py-1.5 rounded-lg font-press text-[7px] transition-all',
+                                    filter === f ? 'bg-slate-700 text-white' : 'text-slate-600 hover:text-slate-400'
                                 )}
                             >
-                                {f === 'all' ? 'TODOS' : f === 'free' ? 'LIVRES' : 'USADAS'}
+                                {f === 'all' ? 'TODAS' : f === 'free' ? 'LIVRES' : 'USADAS'}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Lista de chaves */}
-                <div className="overflow-y-auto p-3 space-y-1.5" style={{ maxHeight: '380px' }}>
+                {/* Lista de Chaves */}
+                <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar" style={{ height: '400px' }}>
                     {filtered.length === 0 && (
-                        <div className="text-center py-10">
-                            <p className="font-vt323 text-2xl text-slate-700">Nenhuma chave encontrada.</p>
+                        <div className="py-20 text-center">
+                            <Key size={32} className="text-slate-800 mx-auto mb-2 opacity-20" />
+                            <p className="font-vt323 text-xl text-slate-600">Nenhum código encontrado.</p>
                         </div>
                     )}
-                    {filtered.map((key, i) => (
-                        <motion.div
-                            key={key.code}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.02 }}
+                    {filtered.map((k, idx) => (
+                        <div
+                            key={idx}
                             className={cn(
-                                'flex items-center gap-3 p-3 rounded-xl border transition-all',
-                                key.usedBy
-                                    ? 'border-red-900/30 bg-red-950/20 opacity-60'
-                                    : 'border-slate-700/60 bg-slate-900/40 hover:border-slate-600'
+                                'flex items-center justify-between p-3 rounded-xl border transition-all',
+                                k.usedBy ? 'bg-black/20 border-slate-800/50 opacity-60' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
                             )}
                         >
-                            {/* Status indicator */}
-                            <div className={cn('w-2 h-2 rounded-full shrink-0', key.usedBy ? 'bg-red-500' : 'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.7)]')} />
-
-                            {/* Código */}
-                            <code className={cn('flex-1 font-mono text-sm tracking-widest', key.usedBy ? 'text-slate-600 line-through' : 'text-yellow-300')}>
-                                {key.code}
-                            </code>
-
-                            {/* Quem usou */}
-                            {key.usedBy && (
-                                <div className="flex items-center gap-1.5 text-slate-500">
-                                    <Users size={11} />
-                                    <span className="font-mono text-[10px]">{key.usedBy}</span>
-                                </div>
-                            )}
-
-                            {/* Botão copiar */}
-                            {!key.usedBy && (
-                                <button
-                                    onClick={() => copyCode(key.code)}
-                                    className="p-1.5 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors"
-                                >
-                                    {copied === key.code
-                                        ? <Check size={13} className="text-green-400" />
-                                        : <Copy size={13} />
-                                    }
-                                </button>
-                            )}
-                        </motion.div>
+                            <div className="flex items-center gap-3">
+                                <code className={cn('font-mono text-sm font-bold', k.usedBy ? 'text-slate-600 line-through' : 'text-yellow-400')}>
+                                    {k.code}
+                                </code>
+                                {k.usedBy && (
+                                    <div className="flex items-center gap-2 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                                        <Users size={10} className="text-red-400" />
+                                        <span className="font-press text-[6px] text-red-400 uppercase">{k.usedBy}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {!k.usedBy && (
+                                    <button
+                                        onClick={() => copyCode(k.code)}
+                                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-yellow-400 transition-colors"
+                                        title="Copiar código"
+                                    >
+                                        {copied === k.code ? <Check size={14} /> : <Copy size={14} />}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     ))}
+                </div>
+
+                {/* Footer do Modal */}
+                <div className="p-4 border-t border-white/5 bg-black/40 flex items-center justify-between">
+                    <div className="flex gap-4">
+                        <div className="text-center">
+                            <p className="font-press text-[6px] text-slate-600 uppercase mb-1">Livres</p>
+                            <p className="font-vt323 text-xl text-green-400 leading-none">{freeCount}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="font-press text-[6px] text-slate-600 uppercase mb-1">Usadas</p>
+                            <p className="font-vt323 text-xl text-red-400 leading-none">{usedCount}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handlePrint}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 font-press text-[8px] transition-all"
+                        >
+                            IMPRIMIR
+                        </button>
+                        <button
+                            onClick={copyAllFree}
+                            disabled={freeCount === 0}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white font-press text-[8px] transition-all disabled:opacity-30"
+                        >
+                            COPIAR LIVRES
+                        </button>
+                    </div>
                 </div>
             </motion.div>
         </motion.div>
@@ -377,128 +291,120 @@ function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SUB-COMPONENTE: Painel de Criação (slide-in)
+// SUB-COMPONENTE: Painel de Criação
 // ─────────────────────────────────────────────────────────────────
 function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: FormState) => Promise<void> }) {
-    const [form, setForm] = useState<FormState>({
-        title: '', description: '', type: 'DIARIA', rewardPc: 50, rewardXp: 20,
-        validationType: 'SECRET_CODE', expiresAt: '', generateKeysCount: 30,
-    });
     const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState<FormState>({
+        title: '',
+        description: '',
+        type: 'DIARIA',
+        rewardPc: 50,
+        rewardXp: 20,
+        validationType: 'SECRET_CODE',
+        expiresAt: '',
+        generateKeysCount: 30,
+    });
 
-    function set<K extends keyof FormState>(key: K, val: FormState[K]) {
-        setForm(prev => ({ ...prev, [key]: val }));
-    }
+    const set = (k: keyof FormState, v: any) => setForm(p => ({ ...p, [k]: v }));
 
     async function handleSave() {
-        if (!form.title.trim()) { toast.error('Título obrigatório.'); return; }
+        if (!form.title.trim()) return toast.error('Título é obrigatório');
         setSaving(true);
         try {
             await onSave(form);
             onClose();
+        } catch (err) {
+            console.error(err);
         } finally {
             setSaving(false);
         }
     }
 
-    const cfg = TYPE_CFG[form.type];
-
     return (
         <>
-            {/* Backdrop */}
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             />
-
-            {/* Painel lateral */}
             <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-                className="fixed right-0 top-0 bottom-0 z-[300] w-full max-w-md bg-[#07071a] border-l border-slate-700/60 flex flex-col shadow-2xl"
-                onClick={e => e.stopPropagation()}
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 bottom-0 w-full max-w-md z-[301] bg-[#0a0a1f] border-l border-white/10 shadow-2xl flex flex-col"
             >
-                {/* Header do painel */}
-                <div className="flex items-center justify-between p-5 border-b border-white/5 shrink-0">
+                {/* Header */}
+                <div className="shrink-0 p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-b from-purple-900/10 to-transparent">
                     <div className="flex items-center gap-3">
-                        <div className={cn('p-2 rounded-lg border', cfg.bg, cfg.border)}>
-                            <cfg.icon size={16} className={cfg.color} />
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+                            <Plus size={20} className="text-purple-400" />
                         </div>
                         <div>
-                            <p className="font-press text-[9px] text-slate-500 uppercase">NOVA MISSAO</p>
-                            <p className={cn('font-press text-[10px]', cfg.color)}>{form.type}</p>
+                            <h3 className="font-vt323 text-2xl text-white leading-none">Nova Missão</h3>
+                            <p className="font-press text-[7px] text-slate-500 uppercase mt-1">Configuração de Desafio</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors">
-                        <X size={16} />
+                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
+                        <X size={20} />
                     </button>
                 </div>
 
-                {/* Formulário (scrollável) */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Form */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+                    <FormField label="TITULO DA MISSAO">
+                        <input
+                            type="text"
+                            className={inputCls}
+                            placeholder="Ex: Presença de Ouro"
+                            value={form.title}
+                            onChange={e => set('title', e.target.value)}
+                        />
+                    </FormField>
 
-                    {/* Tipo — seletor visual */}
-                    <FormField label="TIPO DA MISSAO">
+                    <FormField label="DESCRICAO / OBJETIVO">
+                        <textarea
+                            className={cn(inputCls, 'min-h-[80px] resize-none')}
+                            placeholder="O que o aluno precisa fazer?"
+                            value={form.description}
+                            onChange={e => set('description', e.target.value)}
+                        />
+                    </FormField>
+
+                    <FormField label="TIPO DE MISSAO">
                         <div className="grid grid-cols-2 gap-2">
                             {(Object.keys(TYPE_CFG) as QuestType[]).map(t => {
-                                const c = TYPE_CFG[t];
+                                const cfg = TYPE_CFG[t];
                                 return (
                                     <button
                                         key={t}
                                         onClick={() => set('type', t)}
                                         className={cn(
-                                            'flex items-center gap-2 p-3 rounded-xl border transition-all text-left',
+                                            'flex items-center gap-2 p-3 rounded-xl border transition-all',
                                             form.type === t
-                                                ? `${c.border} ${c.bg}`
-                                                : 'border-slate-700 bg-black/30 hover:border-slate-600'
+                                                ? `${cfg.border} ${cfg.bg} ${cfg.color}`
+                                                : 'border-slate-700 bg-black/30 hover:border-slate-600 text-slate-500'
                                         )}
                                     >
-                                        <c.icon size={14} className={form.type === t ? c.color : 'text-slate-600'} />
-                                        <span className={cn('font-press text-[8px]', form.type === t ? c.color : 'text-slate-600')}>
-                                            {c.label}
-                                        </span>
+                                        <cfg.icon size={14} />
+                                        <span className="font-press text-[8px]">{cfg.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
                     </FormField>
 
-                    <FormField label="TITULO">
-                        <input
-                            type="text"
-                            className={inputCls}
-                            placeholder="Ex: Presença Impecável"
-                            value={form.title}
-                            onChange={e => set('title', e.target.value)}
-                            maxLength={60}
-                        />
-                    </FormField>
-
-                    <FormField label="DESCRICAO">
-                        <textarea
-                            rows={3}
-                            className={cn(inputCls, 'resize-none')}
-                            placeholder="Descreva o que o aluno precisa fazer..."
-                            value={form.description}
-                            onChange={e => set('description', e.target.value)}
-                        />
-                    </FormField>
-
-                    {/* Recompensas */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                         <FormField label="RECOMPENSA PC$">
-                            <input
-                                type="number"
-                                className={inputCls}
-                                min={0}
-                                value={form.rewardPc}
-                                onChange={e => set('rewardPc', Number(e.target.value))}
-                            />
+                            <div className="relative">
+                                <Gift size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-500" />
+                                <input
+                                    type="number"
+                                    className={cn(inputCls, 'pl-9')}
+                                    min={0}
+                                    value={form.rewardPc}
+                                    onChange={e => set('rewardPc', Number(e.target.value))}
+                                />
+                            </div>
                         </FormField>
                         <FormField label="RECOMPENSA XP">
                             <input
@@ -524,8 +430,8 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                     <FormField label="METODO DE VALIDACAO">
                         <div className="grid grid-cols-2 gap-2">
                             {([
-                                { val: 'SECRET_CODE',  label: 'CODIGO SECRETO', icon: Key,    color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
-                                { val: 'MANUAL_ADMIN', label: 'MANUAL ADMIN',   icon: Shield, color: 'text-blue-400',   border: 'border-blue-500/50',   bg: 'bg-blue-500/10'   },
+                                { val: 'SECRET_CODE', label: 'CODIGO SECRETO', icon: Key, color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
+                                { val: 'MANUAL_ADMIN', label: 'MANUAL ADMIN', icon: Shield, color: 'text-blue-400', border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
                             ] as const).map(opt => (
                                 <button
                                     key={opt.val}
@@ -589,16 +495,16 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                             PREVIEW DO PAYLOAD (DEV)
                         </summary>
                         <pre className="mt-2 p-3 rounded-lg bg-black/60 border border-slate-800 text-[9px] font-mono text-green-400 overflow-x-auto leading-relaxed">
-{JSON.stringify({
-    title: form.title || '...',
-    description: form.description || '...',
-    type: form.type,
-    rewardPc: form.rewardPc,
-    rewardXp: form.rewardXp,
-    validationType: form.validationType,
-    expiresAt: form.expiresAt || null,
-    ...(form.validationType === 'SECRET_CODE' ? { generateKeysCount: form.generateKeysCount } : {}),
-}, null, 2)}
+                            {JSON.stringify({
+                                title: form.title || '...',
+                                description: form.description || '...',
+                                type: form.type,
+                                rewardPc: form.rewardPc,
+                                rewardXp: form.rewardXp,
+                                validationType: form.validationType,
+                                expiresAt: form.expiresAt || null,
+                                ...(form.validationType === 'SECRET_CODE' ? { generateKeysCount: form.generateKeysCount } : {}),
+                            }, null, 2)}
                         </pre>
                     </details>
                 </div>
@@ -632,49 +538,86 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────
 export function AdminQuests() {
-    // 🔌 BACKEND: substituir por useQuery({ queryKey: ['admin','quests'], queryFn: () => api.get('/admin/quests') })
-    const [quests, setQuests] = useState<Quest[]>(MOCK_QUESTS);
+    const queryClient = useQueryClient();
 
-    const [showCreate, setShowCreate]   = useState(false);
-    const [keysTarget, setKeysTarget]   = useState<Quest | null>(null);
-    const [search, setSearch]           = useState('');
-    const [filterType, setFilterType]   = useState<'ALL' | QuestType>('ALL');
+    const { data: quests = [], isLoading } = useQuery<Quest[]>({
+        queryKey: ['admin', 'quests'],
+        queryFn: async () => {
+            const res = await api.get('/admin/quests');
+
+            // Aqui fazemos a "Tradução" do MongoDB para o Frontend do Claude
+            return res.data.map((q: any) => ({
+                ...q,
+                _id: q._id,
+                status: q.isActive ? 'active' : 'inactive',
+                validationType: q.validationMethod, // Conserta o bug do "MANUAL"
+                rewardPc: q.rewards?.pc || 0,
+                // Mapeia o array de chaves do Backend para o formato do Frontend
+                keys: (q.validCodes || []).map((c: any) => ({
+                    code: c.code,
+                    usedBy: c.isUsed ? 'Resgatado' : undefined // Mostra se já foi usado
+                })),
+                usedCount: (q.validCodes || []).filter((c: any) => c.isUsed).length
+            }));
+        }
+    });
+
+    const [showCreate, setShowCreate] = useState(false);
+    const [keysTarget, setKeysTarget] = useState<Quest | null>(null);
+    const [search, setSearch] = useState('');
+    const [filterType, setFilterType] = useState<'ALL' | QuestType>('ALL');
     const [filterStatus, setFilterStatus] = useState<'ALL' | QuestStatus>('ALL');
 
     const filtered = useMemo(() => quests.filter(q => {
         const matchSearch = q.title.toLowerCase().includes(search.toLowerCase());
-        const matchType   = filterType === 'ALL'   || q.type === filterType;
+        const matchType = filterType === 'ALL' || q.type === filterType;
         const matchStatus = filterStatus === 'ALL' || q.status === filterStatus;
         return matchSearch && matchType && matchStatus;
     }), [quests, search, filterType, filterStatus]);
 
     // Stats para o header
     const totalActive = quests.filter(q => q.status === 'active').length;
-    const totalKeys   = quests.reduce((acc, q) => acc + q.keys.length, 0);
-    const totalUsed   = quests.reduce((acc, q) => acc + q.usedCount, 0);
+    const totalKeys = quests.reduce((acc, q) => acc + (q.keys?.length || 0), 0);
+    const totalUsed = quests.reduce((acc, q) => acc + (q.usedCount || 0), 0);
 
-    // ── 🔌 Handler de criar (mock)
+    // ── 🔌 MUTATIONS
+    const createMutation = useMutation({
+        mutationFn: (form: FormState) => api.post('/admin/quests', form),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'quests'] });
+            toast.success('Missão criada com sucesso!');
+        },
+        onError: (err: any) => toast.error(err.response?.data?.message || 'Erro ao criar missão')
+    });
+
+    const toggleMutation = useMutation({
+        mutationFn: (id: string) => api.patch(`/admin/quests/${id}/toggle`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'quests'] });
+            toast.success('Status atualizado.');
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => api.delete(`/admin/quests/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'quests'] });
+            toast.success('Missão removida.');
+        }
+    });
+
+    // ── Handlers
     async function handleCreate(form: FormState) {
-        // 🔌 BACKEND: await api.post('/admin/quests', form)
-        await new Promise(r => setTimeout(r, 800));
-        toast.success(`Missão "${form.title}" criada! ${form.validationType === 'SECRET_CODE' ? `${form.generateKeysCount} chaves geradas.` : ''}`);
+        await createMutation.mutateAsync(form);
     }
 
-    // ── 🔌 Handler de toggle status
     function handleToggle(id: string) {
-        // 🔌 BACKEND: await api.patch(`/admin/quests/${id}/toggle`)
-        setQuests(prev => prev.map(q =>
-            q.id === id ? { ...q, status: q.status === 'active' ? 'inactive' : 'active' } : q
-        ));
-        toast.success('Status atualizado.');
+        toggleMutation.mutate(id);
     }
 
-    // ── 🔌 Handler de deletar
     function handleDelete(id: string) {
         if (!confirm('Deletar esta missão permanentemente?')) return;
-        // 🔌 BACKEND: await api.delete(`/admin/quests/${id}`)
-        setQuests(prev => prev.filter(q => q.id !== id));
-        toast.success('Missão removida.');
+        deleteMutation.mutate(id);
     }
 
     return (
@@ -689,7 +632,6 @@ export function AdminQuests() {
                                 <Sword size={18} className="text-purple-400" />
                                 <span className="font-press text-[9px] text-purple-400 uppercase tracking-widest">GERENCIAMENTO</span>
                             </div>
-                            {/* COM ACENTO → font-vt323 */}
                             <h1 className="font-vt323 text-4xl text-white leading-none">Quadro de Missões</h1>
                         </div>
                         <button
@@ -702,12 +644,12 @@ export function AdminQuests() {
                     </div>
 
                     {/* ── STAT CARDS ── */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
-                            { label: 'ATIVAS',     value: totalActive,       color: 'text-green-400',  icon: CheckCircle2 },
-                            { label: 'TOTAL',      value: quests.length,     color: 'text-slate-300',  icon: Scroll       },
-                            { label: 'CHAVES',     value: totalKeys,         color: 'text-yellow-400', icon: Key          },
-                            { label: 'COMPLECOES', value: totalUsed,         color: 'text-purple-400', icon: Users        },
+                            { label: 'ATIVAS', value: totalActive, color: 'text-green-400', icon: CheckCircle2 },
+                            { label: 'TOTAL', value: quests.length, color: 'text-slate-300', icon: Scroll },
+                            { label: 'CHAVES', value: totalKeys, color: 'text-yellow-400', icon: Key },
+                            { label: 'COMPLECOES', value: totalUsed, color: 'text-purple-400', icon: Users },
                         ].map(stat => (
                             <div key={stat.label} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-black/40 border border-slate-800 flex items-center justify-center shrink-0">
@@ -782,148 +724,156 @@ export function AdminQuests() {
 
                         {/* Linhas */}
                         <div className="divide-y divide-white/5">
-                            {filtered.length === 0 && (
+                            {isLoading ? (
+                                <div className="text-center py-20">
+                                    <Loader2 size={32} className="text-purple-500 animate-spin mx-auto mb-3" />
+                                    <p className="font-vt323 text-2xl text-slate-500">Carregando missões...</p>
+                                </div>
+                            ) : filtered.length === 0 ? (
                                 <div className="text-center py-16">
                                     <Scroll size={32} className="text-slate-800 mx-auto mb-3" />
                                     <p className="font-vt323 text-2xl text-slate-700">Nenhuma missão encontrada.</p>
                                 </div>
-                            )}
-                            {filtered.map((quest, i) => {
-                                const cfg = TYPE_CFG[quest.type];
-                                const freeKeys = quest.keys.filter(k => !k.usedBy).length;
-                                return (
-                                    <motion.div
-                                        key={quest.id}
-                                        initial={{ opacity: 0, y: 8 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: i * 0.03 }}
-                                        className={cn(
-                                            'px-4 py-4 hover:bg-white/2 transition-colors',
-                                            'grid grid-cols-1 md:grid-cols-[1fr_100px_90px_110px_120px_100px] gap-3 items-center',
-                                            quest.status === 'inactive' && 'opacity-50'
-                                        )}
-                                    >
-                                        {/* Título + descrição */}
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <StatusDot status={quest.status} />
-                                            <div className="min-w-0">
-                                                {/* COM ACENTO → font-vt323 */}
-                                                <p className="font-vt323 text-xl text-white leading-none truncate">{quest.title}</p>
-                                                <p className="font-poppins text-[10px] text-slate-500 truncate mt-0.5">{quest.description}</p>
-                                                {quest.expiresAt && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <Clock size={10} className="text-orange-400" />
-                                                        <span className="font-mono text-[9px] text-orange-400">{timeLeft(quest.expiresAt)}</span>
+                            ) : (
+                                filtered.map((quest, i) => {
+                                    const cfg = TYPE_CFG[quest.type];
+                                    const freeKeys = (quest.keys || []).filter(k => !k.usedBy).length;
+                                    return (
+                                        <motion.div
+                                            key={quest._id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.03 }}
+                                            className={cn(
+                                                'px-4 py-4 hover:bg-white/2 transition-colors',
+                                                'grid grid-cols-1 md:grid-cols-[1fr_100px_90px_110px_120px_100px] gap-3 items-center',
+                                                quest.status === 'inactive' && 'opacity-50'
+                                            )}
+                                        >
+                                            {/* Título + descrição */}
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <StatusDot status={quest.status} />
+                                                <div className="min-w-0">
+                                                    <p className="font-vt323 text-xl text-white leading-none truncate">{quest.title}</p>
+                                                    <p className="font-poppins text-[10px] text-slate-500 truncate mt-0.5">{quest.description}</p>
+                                                    {quest.expiresAt && (
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <Clock size={10} className="text-orange-400" />
+                                                            <span className="font-mono text-[9px] text-orange-400">{timeLeft(quest.expiresAt)}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Tipo */}
+                                            <div>
+                                                <span className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-press text-[8px]', cfg.bg, cfg.border, cfg.color)}>
+                                                    <cfg.icon size={9} />{cfg.label}
+                                                </span>
+                                            </div>
+
+                                            {/* Recompensa */}
+                                            <div>
+                                                <div className="flex items-center gap-1">
+                                                    <Gift size={11} className="text-yellow-400" />
+                                                    <span className="font-vt323 text-lg text-yellow-400">{quest.rewardPc}</span>
+                                                </div>
+                                                <span className="font-mono text-[9px] text-slate-600">{quest.rewardXp} XP</span>
+                                            </div>
+
+                                            {/* Método */}
+                                            <div>
+                                                {quest.validationType === 'SECRET_CODE' ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Key size={12} className="text-yellow-400" />
+                                                        <span className="font-press text-[7px] text-yellow-400">CODIGO</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Shield size={12} className="text-blue-400" />
+                                                        <span className="font-press text-[7px] text-blue-400">MANUAL</span>
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
 
-                                        {/* Tipo */}
-                                        <div>
-                                            <span className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-press text-[8px]', cfg.bg, cfg.border, cfg.color)}>
-                                                <cfg.icon size={9} />{cfg.label}
-                                            </span>
-                                        </div>
-
-                                        {/* Recompensa */}
-                                        <div>
-                                            <div className="flex items-center gap-1">
-                                                <Gift size={11} className="text-yellow-400" />
-                                                <span className="font-vt323 text-lg text-yellow-400">{quest.rewardPc}</span>
-                                            </div>
-                                            <span className="font-mono text-[9px] text-slate-600">{quest.rewardXp} XP</span>
-                                        </div>
-
-                                        {/* Método */}
-                                        <div>
-                                            {quest.validationType === 'SECRET_CODE' ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Key size={12} className="text-yellow-400" />
-                                                    <span className="font-press text-[7px] text-yellow-400">CODIGO</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Shield size={12} className="text-blue-400" />
-                                                    <span className="font-press text-[7px] text-blue-400">MANUAL</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Chaves / progresso */}
-                                        <div>
-                                            {quest.validationType === 'SECRET_CODE' && quest.keys.length > 0 ? (
-                                                <button
-                                                    onClick={() => setKeysTarget(quest)}
-                                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 transition-all group"
-                                                >
-                                                    <Key size={11} className="text-yellow-400" />
-                                                    <span className="font-press text-[8px] text-yellow-400">{freeKeys}/{quest.keys.length}</span>
-                                                    <Eye size={10} className="text-yellow-400/50 group-hover:text-yellow-400 transition-colors" />
-                                                </button>
-                                            ) : quest.validationType === 'MANUAL_ADMIN' ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Users size={11} className="text-slate-500" />
-                                                    <span className="font-mono text-[10px] text-slate-500">{quest.usedCount} ok</span>
-                                                </div>
-                                            ) : (
-                                                <span className="font-mono text-[10px] text-slate-700">—</span>
-                                            )}
-                                        </div>
-
-                                        {/* Ações */}
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                onClick={() => handleToggle(quest.id)}
-                                                className={cn('p-2 rounded-lg border transition-all', quest.status === 'active'
-                                                    ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20'
-                                                    : 'border-slate-700 bg-slate-800/40 hover:border-slate-600'
+                                            {/* Chaves / progresso */}
+                                            <div>
+                                                {quest.validationType === 'SECRET_CODE' && (quest.keys?.length || 0) > 0 ? (
+                                                    <button
+                                                        onClick={() => setKeysTarget(quest)}
+                                                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 transition-all group"
+                                                    >
+                                                        <Key size={11} className="text-yellow-400" />
+                                                        <span className="font-press text-[8px] text-yellow-400">{freeKeys}/{quest.keys.length}</span>
+                                                        <Eye size={10} className="text-yellow-400/50 group-hover:text-yellow-400 transition-colors" />
+                                                    </button>
+                                                ) : quest.validationType === 'MANUAL_ADMIN' ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Users size={11} className="text-slate-500" />
+                                                        <span className="font-mono text-[10px] text-slate-500">{quest.usedCount} ok</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="font-mono text-[10px] text-slate-700">—</span>
                                                 )}
-                                                title={quest.status === 'active' ? 'Desativar' : 'Ativar'}
-                                            >
-                                                {quest.status === 'active'
-                                                    ? <ToggleRight size={14} className="text-green-400" />
-                                                    : <ToggleLeft size={14} className="text-slate-500" />
-                                                }
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(quest.id)}
-                                                className="p-2 rounded-lg border border-red-900/30 bg-red-950/20 hover:bg-red-900/30 transition-colors"
-                                                title="Deletar"
-                                            >
-                                                <Trash2 size={13} className="text-red-500" />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
+                                            </div>
+
+                                            {/* Ações */}
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => handleToggle(quest._id)}
+                                                    disabled={toggleMutation.isPending}
+                                                    className={cn('p-2 rounded-lg border transition-all', quest.status === 'active'
+                                                        ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500/20'
+                                                        : 'border-slate-700 bg-slate-800/40 hover:border-slate-600'
+                                                    )}
+                                                    title={quest.status === 'active' ? 'Desativar' : 'Ativar'}
+                                                >
+                                                    {toggleMutation.isPending && toggleMutation.variables === quest._id ? (
+                                                        <Loader2 size={14} className="animate-spin text-slate-400" />
+                                                    ) : quest.status === 'active' ? (
+                                                        <ToggleRight size={14} className="text-green-400" />
+                                                    ) : (
+                                                        <ToggleLeft size={14} className="text-slate-500" />
+                                                    )}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(quest._id)}
+                                                    disabled={deleteMutation.isPending}
+                                                    className="p-2 rounded-lg border border-red-900/30 bg-red-950/20 hover:bg-red-900/30 transition-all"
+                                                    title="Deletar"
+                                                >
+                                                    {deleteMutation.isPending && deleteMutation.variables === quest._id ? (
+                                                        <Loader2 size={14} className="animate-spin text-red-400" />
+                                                    ) : (
+                                                        <Trash2 size={14} className="text-red-500" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
-
-                    {/* Rodapé */}
-                    <p className="font-mono text-[10px] text-slate-700 text-center">
-                        {filtered.length} de {quests.length} missões exibidas
-                    </p>
                 </div>
-            </PageTransition>
 
-            {/* ── MODAIS / PAINÉIS ── */}
-            <AnimatePresence>
-                {showCreate && (
-                    <CreatePanel
-                        key="create"
-                        onClose={() => setShowCreate(false)}
-                        onSave={handleCreate}
-                    />
-                )}
-                {keysTarget && (
-                    <KeysModal
-                        key="keys"
-                        quest={keysTarget}
-                        onClose={() => setKeysTarget(null)}
-                    />
-                )}
-            </AnimatePresence>
+                {/* ── MODAIS ── */}
+                <AnimatePresence>
+                    {showCreate && (
+                        <CreatePanel
+                            onClose={() => setShowCreate(false)}
+                            onSave={handleCreate}
+                        />
+                    )}
+                    {keysTarget && (
+                        <KeysModal
+                            quest={keysTarget}
+                            onClose={() => setKeysTarget(null)}
+                        />
+                    )}
+                </AnimatePresence>
+
+            </PageTransition>
         </AdminLayout>
     );
 }

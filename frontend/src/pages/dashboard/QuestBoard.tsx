@@ -8,12 +8,13 @@ import {
     Lock, CheckCircle2, Sword, Star, Zap,
     Clock, Calendar, Trophy, ChevronRight, X, Eye,
     EyeOff, Loader2, Flame, Crown, Scroll,
-    BookOpen, Target, Gift
+    BookOpen, Target, Gift, Wallet
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { api } from '../../api/axios-config';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ─────────────────────────────────────────────────────
 // TIPOS
@@ -118,45 +119,7 @@ const CAMPAIGN_QUESTS_STATIC: Omit<CampaignQuest, 'status'>[] = [
     },
 ];
 
-// ─────────────────────────────────────────────────────
-// DADOS MOCK — Side Quests
-// 🔌 BACKEND: GET /api/quests/secondary
-// ─────────────────────────────────────────────────────
-const MOCK_SECONDARY: SecondaryQuest[] = [
-    {
-        id: 'sq1', type: 'daily',
-        title: 'Presença Impecável',
-        description: 'Chegue no horário em todas as aulas de hoje.',
-        reward: { pc: 30, xp: 10 }, status: 'available', validationType: 'code',
-        expiresAt: new Date(Date.now() + 8 * 3600000).toISOString(),
-    },
-    {
-        id: 'sq2', type: 'daily',
-        title: 'Colaborador do Dia',
-        description: 'Ajude um colega de turma com alguma atividade.',
-        reward: { pc: 20, xp: 15 }, status: 'completed', validationType: 'manual',
-    },
-    {
-        id: 'sq3', type: 'weekly',
-        title: 'Guardião do Saber',
-        description: 'Tire nota acima de 7 em todas as avaliações da semana.',
-        reward: { pc: 150, xp: 50 }, status: 'available', validationType: 'code',
-        expiresAt: new Date(Date.now() + 5 * 86400000).toISOString(),
-    },
-    {
-        id: 'sq4', type: 'weekly',
-        title: 'Limpeza da Honra',
-        description: 'Mantenha seu ambiente de aprendizado limpo durante 5 dias.',
-        reward: { pc: 80, xp: 30 }, status: 'pending', validationType: 'manual',
-    },
-    {
-        id: 'sq5', type: 'event',
-        title: 'EVENTO: Gincana Científica',
-        description: 'Participe da gincana e contribua com pelo menos 3 respostas corretas.',
-        reward: { pc: 500, xp: 200 }, status: 'available', validationType: 'code',
-        expiresAt: new Date(Date.now() + 2 * 86400000).toISOString(),
-    },
-];
+
 
 // ─────────────────────────────────────────────────────
 // HELPERS
@@ -537,7 +500,8 @@ function SideQuestCard({
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────
 export function QuestBoard() {
-    const { user, } = useAuth();
+    const { user, refreshUser } = useAuth();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<QuestTab>('campaign');
     const [validationTarget, setValidationTarget] = useState<{
         title: string; type: 'code' | 'manual'; questId: string;
@@ -546,10 +510,17 @@ export function QuestBoard() {
     const [filterType, setFilterType] = useState<'all' | SecondaryType>('all');
 
     const userPoints = user?.maxPcAchieved || 0;
+    const userBalance = user?.saldoPc || 0;
     const userCargos = user?.cargos || [];
 
-    // 🔌 BACKEND: Substituir por dados reais
-    const secondaryQuests = MOCK_SECONDARY;
+    // 🚀 BUSCANDO AS MISSÕES REAIS DO BACKEND
+    const { data: secondaryQuests = [], isLoading } = useQuery<SecondaryQuest[]>({
+        queryKey: ['quests', 'secondary'],
+        queryFn: async () => {
+            const response = await api.get('/quests/secondary');
+            return response.data;
+        }
+    });
 
     const filteredSecondary = filterType === 'all'
         ? secondaryQuests
@@ -564,14 +535,18 @@ export function QuestBoard() {
     async function handleValidate(code: string) {
         setIsSubmitting(true);
         try {
-
             await api.post('/quests/validate', { questId: validationTarget?.questId, secretCode: code });
 
             toast.success('Código validado! Recompensas adicionadas.');
             setValidationTarget(null);
 
-            // Dica: Para atualizar a tela na hora com o novo PC$ e Badges:
-            // window.location.reload(); 
+            // Atualiza as missões secundárias na tela (React Query)
+            queryClient.invalidateQueries({ queryKey: ['quests', 'secondary'] });
+
+            // 🚀 A MÁGICA ACONTECE AQUI:
+            // Isso vai no backend, pega o seu novo PC$/Badges e atualiza a tela instantaneamente!
+            await refreshUser();
+
         } catch (err: any) {
             toast.error(err?.response?.data?.error || 'Código inválido.');
         } finally {
@@ -613,6 +588,10 @@ export function QuestBoard() {
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
                             <Zap size={12} className="text-cyan-400" />
                             <span className="font-press text-[9px] text-cyan-400">{userPoints.toLocaleString()} PC$ MAX</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.15)]">
+                            <Wallet size={12} className="text-green-400" />
+                            <span className="font-press text-[9px] text-green-400">{userBalance.toLocaleString()} PC$ (SALDO)</span>
                         </div>
                     </div>
                 </div>
@@ -714,22 +693,31 @@ export function QuestBoard() {
                             </div>
 
                             <div className="space-y-3">
-                                {filteredSecondary.map((q, i) => (
-                                    <SideQuestCard
-                                        key={q.id}
-                                        quest={q}
-                                        delay={i * 0.05}
-                                        onValidate={(quest) => setValidationTarget({
-                                            title: quest.title,
-                                            type: quest.validationType,
-                                            questId: quest.id,
-                                        })}
-                                    />
-                                ))}
-                                {filteredSecondary.length === 0 && (
+                                {isLoading ? (
                                     <div className="text-center py-16">
-                                        <p className="font-vt323 text-3xl text-slate-700">Nenhuma missão disponível.</p>
+                                        <Loader2 size={32} className="mx-auto text-purple-500 animate-spin mb-4" />
+                                        <p className="font-press text-[10px] text-purple-400">BUSCANDO MISSOES...</p>
                                     </div>
+                                ) : (
+                                    <>
+                                        {filteredSecondary.map((q, i) => (
+                                            <SideQuestCard
+                                                key={q.id}
+                                                quest={q}
+                                                delay={i * 0.05}
+                                                onValidate={(quest) => setValidationTarget({
+                                                    title: quest.title,
+                                                    type: quest.validationType,
+                                                    questId: quest.id,
+                                                })}
+                                            />
+                                        ))}
+                                        {filteredSecondary.length === 0 && (
+                                            <div className="text-center py-16">
+                                                <p className="font-vt323 text-3xl text-slate-700">Nenhuma missão disponível.</p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </motion.div>

@@ -1,9 +1,9 @@
 import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Settings, Gift, QrCode, ShieldCheck, Grid, 
-  Coins, Users, Scroll, LogOut, Menu, X, Gavel, 
-  Image as ImageIcon, Trophy // <--- ADICIONE O TROPHY AQUI
+import {
+  Settings, Gift, QrCode, ShieldCheck, Grid,
+  Coins, Users, Scroll, LogOut, Menu, X, Gavel,
+  Image as ImageIcon, Trophy, Sword // <--- ADICIONE O TROPHY AQUI
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -19,7 +19,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const menuItems = [
     { label: 'SALAS E TURMAS', path: '/admin/classes', icon: Grid, color: 'text-yellow-400' },
-    
+
     // 🏆 NOVO ITEM DO MENU
     { label: 'TAÇA DAS CASAS', path: '/admin/house', icon: Trophy, color: 'text-yellow-500' },
 
@@ -28,6 +28,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'ALUNOS', path: '/admin/users', icon: Users, color: 'text-blue-400' },
     { label: 'LOJA E ITENS', path: '/admin/store', icon: Coins, color: 'text-purple-400' },
     { icon: Gavel, label: 'PUNIÇÕES', path: '/admin/punishments' },
+    { icon: Sword, label: 'MISSÕES', path: '/admin/quests', color: 'text-purple-400' },
     { label: 'SCANNER', path: '/admin/scanner', icon: QrCode, color: 'text-white' },
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },

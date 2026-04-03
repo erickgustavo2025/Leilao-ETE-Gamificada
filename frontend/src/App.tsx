@@ -67,6 +67,9 @@ const FeedbackList = lazy(() => import('./pages/dev/FeedbackList').then(m => ({ 
 const DevUsers = lazy(() => import('./pages/dev/DevUsers').then(m => ({ default: m.DevUsers })));
 
 const AdminClasses = lazy(() => import('./pages/admin/AdminClasses').then(m => ({ default: m.AdminClasses })));
+
+const AdminQuests = lazy(() => import('./pages/admin/AdminQuests').then(m => ({ default: m.AdminQuests })));
+
 const AdminStore = lazy(() => import('./pages/admin/AdminStore').then(m => ({ default: m.AdminStore })));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers').then(m => ({ default: m.AdminUsers })));
 const AdminLogs = lazy(() => import('./pages/admin/AdminLogs').then(m => ({ default: m.AdminLogs })));
@@ -461,6 +464,7 @@ function AppContent() {
             <Route path="/admin/classes" element={<PrivateRoute roles={['admin']}><AdminClasses /></PrivateRoute>} />
             <Route path="/admin/store" element={<PrivateRoute roles={['admin']}><AdminStore /></PrivateRoute>} />
             <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsers /></PrivateRoute>} />
+            <Route path="/admin/quests" element={<PrivateRoute roles={['admin']}><AdminQuests /></PrivateRoute>} />
             <Route path="/admin/auctions" element={<PrivateRoute roles={['admin']}><AdminAuctions /></PrivateRoute>} />
             <Route path="/admin/scanner" element={<PrivateRoute roles={['admin']}><AdminScanner /></PrivateRoute>} />
             <Route path="/admin/logs" element={<PrivateRoute roles={['admin']}><AdminLogs /></PrivateRoute>} />
