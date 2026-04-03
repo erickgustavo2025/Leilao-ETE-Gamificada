@@ -5,10 +5,10 @@
 import { useState, } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Lock, CheckCircle2, Sword, Star, Zap,
+    Lock, CheckCircle2, Sword, Zap,
     Clock, Calendar, Trophy, ChevronRight, X, Eye,
     EyeOff, Loader2, Flame, Crown, Scroll,
-    BookOpen, Target, Gift, Wallet
+    BookOpen, Target, Gift, Wallet, Package
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -412,11 +412,12 @@ function CampaignCard({
 // SUB-COMPONENTE: Card de Side Quest
 // ─────────────────────────────────────────────────────
 function SideQuestCard({
-    quest, onValidate, delay,
+    quest, onValidate, delay, onRequestManual
 }: {
     quest: SecondaryQuest;
     onValidate: (q: SecondaryQuest) => void;
     delay: number;
+    onRequestManual: (id: string) => void;
 }) {
     const cfg = TYPE_CONFIG[quest.type];
     const Icon = cfg.icon;
@@ -437,7 +438,6 @@ function SideQuestCard({
         >
             <div className="p-4">
                 <div className="flex items-start gap-3">
-                    {/* Tipo badge */}
                     <div className={cn('p-2 rounded-xl border shrink-0', cfg.bg)}>
                         <Icon size={16} className={cfg.color} />
                     </div>
@@ -454,13 +454,11 @@ function SideQuestCard({
                             {isPending && <span className="font-press text-[8px] text-blue-400 animate-pulse">AGUARDANDO</span>}
                         </div>
 
-                        {/* COM ACENTO → font-vt323 */}
                         <h3 className="font-vt323 text-xl text-white leading-tight">{quest.title}</h3>
                         <p className="font-poppins text-[11px] text-slate-400 mt-1 leading-relaxed">{quest.description}</p>
                     </div>
                 </div>
 
-                {/* Footer recompensa + botão */}
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
@@ -477,11 +475,10 @@ function SideQuestCard({
 
                     {!isDone && !isPending && (
                         <button
-                            onClick={() => quest.validationType === 'manual' ? handleRequestManual(quest.id) : onValidate(quest)}
-                            disabled={isSubmitting}
-                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 font-press text-[8px] text-white flex items-center gap-1.5 transition-all disabled:opacity-50"
+                            onClick={() => quest.validationType === 'manual' ? onRequestManual(quest.id) : onValidate(quest)}
+                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 font-press text-[8px] text-white flex items-center gap-1.5 transition-all"
                         >
-                            {isSubmitting ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                            <CheckCircle2 size={11} />
                             {quest.validationType === 'manual' ? 'SOLICITAR' : 'VALIDAR'}
                         </button>
                     )}
@@ -728,6 +725,7 @@ export function QuestBoard() {
                                                     type: quest.validationType,
                                                     questId: quest.id,
                                                 })}
+                                                onRequestManual={handleRequestManual}
                                             />
                                         ))}
                                         {filteredSecondary.length === 0 && (

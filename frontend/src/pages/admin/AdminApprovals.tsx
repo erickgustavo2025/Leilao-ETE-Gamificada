@@ -6,6 +6,7 @@ import {
     Scroll, Clock, Package, Gift 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AdminLayout } from '../../components/layout/AdminLayout';
 
 interface PendingApproval {
     _id: string;
@@ -57,6 +58,7 @@ export default function AdminApprovals() {
     });
 
     return (
+        <AdminLayout>
         <div className="space-y-6">
             <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-900/20">
@@ -149,5 +151,6 @@ export default function AdminApprovals() {
                 </div>
             )}
         </div>
+        </AdminLayout>
     );
 }

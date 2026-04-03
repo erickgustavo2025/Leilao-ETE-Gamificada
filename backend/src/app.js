@@ -64,7 +64,7 @@ app.use(helmet({
 }));
 
 app.use(express.json());
-app.use(mongoSanitize()); // 🛡️ NOVO: Previne NoSQL Injection
+// app.use('/api', mongoSanitize());
 
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({

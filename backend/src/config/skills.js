@@ -170,14 +170,6 @@ const CATALOG = {
         uses: 3, 
         reset: 'QUARTERLY' 
     },
-    'SORTUDO': {
-        name: "Sortudo (2x Chance)", 
-        desc: "Dobra a chance na roleta (3 usos/trimestre).",
-        image: "/uploads/Sortudo.webp",
-        type: 'ATIVA',
-        uses: 3, 
-        reset: 'QUARTERLY'
-    },
     'IMORTAL': { 
         name: "🗿 Imortal do Classcraft", 
         desc: "Não cai em batalha.", 
@@ -279,12 +271,6 @@ const CATALOG = {
         type: 'ATIVA',
         uses: 3,
         reset: 'QUARTERLY'
-    },
-    'GILBET_PREMIUM': { 
-        name: "🎰 Gilbet Premium", 
-        desc: "Dobra limite de ganhos.", 
-        image: "/uploads/ticket.webp", // Ticket padrão se não tiver imagem específica
-        type: 'PASSIVA' 
     },
     'TRIPLICADOR': { 
         name: "✖️3️⃣ Triplicador de PC$", 
