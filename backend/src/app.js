@@ -26,7 +26,8 @@ const ticketRoutes = require('./routes/ticketRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const houseHistoryRoutes = require('./routes/houseHistoryRoutes');
-const questRoutes = require('./routes/questRoutes'); // Importe lá em cima
+const questRoutes = require('./routes/questRoutes');
+const adminQuestRoutes = require('./routes/adminQuestRoutes');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -111,7 +112,8 @@ app.use('/api/house', houseRoutes);
 app.use('/api/beco', houseShopRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/house-history', houseHistoryRoutes);
-app.use('/api/quests', questRoutes); // A porta da Taverna está aberta!
+app.use('/api/quests', questRoutes); 
+app.use('/api/admin/quests', adminQuestRoutes);
 
 
 // Fallback da API
