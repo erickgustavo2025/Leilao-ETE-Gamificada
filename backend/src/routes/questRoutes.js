@@ -6,6 +6,7 @@ const { protect, admin } = require('../middlewares/authMiddleware');
 
 // ROTAS DE ALUNO (Taverna)
 router.post('/validate', protect, questController.validateSecretCode);
+router.post('/request-validation', protect, questController.requestManualValidation);
 // Aqui no futuro colocaremos o router.get('/campaign') e router.get('/secondary')
 
 router.get('/secondary', protect, questController.getSecondaryQuests);

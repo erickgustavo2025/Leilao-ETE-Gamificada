@@ -43,7 +43,8 @@ interface SecondaryQuest {
     title: string;
     description: string;
     type: SecondaryType;
-    reward: { pc: number; xp: number };
+    reward: { pc: number };
+    rewardItems?: Array<{ itemId: string; name: string; category: string }>;
     expiresAt?: string;
     status: QuestStatus;
     validationType: 'code' | 'manual';
@@ -466,18 +467,22 @@ function SideQuestCard({
                             <Gift size={12} className="text-yellow-400" />
                             <span className="font-press text-[9px] text-yellow-400">{quest.reward.pc} PC$</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Star size={12} className="text-purple-400" />
-                            <span className="font-press text-[9px] text-purple-400">{quest.reward.xp} XP</span>
-                        </div>
+                        {quest.rewardItems && quest.rewardItems.length > 0 && (
+                            <div className="flex items-center gap-1">
+                                <Package size={12} className="text-purple-400" />
+                                <span className="font-press text-[9px] text-purple-400">CONTÉM ITENS</span>
+                            </div>
+                        )}
                     </div>
 
                     {!isDone && !isPending && (
                         <button
-                            onClick={() => onValidate(quest)}
-                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 font-press text-[8px] text-white flex items-center gap-1.5 transition-all"
+                            onClick={() => quest.validationType === 'manual' ? handleRequestManual(quest.id) : onValidate(quest)}
+                            disabled={isSubmitting}
+                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 font-press text-[8px] text-white flex items-center gap-1.5 transition-all disabled:opacity-50"
                         >
-                            <CheckCircle2 size={11} /> VALIDAR
+                            {isSubmitting ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                            {quest.validationType === 'manual' ? 'SOLICITAR' : 'VALIDAR'}
                         </button>
                     )}
                     {isPending && (
@@ -532,6 +537,19 @@ export function QuestBoard() {
 
     // ─── HANDLER: Validar missão ───────────────────
     // 🔌 BACKEND: POST /api/quests/validate  { questId, code }
+    async function handleRequestManual(questId: string) {
+        setIsSubmitting(true);
+        try {
+            await api.post('/quests/request-validation', { questId });
+            toast.success('Solicitação enviada ao professor!');
+            queryClient.invalidateQueries({ queryKey: ['quests', 'secondary'] });
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Erro ao solicitar validação.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
     async function handleValidate(code: string) {
         setIsSubmitting(true);
         try {

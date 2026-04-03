@@ -29,6 +29,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'LOJA E ITENS', path: '/admin/store', icon: Coins, color: 'text-purple-400' },
     { icon: Gavel, label: 'PUNIÇÕES', path: '/admin/punishments' },
     { icon: Sword, label: 'MISSÕES', path: '/admin/quests', color: 'text-purple-400' },
+    { icon: Scroll, label: 'APROVAÇÕES', path: '/admin/approvals', color: 'text-blue-400' },
     { label: 'SCANNER', path: '/admin/scanner', icon: QrCode, color: 'text-white' },
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },

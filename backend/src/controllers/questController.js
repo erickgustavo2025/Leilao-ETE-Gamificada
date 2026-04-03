@@ -2,6 +2,7 @@
 const Quest = require('../models/Quest');
 const User = require('../models/User');
 const Log = require('../models/Log'); // Nosso velho amigo X9 para auditoria
+const Classroom = require('../models/Classroom');
 
 const questController = {
     // 1. O ALUNO TENTA VALIDAR UMA MISSÃO POR CÓDIGO SECRETO (SISTEMA STEAM KEYS)
@@ -50,35 +51,91 @@ const questController = {
             // 🏆 SUCESSO! HORA DO LOOT!
             user.activeQuests = user.activeQuests || [];
 
+            // 1. Entrega o Dinheiro (PC$)
             if (quest.rewards?.pc > 0) {
                 user.saldoPc += quest.rewards.pc;
-                user.maxPcAchieved += quest.rewards.pc;
+                // maxPcAchieved é atualizado no hook pre-save do User.js
             }
 
+            // 2. Entrega a Badge (se houver)
             if (quest.rewards?.badgeId && !user.cargos.includes(quest.rewards.badgeId)) {
                 user.cargos.push(quest.rewards.badgeId);
             }
 
-            user.activeQuests.push({
-                questId: quest._id,
-                progress: 100,
-                status: 'COMPLETED'
-            });
+            // 🎁 3. O SISTEMA DE ITENS OFICIAL (Mochila Pessoal vs Turma)
+            if (quest.rewardItems && quest.rewardItems.length > 0) {
+                for (const item of quest.rewardItems) {
+                    let expirationDate = null;
+                    if (item.validityDays) {
+                        expirationDate = new Date();
+                        expirationDate.setDate(expirationDate.getDate() + item.validityDays);
+                    }
+
+                    if (item.sendToClassroom) {
+                        const turma = await Classroom.findOne({ serie: user.turma });
+                        if (turma) {
+                            turma.roomInventory.push({
+                                itemId: item.itemId,
+                                name: item.name,
+                                category: item.category,
+                                quantity: 1,
+                                acquiredAt: new Date(),
+                                expiresAt: expirationDate,
+                                origin: 'PREMIO',
+                                acquiredBy: user._id
+                            });
+                            await turma.save();
+                        }
+                    } else {
+                        if (item.category === 'BUFF') {
+                            user.activeBuffs = user.activeBuffs || [];
+                            user.activeBuffs.push({
+                                effect: item.itemId.toString(),
+                                name: item.name,
+                                source: `Missão: ${quest.title}`,
+                                expiresAt: expirationDate
+                            });
+                        } else {
+                            user.inventory = user.inventory || [];
+                            user.inventory.push({
+                                itemId: item.itemId,
+                                name: item.name,
+                                category: item.category,
+                                quantity: 1,
+                                acquiredAt: new Date(),
+                                expiresAt: expirationDate,
+                                origin: 'Missão'
+                            });
+                        }
+                    }
+                }
+            }
+
+            // 4. Marca a quest como completa para o aluno
+            const qIndex = user.activeQuests.findIndex(aq => aq.questId.toString() === questId);
+            if (qIndex !== -1) {
+                user.activeQuests[qIndex].status = 'COMPLETED';
+                user.activeQuests[qIndex].progress = 100;
+            } else {
+                user.activeQuests.push({
+                    questId: quest._id,
+                    progress: 100,
+                    status: 'COMPLETED'
+                });
+            }
 
             // 🔥 QUEIMA O CÓDIGO NO BANCO DE DADOS
             quest.validCodes[codeIndex].isUsed = true;
             quest.validCodes[codeIndex].usedBy = user._id;
 
-            // Salva as duas pontas!
             await user.save();
             await quest.save();
 
-            // Salva no Log de Auditoria
             if (Log) {
                 await Log.create({
                     user: user._id,
                     action: 'QUEST_COMPLETED',
-                    details: `Concluiu a missão: ${quest.title} usando o código ${secretCode}. Ganhou a badge: ${quest.rewards?.badgeId || 'Nenhuma'}.`,
+                    details: `Concluiu a missão: ${quest.title} usando o código ${secretCode}.`,
                     ip: req.ip
                 });
             }
@@ -94,12 +151,11 @@ const questController = {
             res.status(500).json({ error: 'Erro interno ao validar o código da missão.' });
         }
     },
+
     // 2. BUSCAR MISSÕES SECUNDÁRIAS (TAVERNA)
     async getSecondaryQuests(req, res) {
         try {
             const userId = req.user._id;
-
-            // Busca todas as missões ativas que não são de Campanha (Épicas/Secretas)
             const quests = await Quest.find({
                 isActive: true,
                 type: { $in: ['DIARIA', 'SEMANAL', 'EVENTO'] }
@@ -108,14 +164,11 @@ const questController = {
             const user = await User.findById(userId);
             if (!user) return res.status(404).json({ error: 'Aluno não encontrado.' });
 
-            // Formata os dados exatamente como o Frontend do Claude espera!
             const formattedQuests = quests.map(q => {
-                // Checa na mochila do aluno se ele já começou ou terminou essa missão
                 const userQuest = user.activeQuests?.find(uq => uq.questId.toString() === q._id.toString());
-
                 let status = 'available';
                 if (userQuest) {
-                    if (userQuest.status === 'COMPLETED') status = 'completed';
+                    if (userQuest.status === 'COMPLETED' || userQuest.status === 'REWARD_CLAIMED') status = 'completed';
                     else if (userQuest.status === 'ACCEPTED') status = 'pending';
                 }
 
@@ -124,10 +177,8 @@ const questController = {
                     title: q.title,
                     description: q.description,
                     type: q.type.toLowerCase() === 'diaria' ? 'daily' : q.type.toLowerCase() === 'semanal' ? 'weekly' : 'event',
-                    reward: {
-                        pc: q.rewards?.pc || 0,
-                        xp: q.rewards?.pc || 0 // Lembrando que na ETE Gamificada, PC$ histórico = XP
-                    },
+                    reward: { pc: q.rewards?.pc || 0 },
+                    rewardItems: q.rewardItems || [],
                     expiresAt: q.expiresAt,
                     status: status,
                     validationType: q.validationMethod === 'SECRET_CODE' ? 'code' : 'manual'
@@ -135,13 +186,47 @@ const questController = {
             });
 
             res.json(formattedQuests);
-
         } catch (error) {
             console.error('❌ Erro no getSecondaryQuests:', error);
             res.status(500).json({ error: 'Erro ao carregar o mural de missões.' });
         }
     },
 
+    // 3. ALUNO SOLICITA VALIDAÇÃO MANUAL
+    async requestManualValidation(req, res) {
+        try {
+            const { questId } = req.body;
+            const userId = req.user._id;
+
+            const user = await User.findById(userId);
+            const quest = await Quest.findById(questId);
+
+            if (!user || !quest) return res.status(404).json({ error: 'Aventureiro ou Missão não encontrados.' });
+
+            if (quest.validationMethod !== 'MANUAL_ADMIN') {
+                return res.status(400).json({ error: 'Esta missão exige um código secreto para ser validada.' });
+            }
+
+            const existingQuest = user.activeQuests?.find(q => q.questId.toString() === questId);
+            if (existingQuest) {
+                if (existingQuest.status === 'COMPLETED' || existingQuest.status === 'REWARD_CLAIMED') return res.status(400).json({ error: 'Você já completou esta missão!' });
+                if (existingQuest.status === 'ACCEPTED') return res.status(400).json({ error: 'Você já solicitou a validação desta missão. Aguarde o professor.' });
+            }
+
+            user.activeQuests = user.activeQuests || [];
+            user.activeQuests.push({
+                questId: quest._id,
+                progress: 0,
+                status: 'ACCEPTED'
+            });
+
+            await user.save();
+            res.json({ message: 'Solicitação enviada com sucesso!' });
+        } catch (error) {
+            console.error('❌ Erro no requestManualValidation:', error);
+            res.status(500).json({ error: 'Erro ao solicitar validação.' });
+        }
+    }
 };
 
 module.exports = questController;

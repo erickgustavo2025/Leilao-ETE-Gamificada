@@ -13,3 +13,7 @@ router.patch('/:id/toggle', adminQuestController.toggleQuest);
 router.delete('/:id', adminQuestController.deleteQuest);
 
 module.exports = router;
+// --- FILA DE APROVAÇÃO ---
+router.get('/approvals', adminQuestController.getPendingApprovals);
+router.post('/approvals/:id/approve', adminQuestController.approveQuest);
+router.post('/approvals/:id/reject', adminQuestController.rejectQuest);

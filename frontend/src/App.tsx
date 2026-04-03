@@ -79,6 +79,7 @@ const AdminGifts = lazy(() => import('./pages/admin/AdminGifts').then(m => ({ de
 const AdminConfig = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ default: m.AdminConfig })));
 const AdminImages = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
+const AdminApprovals = lazy(() => import('./pages/admin/AdminApprovals'));
 
 const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
 
@@ -472,6 +473,7 @@ function AppContent() {
             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfig /></PrivateRoute>} />
             <Route path="/admin/images" element={<PrivateRoute roles={['admin']}><AdminImages /></PrivateRoute>} />
             <Route path="/admin/punishments" element={<PrivateRoute roles={['admin']}><AdminPunishments /></PrivateRoute>} />
+            <Route path="/admin/approvals" element={<PrivateRoute roles={['admin']}><AdminApprovals /></PrivateRoute>} />
             <Route path="/admin/house" element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

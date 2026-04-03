@@ -12,7 +12,7 @@ const BECO_ITEMS = [
         nome: "Nimbus 2001",
         descricao: "Concede a autorização da participação no Quadribol mesmo já tendo participado de outro desafio.",
         lojaTematica: "VASSOURAS",
-        imagem: "/assets/nimbus.png",
+        imagem: "/assets/nimbus.webp",
         preco: 5000,
         raridade: "Evento",
         isHouseItem: true
@@ -21,7 +21,7 @@ const BECO_ITEMS = [
         nome: "Firebolt Suprema",
         descricao: "Concede o poder de substituir um jogador da equipe por qualquer outro participante.",
         lojaTematica: "VASSOURAS",
-        imagem: "/assets/firebolt.png",
+        imagem: "/assets/firebolt.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -30,7 +30,7 @@ const BECO_ITEMS = [
         nome: "Comet 260",
         descricao: "Concede o poder de Ter um jogador reserva.",
         lojaTematica: "VASSOURAS",
-        imagem: "/assets/cleansweep.png",
+        imagem: "/assets/cleansweep.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -41,7 +41,7 @@ const BECO_ITEMS = [
         nome: "Pelo de Unicórnio",
         descricao: "Confere uma ajuda Divina do mundo Bruxo.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_unicorn.png",
+        imagem: "/assets/wand_unicorn.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -50,7 +50,7 @@ const BECO_ITEMS = [
         nome: "Fibra de Dragão",
         descricao: "Elimina um erro no desafio de desempenho.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_dragon.png",
+        imagem: "/assets/wand_dragon.webp",
         preco: 3000,
         raridade: "Evento",
         isHouseItem: true
@@ -59,7 +59,7 @@ const BECO_ITEMS = [
         nome: "Pena de Fênix",
         descricao: "Concede prioridade na escolha se houver empate.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_phoenix.png",
+        imagem: "/assets/wand_phoenix.webp",
         preco: 4000,
         raridade: "Evento",
         isHouseItem: true
@@ -69,7 +69,7 @@ const BECO_ITEMS = [
         nome: "Salgueiro Lutador",
         descricao: "Adiciona 1 décimo na disputa da maior média global.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_willow.png",
+        imagem: "/assets/wand_willow.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -78,7 +78,7 @@ const BECO_ITEMS = [
         nome: "Carvalho Inglês",
         descricao: "Adiciona 3 décimos na disputa da maior média global.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_oak.png",
+        imagem: "/assets/wand_oak.webp",
         preco: 3000,
         raridade: "Evento",
         isHouseItem: true
@@ -87,7 +87,7 @@ const BECO_ITEMS = [
         nome: "Vidio Ancião",
         descricao: "Adiciona 5 décimos na disputa da maior média global.",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_elder.png",
+        imagem: "/assets/wand_elder.webp",
         preco: 5000,
         raridade: "Evento",
         isHouseItem: true
@@ -96,7 +96,7 @@ const BECO_ITEMS = [
         nome: "Azevinho",
         descricao: "Concede prioridade na escolha se houver empate (Média Global).",
         lojaTematica: "VARINHAS",
-        imagem: "/assets/wand_holly.png",
+        imagem: "/assets/wand_holly.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -107,7 +107,7 @@ const BECO_ITEMS = [
         nome: "Poção da Lógica",
         descricao: "Adiciona 1 ponto para média de Matemática no X1.",
         lojaTematica: "POCOES",
-        imagem: "/assets/potion_math.png",
+        imagem: "/assets/potion_math.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -116,7 +116,7 @@ const BECO_ITEMS = [
         nome: "Elixir da Eloquência",
         descricao: "Adiciona 1 ponto para média de Humanas no X1.",
         lojaTematica: "POCOES",
-        imagem: "/assets/potion_human.png",
+        imagem: "/assets/potion_human.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -125,7 +125,7 @@ const BECO_ITEMS = [
         nome: "Extrato de Herbologia",
         descricao: "Adiciona 1 ponto para média de Ciências da Natureza no X1.",
         lojaTematica: "POCOES",
-        imagem: "/assets/potion_nature.png",
+        imagem: "/assets/potion_nature.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -134,7 +134,7 @@ const BECO_ITEMS = [
         nome: "Soro da Poliglotia",
         descricao: "Adiciona 1 ponto para média de Linguagens no X1.",
         lojaTematica: "POCOES",
-        imagem: "/assets/potion_lang.png",
+        imagem: "/assets/potion_lang.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -145,7 +145,7 @@ const BECO_ITEMS = [
         nome: "Lunetas de Luna",
         descricao: "Traduz qualquer escrita para a língua do leitor.",
         lojaTematica: "MAROTO",
-        imagem: "/assets/spectrespecs.png",
+        imagem: "/assets/spectrespecs.webp",
         preco: 2000,
         raridade: "Evento",
         isHouseItem: true
@@ -154,7 +154,7 @@ const BECO_ITEMS = [
         nome: "Tênis Alado",
         descricao: "Retira 1 minuto no tempo final (Mapa ou Relíquias).",
         lojaTematica: "MAROTO",
-        imagem: "/assets/sneakers.png",
+        imagem: "/assets/sneakers.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -163,7 +163,7 @@ const BECO_ITEMS = [
         nome: "Raquete Divina",
         descricao: "Confere uma ajuda divina em uma questão ou enigma.",
         lojaTematica: "MAROTO",
-        imagem: "/assets/racket.png",
+        imagem: "/assets/racket.webp",
         preco: 2000,
         raridade: "Evento",
         isHouseItem: true
@@ -174,7 +174,7 @@ const BECO_ITEMS = [
         nome: "Arthur Weasley",
         descricao: "Diminui pela metade 1 punição LEVE.",
         lojaTematica: "MINISTERIO",
-        imagem: "/assets/arthur.png",
+        imagem: "/assets/arthur.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -183,7 +183,7 @@ const BECO_ITEMS = [
         nome: "Kingsley Shacklebolt",
         descricao: "Diminui pela metade 1 punição MODERADA.",
         lojaTematica: "MINISTERIO",
-        imagem: "/assets/kingsley.png",
+        imagem: "/assets/kingsley.webp",
         preco: 2000,
         raridade: "Evento",
         isHouseItem: true
@@ -192,7 +192,7 @@ const BECO_ITEMS = [
         nome: "Barty Crouch Sr.",
         descricao: "Diminui pela metade 1 punição GRAVE.",
         lojaTematica: "MINISTERIO",
-        imagem: "/assets/crouch.png",
+        imagem: "/assets/crouch.webp",
         preco: 3000,
         raridade: "Evento",
         isHouseItem: true
@@ -201,7 +201,7 @@ const BECO_ITEMS = [
         nome: "Bellatrix Lestrange",
         descricao: "Diminui pela metade 1 punição GRAVÍSSIMA.",
         lojaTematica: "MINISTERIO",
-        imagem: "/assets/bellatrix.png",
+        imagem: "/assets/bellatrix.webp",
         preco: 4000,
         raridade: "Evento",
         isHouseItem: true
@@ -212,7 +212,7 @@ const BECO_ITEMS = [
         nome: "Tomo do Destino",
         descricao: "Prioridade no desempate.",
         lojaTematica: "MAGIC_BOOK",
-        imagem: "/assets/book_destiny.png",
+        imagem: "/assets/book_destiny.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -221,7 +221,7 @@ const BECO_ITEMS = [
         nome: "Manuscrito do Caos",
         descricao: "Fazer um novo sorteio para trocar o participante sorteado.",
         lojaTematica: "MAGIC_BOOK",
-        imagem: "/assets/book_chaos.png",
+        imagem: "/assets/book_chaos.webp",
         preco: 1000,
         raridade: "Evento",
         isHouseItem: true
@@ -230,7 +230,7 @@ const BECO_ITEMS = [
         nome: "Grimório da Aliança",
         descricao: "Fazer a prova em Dupla.",
         lojaTematica: "MAGIC_BOOK",
-        imagem: "/assets/book_alliance.png",
+        imagem: "/assets/book_alliance.webp",
         preco: 5000,
         raridade: "Evento",
         isHouseItem: true
