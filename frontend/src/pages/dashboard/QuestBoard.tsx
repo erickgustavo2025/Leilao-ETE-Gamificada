@@ -148,12 +148,13 @@ function ValidationModal({
 }: {
     title: string;
     onClose: () => void;
-    onSubmit: (code: string) => void;
+    onSubmit: (code: string, submissionContent?: string) => void;
     validationType: 'code' | 'manual';
     isLoading: boolean;
 }) {
     const [code, setCode] = useState('');
     const [show, setShow] = useState(false);
+    const [submissionContent, setSubmissionContent] = useState('');
 
     return (
         <motion.div
@@ -227,15 +228,27 @@ function ValidationModal({
                     ) : (
                         <div className="space-y-3">
                             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                                {/* Com acento → font-vt323 */}
                                 <p className="font-vt323 text-xl text-blue-300">Envio Manual</p>
                                 <p className="font-poppins text-xs text-slate-400 mt-1">
-                                    Esta missão requer aprovação do professor. Após concluir, solicite a validação pessoalmente.
+                                    Esta missão requer aprovação do professor. Descreva seu projeto ou cole o link.
                                 </p>
                             </div>
+                            <label className="font-press text-[9px] text-slate-500 uppercase block">
+                                LINK DO PROJETO, DRIVE OU COMENTÁRIO
+                            </label>
+                            <textarea
+                                placeholder="Cole aqui o link do seu projeto ou uma descrição..."
+                                value={submissionContent}
+                                onChange={e => setSubmissionContent(e.target.value)}
+                                maxLength={2000}
+                                className="w-full bg-black/60 border border-blue-500/40 rounded-xl p-4 text-white font-poppins text-sm focus:border-blue-400 outline-none placeholder:text-slate-700 resize-none h-24"
+                            />
+                            <div className="text-right text-xs text-slate-500">
+                                {submissionContent.length}/2000
+                            </div>
                             <button
-                                onClick={() => onSubmit('MANUAL')}
-                                disabled={isLoading}
+                                onClick={() => onSubmit('MANUAL', submissionContent)}
+                                disabled={isLoading || !submissionContent.trim()}
                                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-press text-[10px] flex items-center justify-center gap-2 transition-all"
                             >
                                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <><Target size={14} /> SOLICITAR VALIDACAO</>}
@@ -547,12 +560,18 @@ export function QuestBoard() {
         }
     }
 
-    async function handleValidate(code: string) {
+    async function handleValidate(code: string, submissionContent?: string) {
         setIsSubmitting(true);
         try {
-            await api.post('/quests/validate', { questId: validationTarget?.questId, secretCode: code });
+            if (submissionContent !== undefined) {
+                // Submissão manual
+                await api.post('/quests/request-validation', { questId: validationTarget?.questId, submissionContent });
+            } else {
+                // Validação por código
+                await api.post('/quests/validate', { questId: validationTarget?.questId, secretCode: code });
+            }
 
-            toast.success('Código validado! Recompensas adicionadas.');
+            toast.success(submissionContent !== undefined ? 'Submissão enviada ao professor!' : 'Código validado! Recompensas adicionadas.');
             setValidationTarget(null);
 
             // Atualiza as missões secundárias na tela (React Query)

@@ -64,7 +64,7 @@ app.use(helmet({
 }));
 
 app.use(express.json());
-// app.use('/api', mongoSanitize());
+app.use('/api', mongoSanitize()); // 🛡️ Sanitização apenas nas rotas de API para não quebrar Socket.io
 
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({

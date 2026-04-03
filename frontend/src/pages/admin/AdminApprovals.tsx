@@ -3,17 +3,31 @@ import { api } from '../../api/axios-config';
 import { toast } from 'sonner';
 import { 
     CheckCircle2, XCircle, Loader2, User, 
-    Scroll, Clock, Package, Gift 
+    Scroll, Clock, Package, Gift, ExternalLink 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 
+// Função para validar URLs (Segurança XSS)
+function isValidUrl(str: string): boolean {
+    try {
+        const url = new URL(str);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
 interface PendingApproval {
     _id: string;
+    submissionId: string;
+    studentId: string;
     studentName: string;
     studentMatricula: string;
+    questId: string;
     questTitle: string;
-    requestedAt: string;
+    submissionContent: string;
+    submittedAt: string;
     rewards: {
         pc: number;
         items: Array<{ name: string; quantity: number }>;
@@ -32,8 +46,8 @@ export default function AdminApprovals() {
     });
 
     const approveMutation = useMutation({
-        mutationFn: async (id: string) => {
-            await api.post(`/admin/quests/approvals/${id}/approve`);
+        mutationFn: async (submissionId: string) => {
+            await api.post(`/admin/quests/approvals/${submissionId}/approve`);
         },
         onSuccess: () => {
             toast.success('Missão aprovada com sucesso!');
@@ -45,8 +59,8 @@ export default function AdminApprovals() {
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async (id: string) => {
-            await api.post(`/admin/quests/approvals/${id}/reject`);
+        mutationFn: async (submissionId: string) => {
+            await api.post(`/admin/quests/approvals/${submissionId}/reject`);
         },
         onSuccess: () => {
             toast.success('Missão rejeitada.');
@@ -100,10 +114,28 @@ export default function AdminApprovals() {
                                                 </span>
                                             </div>
                                             <p className="font-vt323 text-blue-400 text-xl mb-2">{item.questTitle}</p>
+                                            {item.submissionContent && (
+                                                <div className="mb-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                                    <p className="text-xs text-slate-400 mb-1">SUBMISSÃO DO ALUNO:</p>
+                                                    {isValidUrl(item.submissionContent) ? (
+                                                        <a
+                                                            href={item.submissionContent}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1.5 break-all"
+                                                        >
+                                                            <ExternalLink size={14} />
+                                                            {item.submissionContent}
+                                                        </a>
+                                                    ) : (
+                                                        <p className="text-slate-300 text-sm">{item.submissionContent}</p>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className="flex flex-wrap items-center gap-4">
                                                 <div className="flex items-center gap-1.5 text-slate-500 text-xs">
                                                     <Clock size={14} />
-                                                    {new Date(item.requestedAt).toLocaleString('pt-BR')}
+                                                    {new Date(item.submittedAt).toLocaleString('pt-BR')}
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-yellow-500 text-xs font-press">
                                                     <Gift size={14} />
@@ -121,7 +153,7 @@ export default function AdminApprovals() {
 
                                     <div className="flex items-center gap-3">
                                         <button
-                                            onClick={() => rejectMutation.mutate(item._id)}
+                                            onClick={() => rejectMutation.mutate(item.submissionId)}
                                             disabled={rejectMutation.isPending || approveMutation.isPending}
                                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 rounded-xl font-press text-[10px] transition-all disabled:opacity-50"
                                         >
@@ -129,7 +161,7 @@ export default function AdminApprovals() {
                                             REJEITAR
                                         </button>
                                         <button
-                                            onClick={() => approveMutation.mutate(item._id)}
+                                            onClick={() => approveMutation.mutate(item.submissionId)}
                                             disabled={approveMutation.isPending || rejectMutation.isPending}
                                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-500 rounded-xl font-press text-[10px] transition-all disabled:opacity-50"
                                         >
