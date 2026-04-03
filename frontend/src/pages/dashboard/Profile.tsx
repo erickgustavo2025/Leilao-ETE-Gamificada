@@ -1,10 +1,10 @@
 import { useState, useCallback, memo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { HTMLMotionProps } from 'framer-motion';
-import { 
-  User, Shield, Mail, Lock, Camera, Loader2, Crown, 
+import {
+  User, Shield, Mail, Lock, Camera, Loader2, Crown,
   Check, X, TrendingUp, Target, Award, Zap, LogOut,
-  Eye, EyeOff, Key
+  Eye, EyeOff, LockKeyhole, Key, Unlock
 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
@@ -92,8 +92,8 @@ export function Profile() {
   // Estados UI
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<'password' | 'email' | null>(null);
-  const [showPassword, setShowPassword] = useState(false); 
-  
+  const [showPassword, setShowPassword] = useState(false);
+
   // Estados Forms
   const [vipCode, setVipCode] = useState('');
   const [passData, setPassData] = useState({ current: '', new: '', confirm: '' });
@@ -107,8 +107,8 @@ export function Profile() {
     mutationFn: async (croppedBlob: Blob) => {
       const formData = new FormData();
       formData.append('avatar', croppedBlob, 'avatar.jpg');
-      await api.put('/users/avatar', formData, { 
-        headers: { 'Content-Type': 'multipart/form-data' } 
+      await api.put('/users/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
     onSuccess: () => {
@@ -143,9 +143,9 @@ export function Profile() {
   // ========================
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { current: string; newPass: string }) => {
-      await api.put('/auth/change-password', { 
-        senhaAtual: data.current, 
-        novaSenha: data.newPass 
+      await api.put('/auth/change-password', {
+        senhaAtual: data.current,
+        novaSenha: data.newPass
       });
     },
     onSuccess: () => {
@@ -164,9 +164,9 @@ export function Profile() {
   // ========================
   const changeEmailMutation = useMutation({
     mutationFn: async (data: { password: string; newEmail: string }) => {
-      await api.put('/auth/change-email', { 
-        senha: data.password, 
-        novoEmail: data.newEmail 
+      await api.put('/auth/change-email', {
+        senha: data.password,
+        novoEmail: data.newEmail
       });
     },
     onSuccess: () => {
@@ -199,17 +199,17 @@ export function Profile() {
       setError("Senhas não conferem.");
       return;
     }
-    changePasswordMutation.mutate({ 
-      current: passData.current, 
-      newPass: passData.new 
+    changePasswordMutation.mutate({
+      current: passData.current,
+      newPass: passData.new
     });
   };
 
   const handleChangeEmail = (e: React.FormEvent) => {
     e.preventDefault();
-    changeEmailMutation.mutate({ 
-      password: emailData.pass, 
-      newEmail: emailData.newEmail 
+    changeEmailMutation.mutate({
+      password: emailData.pass,
+      newEmail: emailData.newEmail
     });
   };
 
@@ -219,11 +219,19 @@ export function Profile() {
   const currentPoints = user?.maxPcAchieved || 0;
   const currentRank = calculateRank(currentPoints, ranks);
   const rankProgress = calculateRankProgress(currentPoints, ranks);
-  
+
   const nextRankThreshold = rankProgress.isMaxRank ? 'MAX' : (currentPoints + rankProgress.pointsToNext);
 
   const rankIndex = ranks.findIndex((r: any) => r.name === currentRank?.name);
   const userLevel = rankIndex !== -1 ? rankIndex + 1 : 1;
+  const rankSkills = (user?.inventory || []).filter(
+    (i: any) => i.category === 'RANK_SKILL'
+  );
+
+  const rankBadgeKey = currentRank?.name?.toLowerCase();
+  const hasRankBadge = rankBadgeKey
+    ? (user?.cargos || []).some((c: string) => c.toLowerCase() === rankBadgeKey)
+    : false;
 
   const userRoles = (user?.cargos || []).filter((role: string) => ROLE_TRANSLATOR[role]);
 
@@ -231,7 +239,7 @@ export function Profile() {
     { icon: TrendingUp, label: "Máximo PC", value: user?.maxPcAchieved?.toLocaleString() || 0, color: "text-green-400" },
     { icon: Target, label: "Nível", value: userLevel, color: "text-blue-400" },
     { icon: Award, label: "Conquistas", value: userRoles.length, color: "text-yellow-400" },
-    { icon: Zap, label: "Skills", value: user?.inventory?.filter((i:any) => i.category === 'RANK_SKILL').length || 0, color: "text-purple-400" },
+    { icon: Zap, label: "Skills", value: user?.inventory?.filter((i: any) => i.category === 'RANK_SKILL').length || 0, color: "text-purple-400" },
   ];
 
   return (
@@ -245,25 +253,25 @@ export function Profile() {
       </div>
 
       <div className="relative z-10 px-4 py-6 md:pl-28 pt-16 md:pt-8 max-w-5xl mx-auto">
-        
+
         {/* Cartão Principal */}
         <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 mb-8 backdrop-blur-sm shadow-2xl relative overflow-hidden">
           <div className={cn("absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-30 pointer-events-none", currentRank?.color?.replace('text-', 'bg-'))} />
 
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
-            
+
             {/* Avatar */}
             <div className="relative group shrink-0">
               <div className={cn(
                 "w-32 h-32 md:w-40 md:h-40 rounded-full border-4 overflow-hidden bg-black shadow-2xl relative",
                 currentRank?.border || "border-slate-700"
               )}>
-                <img 
-                  src={getImageUrl(user?.avatar)} 
-                  alt="Avatar" 
+                <img
+                  src={getImageUrl(user?.avatar)}
+                  alt="Avatar"
                   className="w-full h-full object-cover"
                 />
-                <button 
+                <button
                   onClick={() => setIsCropperOpen(true)}
                   className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 >
@@ -310,7 +318,7 @@ export function Profile() {
                   <span className={currentRank?.color}>{currentPoints} / {nextRankThreshold} XP</span>
                 </div>
                 <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
-                  <motion.div 
+                  <motion.div
                     className={cn("h-full", currentRank?.color?.replace('text-', 'bg-') || "bg-blue-500")}
                     initial={{ width: 0 }}
                     animate={{ width: `${rankProgress.percentage}%` }}
@@ -325,12 +333,12 @@ export function Profile() {
               {/* Ações Rápidas */}
               <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-2">
                 <button onClick={() => { setError(null); setShowPassword(false); setActiveModal('password'); }} className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700 transition-colors flex items-center gap-2">
-                    <Lock size={12}/> SENHA
+                  <Lock size={12} /> SENHA
                 </button>
                 <button onClick={() => { setError(null); setShowPassword(false); setActiveModal('email'); }} className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] border border-slate-700 transition-colors flex items-center gap-2">
-                    <Mail size={12}/> EMAIL
+                  <Mail size={12} /> EMAIL
                 </button>
-                <button 
+                <button
                   onClick={logout}
                   className="px-3 py-2 rounded-lg bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 font-mono text-[10px] flex items-center gap-2 transition-colors"
                 >
@@ -369,43 +377,116 @@ export function Profile() {
           </div>
         )}
 
+        {/* ── Benefícios de Rank (Passivos) ── */}
+        {rankSkills.length > 0 && (
+          <div className="mb-8">
+            <h3 className="font-press text-xs text-slate-500 uppercase ml-1 mb-3 flex items-center gap-2">
+              <Zap size={12} className="text-purple-400" />
+              Poderes de Rank
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {rankSkills.map((skill: any, idx: number) => {
+                const unlocked = hasRankBadge;
+                return (
+                  <div
+                    key={skill._id || idx}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-xl border transition-all",
+                      unlocked
+                        ? "bg-purple-900/20 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.1)]"
+                        : "bg-slate-900/40 border-slate-800/60 opacity-50 grayscale"
+                    )}
+                  >
+                    {/* Ícone do item */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border text-2xl",
+                      unlocked ? "border-purple-500/40 bg-purple-900/30" : "border-slate-700 bg-slate-800"
+                    )}>
+                      {skill.image
+                        ? <img src={skill.image} alt={skill.name} className="w-8 h-8 object-contain" />
+                        : "⚡"
+                      }
+                    </div>
+
+                    {/* Texto */}
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        "font-vt323 text-lg leading-none truncate",
+                        unlocked ? "text-purple-200" : "text-slate-500"
+                      )}>
+                        {skill.name || "Habilidade de Rank"}
+                      </p>
+                      <p className="font-mono text-[9px] text-slate-500 mt-0.5 truncate">
+                        {skill.descricao || "Benefício passivo do seu rank"}
+                      </p>
+                    </div>
+
+                    {/* Cadeado / Check */}
+                    <div className="shrink-0">
+                      {unlocked ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <Unlock size={16} className="text-purple-400" />
+                          <span className="font-mono text-[8px] text-purple-400">ATIVO</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <LockKeyhole size={16} className="text-slate-600" />
+                          <span className="font-mono text-[8px] text-slate-600">BLOQ.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Aviso contextual se não tiver a badge */}
+            {!hasRankBadge && rankSkills.length > 0 && (
+              <p className="font-mono text-[9px] text-slate-600 mt-3 ml-1 flex items-center gap-2">
+                <LockKeyhole size={10} />
+                Conquiste a badge <span className="text-slate-400 uppercase">{currentRank?.name}</span> para desbloquear estes poderes.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Área VIP */}
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-            <h3 className="font-vt323 text-xl text-yellow-500 mb-4 flex items-center gap-2">
-                <Crown size={18}/> ÁREA VIP
-            </h3>
-            
-            {user?.isVip ? (
-                <div className="bg-gradient-to-r from-yellow-900/40 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-4">
-                    <div className="p-3 bg-yellow-500/20 rounded-full">
-                        <Check size={24} className="text-yellow-400"/>
-                    </div>
-                    <div>
-                        <p className="font-press text-white text-sm">VIP ATIVO</p>
-                        <p className="font-mono text-[10px] text-yellow-200/70">Aproveite seus benefícios exclusivos.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-1 w-full">
-                        <label className="font-mono text-[10px] text-slate-500 mb-1 block">CÓDIGO DE ATIVAÇÃO</label>
-                        <input 
-                            type="text" 
-                            placeholder="DIGITE SEU CÓDIGO..."
-                            value={vipCode}
-                            onChange={(e) => setVipCode(e.target.value.toUpperCase())}
-                            className="w-full bg-black/50 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm focus:border-yellow-500 outline-none uppercase"
-                        />
-                    </div>
-                    <button 
-                        onClick={handleActivateVip}
-                        disabled={activateVipMutation.isPending || !vipCode}
-                        className="w-full md:w-auto px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white rounded-lg font-press text-xs transition-colors flex items-center justify-center gap-2"
-                    >
-                        {activateVipMutation.isPending ? <Loader2 className="animate-spin" size={14}/> : <><Crown size={14}/> ATIVAR</>}
-                    </button>
-                </div>
-            )}
+          <h3 className="font-vt323 text-xl text-yellow-500 mb-4 flex items-center gap-2">
+            <Crown size={18} /> ÁREA VIP
+          </h3>
+
+          {user?.isVip ? (
+            <div className="bg-gradient-to-r from-yellow-900/40 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-4">
+              <div className="p-3 bg-yellow-500/20 rounded-full">
+                <Check size={24} className="text-yellow-400" />
+              </div>
+              <div>
+                <p className="font-press text-white text-sm">VIP ATIVO</p>
+                <p className="font-mono text-[10px] text-yellow-200/70">Aproveite seus benefícios exclusivos.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1 w-full">
+                <label className="font-mono text-[10px] text-slate-500 mb-1 block">CÓDIGO DE ATIVAÇÃO</label>
+                <input
+                  type="text"
+                  placeholder="DIGITE SEU CÓDIGO..."
+                  value={vipCode}
+                  onChange={(e) => setVipCode(e.target.value.toUpperCase())}
+                  className="w-full bg-black/50 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm focus:border-yellow-500 outline-none uppercase"
+                />
+              </div>
+              <button
+                onClick={handleActivateVip}
+                disabled={activateVipMutation.isPending || !vipCode}
+                className="w-full md:w-auto px-6 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white rounded-lg font-press text-xs transition-colors flex items-center justify-center gap-2"
+              >
+                {activateVipMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <><Crown size={14} /> ATIVAR</>}
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
@@ -413,72 +494,72 @@ export function Profile() {
       {/* MODAL: SENHA / EMAIL */}
       <AnimatePresence>
         {activeModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                <motion.div 
-                    initial={{ scale: 0.9, opacity: 0 }} 
-                    animate={{ scale: 1, opacity: 1 }} 
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-sm relative shadow-2xl"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-sm relative shadow-2xl"
+            >
+              <button onClick={() => { setActiveModal(null); setError(null); }} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20} /></button>
+
+              <h2 className="font-press text-white text-lg mb-6 flex items-center gap-2">
+                {activeModal === 'password' ? <><Key size={20} className="text-blue-400" /> SENHA</> : <><Mail size={20} className="text-blue-400" /> EMAIL</>}
+              </h2>
+
+              <form onSubmit={activeModal === 'password' ? handleChangePass : handleChangeEmail} className="space-y-4">
+                {activeModal === 'password' ? (
+                  <>
+                    <input type="password" placeholder="Senha Atual" required value={passData.current} onChange={e => setPassData({ ...passData, current: e.target.value })} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500" />
+
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Nova Senha"
+                        required
+                        value={passData.new}
+                        onChange={e => setPassData({ ...passData, new: e.target.value })}
+                        className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500 pr-10"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    <input type="password" placeholder="Confirmar Senha" required value={passData.confirm} onChange={e => setPassData({ ...passData, confirm: e.target.value })} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500" />
+                  </>
+                ) : (
+                  <>
+                    <input type="password" placeholder="Senha Atual (Confirmação)" required value={emailData.pass} onChange={e => setEmailData({ ...emailData, pass: e.target.value })} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500" />
+                    <input type="email" placeholder="Novo Email" required value={emailData.newEmail} onChange={e => setEmailData({ ...emailData, newEmail: e.target.value })} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500" />
+                  </>
+                )}
+
+                {error && (
+                  <div className="text-red-400 text-xs font-mono flex items-center gap-2 bg-red-900/20 p-2 rounded">
+                    <X size={12} /> {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={activeModal === 'password' ? changePasswordMutation.isPending : changeEmailMutation.isPending}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-press text-xs flex items-center justify-center gap-2"
                 >
-                    <button onClick={() => { setActiveModal(null); setError(null); }} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
-                    
-                    <h2 className="font-press text-white text-lg mb-6 flex items-center gap-2">
-                        {activeModal === 'password' ? <><Key size={20} className="text-blue-400"/> SENHA</> : <><Mail size={20} className="text-blue-400"/> EMAIL</>}
-                    </h2>
-
-                    <form onSubmit={activeModal === 'password' ? handleChangePass : handleChangeEmail} className="space-y-4">
-                        {activeModal === 'password' ? (
-                            <>
-                                <input type="password" placeholder="Senha Atual" required value={passData.current} onChange={e => setPassData({...passData, current: e.target.value})} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500"/>
-                                
-                                <div className="relative">
-                                  <input 
-                                    type={showPassword ? "text" : "password"} 
-                                    placeholder="Nova Senha" 
-                                    required 
-                                    value={passData.new} 
-                                    onChange={e => setPassData({...passData, new: e.target.value})} 
-                                    className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500 pr-10"
-                                  />
-                                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
-                                    {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
-                                  </button>
-                                </div>
-
-                                <input type="password" placeholder="Confirmar Senha" required value={passData.confirm} onChange={e => setPassData({...passData, confirm: e.target.value})} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500"/>
-                            </>
-                        ) : (
-                            <>
-                                <input type="password" placeholder="Senha Atual (Confirmação)" required value={emailData.pass} onChange={e => setEmailData({...emailData, pass: e.target.value})} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500"/>
-                                <input type="email" placeholder="Novo Email" required value={emailData.newEmail} onChange={e => setEmailData({...emailData, newEmail: e.target.value})} className="w-full bg-black/50 border border-slate-700 p-3 rounded text-white outline-none focus:border-blue-500"/>
-                            </>
-                        )}
-
-                        {error && (
-                          <div className="text-red-400 text-xs font-mono flex items-center gap-2 bg-red-900/20 p-2 rounded">
-                            <X size={12} /> {error}
-                          </div>
-                        )}
-                        
-                        <button 
-                          type="submit" 
-                          disabled={activeModal === 'password' ? changePasswordMutation.isPending : changeEmailMutation.isPending} 
-                          className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-press text-xs flex items-center justify-center gap-2"
-                        >
-                            {(activeModal === 'password' ? changePasswordMutation.isPending : changeEmailMutation.isPending) 
-                              ? <Loader2 className="animate-spin" size={16}/> 
-                              : 'SALVAR ALTERAÇÕES'}
-                        </button>
-                    </form>
-                </motion.div>
-            </div>
+                  {(activeModal === 'password' ? changePasswordMutation.isPending : changeEmailMutation.isPending)
+                    ? <Loader2 className="animate-spin" size={16} />
+                    : 'SALVAR ALTERAÇÕES'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      <AvatarCropper 
-        isOpen={isCropperOpen} 
-        onClose={() => setIsCropperOpen(false)} 
-        onSave={handleSaveAvatar} 
+      <AvatarCropper
+        isOpen={isCropperOpen}
+        onClose={() => setIsCropperOpen(false)}
+        onSave={handleSaveAvatar}
       />
     </div>
   );

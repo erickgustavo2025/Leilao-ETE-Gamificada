@@ -48,43 +48,46 @@ module.exports = {
         }
     },
 
-    // 📝 2. FINALIZAR CADASTRO
-    async register(req, res) {
+  // 📝 2. FINALIZAR CADASTRO
+async register(req, res) {
+    try {
+        const { id, email, senha, nickname } = req.body;
+
+        const user = await User.findById(id);
+
+        if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
+        if (!user.isFirstAccess) return res.status(400).json({ message: 'Conta já registrada.' });
+        if (await User.findOne({ email })) return res.status(400).json({ message: 'Email já está em uso.' });
+
+        user.email = email;
+        user.isFirstAccess = false;
+        // ✅ CORREÇÃO: Atribui em texto puro. O hook pre('save') do User.js
+        // detecta a modificação e faz o bcrypt.hash automaticamente.
+        // Padrão idêntico ao usado em changePassword().
+        user.senha = senha;
+        if (nickname) user.nome = nickname;
+        await user.save();
+
         try {
-            const { id, email, senha, nickname } = req.body;
-
-            const user = await User.findById(id);
-
-            if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
-            if (!user.isFirstAccess) return res.status(400).json({ message: 'Conta já registrada.' });
-            if (await User.findOne({ email })) return res.status(400).json({ message: 'Email já está em uso.' });
-
-            user.email = email;
-            user.isFirstAccess = false;
-	    user.senha = await bcrypt.hash(senha, salt);
-            if (nickname) user.nickname = nickname;
-            await user.save();
-
-            try {
-                await logSystem(user._id, 'REGISTER_SUCCESS', `Ativou a conta (${user.matricula})`, req);
-            } catch (logErr) {
-                console.log("Erro ao gerar log, mas seguindo o baile...");
-            }
-
-            const token = generateToken(user._id, user.role);
-
-            const safeUser = user.toObject();
-            safeUser.senha = undefined;
-            safeUser.inventory = safeUser.inventory || [];
-            safeUser.activeBuffs = safeUser.activeBuffs || [];
-
-            res.status(201).json({ token, user: safeUser });
-
-        } catch (error) {
-            console.error("Erro no Register:", error);
-            res.status(500).json({ message: 'Erro ao registrar', error: error.message });
+            await logSystem(user._id, 'REGISTER_SUCCESS', `Ativou a conta (${user.matricula})`, req);
+        } catch (logErr) {
+            console.log("Erro ao gerar log, mas seguindo o baile...");
         }
-    },
+
+        const token = generateToken(user._id, user.role);
+
+        const safeUser = user.toObject();
+        safeUser.senha = undefined;
+        safeUser.inventory = safeUser.inventory || [];
+        safeUser.activeBuffs = safeUser.activeBuffs || [];
+
+        res.status(201).json({ token, user: safeUser });
+
+    } catch (error) {
+        console.error("Erro no Register:", error);
+        res.status(500).json({ message: 'Erro ao registrar', error: error.message });
+    }
+},
 
     // 🔑 3. LOGIN UNIFICADO
     async login(req, res) {
