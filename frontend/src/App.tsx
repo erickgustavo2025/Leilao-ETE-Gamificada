@@ -22,59 +22,62 @@ const queryClient = new QueryClient({
   },
 });
 
-const LandingPage     = lazy(() => import('./pages/public/home').then(m => ({ default: m.LandingPage })));
-const LoginSelection  = lazy(() => import('./pages/public/LoginSelection').then(m => ({ default: m.LoginSelection })));
-const RoleLogin       = lazy(() => import('./pages/public/RoleLogin').then(m => ({ default: m.RoleLogin })));
-const FirstAccess     = lazy(() => import('./pages/public/FirstAccess').then(m => ({ default: m.FirstAccess })));
-const Maintenance     = lazy(() => import('./pages/public/Maintenance').then(m => ({ default: m.Maintenance })));
-const ForgotPassword  = lazy(() => import('./pages/public/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
-const ResetPassword   = lazy(() => import('./pages/public/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const LandingPage = lazy(() => import('./pages/public/home').then(m => ({ default: m.LandingPage })));
+const LoginSelection = lazy(() => import('./pages/public/LoginSelection').then(m => ({ default: m.LoginSelection })));
+const RoleLogin = lazy(() => import('./pages/public/RoleLogin').then(m => ({ default: m.RoleLogin })));
+const FirstAccess = lazy(() => import('./pages/public/FirstAccess').then(m => ({ default: m.FirstAccess })));
+const Maintenance = lazy(() => import('./pages/public/Maintenance').then(m => ({ default: m.Maintenance })));
+const ForgotPassword = lazy(() => import('./pages/public/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('./pages/public/ResetPassword').then(m => ({ default: m.ResetPassword })));
 
 const DashboardHome = lazy(() => import('./pages/dashboard/DashboardHome').then(m => ({ default: m.DashboardHome })));
-const Ranking       = lazy(() => import('./pages/dashboard/Ranking').then(m => ({ default: m.Ranking })));
-const Mochila       = lazy(() => import('./pages/dashboard/Mochila').then(m => ({ default: m.Mochila })));
-const Loja          = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m.Loja })));
-const Leilao        = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
+const Ranking = lazy(() => import('./pages/dashboard/Ranking').then(m => ({ default: m.Ranking })));
+const Mochila = lazy(() => import('./pages/dashboard/Mochila').then(m => ({ default: m.Mochila })));
+const Loja = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m.Loja })));
+const Leilao = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
 
-const Marketplace   = lazy(() => import('./pages/dashboard/Marketplace').then(m => ({ default: m.Marketplace })));
-const Profile       = lazy(() => import('./pages/dashboard/Profile').then(m => ({ default: m.Profile })));
-const Banco         = lazy(() => import('./pages/dashboard/Banco').then(m => ({ default: m.Banco })));
-const Gifts         = lazy(() => import('./pages/dashboard/Gifts').then(m => ({ default: m.Gifts })));
-const WikiMap       = lazy(() => import('./pages/dashboard/WikiMap').then(m => ({ default: m.WikiMap })));
+const QuestBoard = lazy(() => import('./pages/dashboard/QuestBoard').then(m => ({ default: m.QuestBoard })));
+const Regulations = lazy(() => import('./pages/dashboard/Regulations').then(m => ({ default: m.Regulations })));
 
-const HouseCupHub  = lazy(() => import('./pages/dashboard/taca-das-casas').then(m => ({ default: m.HouseCupHub })));
+const Marketplace = lazy(() => import('./pages/dashboard/Marketplace').then(m => ({ default: m.Marketplace })));
+const Profile = lazy(() => import('./pages/dashboard/Profile').then(m => ({ default: m.Profile })));
+const Banco = lazy(() => import('./pages/dashboard/Banco').then(m => ({ default: m.Banco })));
+const Gifts = lazy(() => import('./pages/dashboard/Gifts').then(m => ({ default: m.Gifts })));
+const WikiMap = lazy(() => import('./pages/dashboard/WikiMap').then(m => ({ default: m.WikiMap })));
+
+const HouseCupHub = lazy(() => import('./pages/dashboard/taca-das-casas').then(m => ({ default: m.HouseCupHub })));
 const BecoDiagonal = lazy(() => import('./pages/dashboard/taca-das-casas/pages/BecoDiagonal').then(m => ({ default: m.BecoDiagonal })));
-const MochilaSala  = lazy(() => import('./pages/dashboard/taca-das-casas/pages/MochilaSala').then(m => ({ default: m.MochilaSala })));
-const Punicoes     = lazy(() => import('./pages/dashboard/taca-das-casas/pages/Punicoes').then(m => ({ default: m.Punicoes })));
-const Historico    = lazy(() => import('./pages/dashboard/taca-das-casas/pages/Historico').then(m => ({ default: m.Historico })));
+const MochilaSala = lazy(() => import('./pages/dashboard/taca-das-casas/pages/MochilaSala').then(m => ({ default: m.MochilaSala })));
+const Punicoes = lazy(() => import('./pages/dashboard/taca-das-casas/pages/Punicoes').then(m => ({ default: m.Punicoes })));
+const Historico = lazy(() => import('./pages/dashboard/taca-das-casas/pages/Historico').then(m => ({ default: m.Historico })));
 const LinhaDoTempo = lazy(() => import('./pages/dashboard/taca-das-casas/pages/LinhaDoTempo').then(m => ({ default: m.LinhaDoTempo })));
 
 const MonitorDashboard = lazy(() => import('./pages/monitor/MonitorDashboard').then(m => ({ default: m.MonitorDashboard })));
-const MonitorLayout    = lazy(() => import('./components/layout/MonitorLayout').then(m => ({ default: m.MonitorLayout })));
-const MonitorHistory   = lazy(() => import('./pages/monitor/MonitorHistory').then(m => ({ default: m.MonitorHistory })));
-const MonitorScanner   = lazy(() => import('./pages/monitor/MonitorScanner').then(m => ({ default: m.MonitorScanner })));
+const MonitorLayout = lazy(() => import('./components/layout/MonitorLayout').then(m => ({ default: m.MonitorLayout })));
+const MonitorHistory = lazy(() => import('./pages/monitor/MonitorHistory').then(m => ({ default: m.MonitorHistory })));
+const MonitorScanner = lazy(() => import('./pages/monitor/MonitorScanner').then(m => ({ default: m.MonitorScanner })));
 
-import { ArmadaLogin }   from './pages/armada/ArmadaLogin';
+import { ArmadaLogin } from './pages/armada/ArmadaLogin';
 import { ArmadaScanner } from './pages/armada/ArmadaScanner';
 const ComingSoon = lazy(() => import('./pages/ComingSoon').then(m => ({ default: m.ComingSoon })));
 
-const DevLayout    = lazy(() => import('./components/layout/DevLayout').then(m => ({ default: m.DevLayout })));
+const DevLayout = lazy(() => import('./components/layout/DevLayout').then(m => ({ default: m.DevLayout })));
 const DevDashboard = lazy(() => import('./pages/dev/DevDashboard').then(m => ({ default: m.DevDashboard })));
 const FeedbackList = lazy(() => import('./pages/dev/FeedbackList').then(m => ({ default: m.FeedbackList })));
-const DevUsers     = lazy(() => import('./pages/dev/DevUsers').then(m => ({ default: m.DevUsers })));
+const DevUsers = lazy(() => import('./pages/dev/DevUsers').then(m => ({ default: m.DevUsers })));
 
-const AdminClasses     = lazy(() => import('./pages/admin/AdminClasses').then(m => ({ default: m.AdminClasses })));
-const AdminStore       = lazy(() => import('./pages/admin/AdminStore').then(m => ({ default: m.AdminStore })));
-const AdminUsers       = lazy(() => import('./pages/admin/AdminUsers').then(m => ({ default: m.AdminUsers })));
-const AdminLogs        = lazy(() => import('./pages/admin/AdminLogs').then(m => ({ default: m.AdminLogs })));
-const AdminAuctions    = lazy(() => import('./pages/admin/AdminAuctions').then(m => ({ default: m.AdminAuctions })));
-const AdminScanner     = lazy(() => import('./pages/admin/AdminScanner').then(m => ({ default: m.AdminScanner })));
-const AdminGifts       = lazy(() => import('./pages/admin/AdminGifts').then(m => ({ default: m.AdminGifts })));
-const AdminConfig      = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ default: m.AdminConfig })));
-const AdminImages      = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
+const AdminClasses = lazy(() => import('./pages/admin/AdminClasses').then(m => ({ default: m.AdminClasses })));
+const AdminStore = lazy(() => import('./pages/admin/AdminStore').then(m => ({ default: m.AdminStore })));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers').then(m => ({ default: m.AdminUsers })));
+const AdminLogs = lazy(() => import('./pages/admin/AdminLogs').then(m => ({ default: m.AdminLogs })));
+const AdminAuctions = lazy(() => import('./pages/admin/AdminAuctions').then(m => ({ default: m.AdminAuctions })));
+const AdminScanner = lazy(() => import('./pages/admin/AdminScanner').then(m => ({ default: m.AdminScanner })));
+const AdminGifts = lazy(() => import('./pages/admin/AdminGifts').then(m => ({ default: m.AdminGifts })));
+const AdminConfig = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ default: m.AdminConfig })));
+const AdminImages = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
 
-const AdminHouse       = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
+const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
 
 // ─────────────────────────────────────────────────────────────
 // Tipos auxiliares
@@ -103,10 +106,10 @@ const LAST_PATH_KEY = '@ETEGamificada:lastPath';
 
 function getDashboardByRole(role?: string): string {
   switch (role) {
-    case 'dev':     return '/dev';
-    case 'admin':   return '/admin/classes';
+    case 'dev': return '/dev';
+    case 'admin': return '/admin/classes';
     case 'monitor': return '/monitor';
-    default:        return '/dashboard';
+    default: return '/dashboard';
   }
 }
 
@@ -352,15 +355,15 @@ function AppContent() {
     if (!config) return;
 
     const isMaintenance = config.maintenanceMode === true;
-    const isLockdown    = config.lockdownMode === true;
+    const isLockdown = config.lockdownMode === true;
 
     const typedUser = user as UserData | undefined;
-    const role   = typedUser?.role;
+    const role = typedUser?.role;
     const cargos = typedUser?.cargos ?? [];
-    const isDev   = role === 'dev'   || cargos.includes('dev');
+    const isDev = role === 'dev' || cargos.includes('dev');
     const isAdmin = role === 'admin' || cargos.includes('admin') || isDev;
 
-    const isLoginPath      = location.pathname.startsWith('/login');
+    const isLoginPath = location.pathname.startsWith('/login');
     const isMaintenancePath = location.pathname === '/maintenance';
 
     if (isLockdown && !isDev) {
@@ -407,32 +410,36 @@ function AppContent() {
         <AnimatePresence mode='wait'>
           <Routes location={location} key={location.pathname}>
 
-            <Route path="/"               element={<PublicRoute><LandingPage /></PublicRoute>} />
-            <Route path="/login"          element={<PublicRoute><LoginSelection /></PublicRoute>} />
-            <Route path="/login/:role"    element={<PublicRoute><RoleLogin /></PublicRoute>} />
+            <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><LoginSelection /></PublicRoute>} />
+            <Route path="/login/:role" element={<PublicRoute><RoleLogin /></PublicRoute>} />
 
-            <Route path="/first-access"    element={<FirstAccess />} />
+            <Route path="/first-access" element={<FirstAccess />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password"  element={<ResetPassword />} />
-            <Route path="/maintenance"     element={<Maintenance />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/maintenance" element={<Maintenance />} />
 
-            <Route path="/dashboard"       element={<PrivateRoute><DashboardHome /></PrivateRoute>} />
-            <Route path="/ranking"         element={<PrivateRoute><Ranking /></PrivateRoute>} />
-            <Route path="/mochila"         element={<PrivateRoute><Mochila /></PrivateRoute>} />
-            <Route path="/loja"            element={<PrivateRoute><Loja /></PrivateRoute>} />
-            <Route path="/leilao"          element={<PrivateRoute><Leilao /></PrivateRoute>} />
-            <Route path="/market"          element={<PrivateRoute><Marketplace /></PrivateRoute>} />
-            <Route path="/perfil"          element={<PrivateRoute><Profile /></PrivateRoute>} />
-            <Route path="/banco"           element={<PrivateRoute><Banco /></PrivateRoute>} />
+            <Route path="/dashboard" element={<PrivateRoute><DashboardHome /></PrivateRoute>} />
+            <Route path="/ranking" element={<PrivateRoute><Ranking /></PrivateRoute>} />
+            <Route path="/mochila" element={<PrivateRoute><Mochila /></PrivateRoute>} />
+            <Route path="/loja" element={<PrivateRoute><Loja /></PrivateRoute>} />
+            <Route path="/leilao" element={<PrivateRoute><Leilao /></PrivateRoute>} />
+            <Route path="/market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
+
+            <Route path="/missoes" element={<PrivateRoute><QuestBoard /></PrivateRoute>} />
+            <Route path="/regulamentos" element={<PrivateRoute><Regulations /></PrivateRoute>} />
+
+            <Route path="/perfil" element={<PrivateRoute><Profile /></PrivateRoute>} />
+            <Route path="/banco" element={<PrivateRoute><Banco /></PrivateRoute>} />
             <Route path="/dashboard/gifts" element={<PrivateRoute><Gifts /></PrivateRoute>} />
-            <Route path="/manual"          element={<PrivateRoute><WikiMap /></PrivateRoute>} />
+            <Route path="/manual" element={<PrivateRoute><WikiMap /></PrivateRoute>} />
 
-            <Route path="/taca-das-casas"                   element={<PrivateRoute><HouseCupHub /></PrivateRoute>} />
-            <Route path="/taca-das-casas/beco-diagonal"     element={<PrivateRoute><BecoDiagonal /></PrivateRoute>} />
-            <Route path="/taca-das-casas/mochila"           element={<PrivateRoute><MochilaSala /></PrivateRoute>} />
-            <Route path="/taca-das-casas/punicoes"          element={<PrivateRoute><Punicoes /></PrivateRoute>} />
-            <Route path="/taca-das-casas/historico"         element={<PrivateRoute><Historico /></PrivateRoute>} />
-            <Route path="/taca-das-casas/linha-do-tempo"    element={<PrivateRoute><LinhaDoTempo /></PrivateRoute>} />
+            <Route path="/taca-das-casas" element={<PrivateRoute><HouseCupHub /></PrivateRoute>} />
+            <Route path="/taca-das-casas/beco-diagonal" element={<PrivateRoute><BecoDiagonal /></PrivateRoute>} />
+            <Route path="/taca-das-casas/mochila" element={<PrivateRoute><MochilaSala /></PrivateRoute>} />
+            <Route path="/taca-das-casas/punicoes" element={<PrivateRoute><Punicoes /></PrivateRoute>} />
+            <Route path="/taca-das-casas/historico" element={<PrivateRoute><Historico /></PrivateRoute>} />
+            <Route path="/taca-das-casas/linha-do-tempo" element={<PrivateRoute><LinhaDoTempo /></PrivateRoute>} />
 
             <Route path="/dev" element={<PrivateRoute roles={['dev', 'admin']}><DevLayout /></PrivateRoute>}>
               <Route index element={<DevDashboard />} />
@@ -446,22 +453,22 @@ function AppContent() {
               <Route path="history" element={<MonitorHistory />} />
             </Route>
 
-            <Route path="/armada/login"    element={<ArmadaLogin />} />
-            <Route path="/armada/scanner"  element={<PrivateRoute><ArmadaScanner /></PrivateRoute>} />
-            <Route path="/coming-soon"     element={<ComingSoon />} />
+            <Route path="/armada/login" element={<ArmadaLogin />} />
+            <Route path="/armada/scanner" element={<PrivateRoute><ArmadaScanner /></PrivateRoute>} />
+            <Route path="/coming-soon" element={<ComingSoon />} />
 
             <Route path="/admin" element={<Navigate to="/admin/classes" replace />} />
-            <Route path="/admin/classes"     element={<PrivateRoute roles={['admin']}><AdminClasses /></PrivateRoute>} />
-            <Route path="/admin/store"       element={<PrivateRoute roles={['admin']}><AdminStore /></PrivateRoute>} />
-            <Route path="/admin/users"       element={<PrivateRoute roles={['admin']}><AdminUsers /></PrivateRoute>} />
-            <Route path="/admin/auctions"    element={<PrivateRoute roles={['admin']}><AdminAuctions /></PrivateRoute>} />
-            <Route path="/admin/scanner"     element={<PrivateRoute roles={['admin']}><AdminScanner /></PrivateRoute>} />
-            <Route path="/admin/logs"        element={<PrivateRoute roles={['admin']}><AdminLogs /></PrivateRoute>} />
-            <Route path="/admin/gifts"       element={<PrivateRoute roles={['admin']}><AdminGifts /></PrivateRoute>} />
-            <Route path="/admin/config"      element={<PrivateRoute roles={['admin']}><AdminConfig /></PrivateRoute>} />
-            <Route path="/admin/images"      element={<PrivateRoute roles={['admin']}><AdminImages /></PrivateRoute>} />
+            <Route path="/admin/classes" element={<PrivateRoute roles={['admin']}><AdminClasses /></PrivateRoute>} />
+            <Route path="/admin/store" element={<PrivateRoute roles={['admin']}><AdminStore /></PrivateRoute>} />
+            <Route path="/admin/users" element={<PrivateRoute roles={['admin']}><AdminUsers /></PrivateRoute>} />
+            <Route path="/admin/auctions" element={<PrivateRoute roles={['admin']}><AdminAuctions /></PrivateRoute>} />
+            <Route path="/admin/scanner" element={<PrivateRoute roles={['admin']}><AdminScanner /></PrivateRoute>} />
+            <Route path="/admin/logs" element={<PrivateRoute roles={['admin']}><AdminLogs /></PrivateRoute>} />
+            <Route path="/admin/gifts" element={<PrivateRoute roles={['admin']}><AdminGifts /></PrivateRoute>} />
+            <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfig /></PrivateRoute>} />
+            <Route path="/admin/images" element={<PrivateRoute roles={['admin']}><AdminImages /></PrivateRoute>} />
             <Route path="/admin/punishments" element={<PrivateRoute roles={['admin']}><AdminPunishments /></PrivateRoute>} />
-            <Route path="/admin/house"       element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
+            <Route path="/admin/house" element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

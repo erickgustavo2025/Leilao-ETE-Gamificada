@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Gift, Landmark, LogOut, Store, ShoppingBag, Backpack,
   Trophy, User, Calendar, Gavel, BookOpen, ArrowRightLeft,
-  MessageSquare, GraduationCap, Loader2
+  MessageSquare, GraduationCap, Loader2, Scroll
 } from 'lucide-react';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { PageTransition } from '../../components/layout/PageTransition';
@@ -23,7 +23,7 @@ const FeedbackModal = lazy(() => import('../../components/features/FeedbackModal
 export function DashboardHome() {
   const { user, logout, ranks, refreshUser } = useAuth();
   const navigate = useNavigate();
-  
+
   // Estado para controlar o carregamento inicial dos dados
   const [isRefreshing, setIsRefreshing] = useState(true);
 
@@ -34,19 +34,19 @@ export function DashboardHome() {
     feedback: false,
     events: false
   });
-  
+
   const [tradeTarget, setTradeTarget] = useState<any>(null);
 
   // 🔥 EFEITO DE CARREGAMENTO BLINDADO
   useEffect(() => {
     let mounted = true;
-    
+
     // 1. Cria um "Cronômetro de Segurança"
     // Se o backend estiver dormindo ou a rede travar, em 3 segundos nós forçamos a tela a abrir.
     const safetyTimer = setTimeout(() => {
       if (mounted) {
         console.warn("⚠️ Timeout: Backend demorou demais. Liberando acesso com dados locais.");
-        setIsRefreshing(false); 
+        setIsRefreshing(false);
       }
     }, 3000); // 3000ms = 3 segundos
 
@@ -66,7 +66,7 @@ export function DashboardHome() {
     loadData();
 
     // Limpeza de memória se o usuário sair da tela antes de terminar
-    return () => { 
+    return () => {
       mounted = false;
       clearTimeout(safetyTimer);
     };
@@ -104,8 +104,8 @@ export function DashboardHome() {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 animate-pulse">
-           <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-           <p className="font-press text-xs text-blue-400">Sincronizando...</p>
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+          <p className="font-press text-xs text-blue-400">Sincronizando...</p>
         </div>
       </div>
     );
@@ -120,7 +120,7 @@ export function DashboardHome() {
         { label: "BANCO GERAL", icon: Landmark, color: "text-yellow-300", desc: "Extratos e Poupança", path: "/banco" },
         { label: "CASA DE LEILÕES", icon: Gavel, color: "text-amber-500", desc: "Itens raros", path: "/leilao" },
         { label: "MOCHILA", icon: Backpack, color: "text-yellow-400", desc: "Seu inventário", path: "/mochila" },
-        {label: "MERCADO PÚBLICO", icon: Store, color: "text-red-400", desc: "Coloque os Seus Itens à Venda", path: "/market"},
+        { label: "MERCADO PÚBLICO", icon: Store, color: "text-red-400", desc: "Coloque os Seus Itens à Venda", path: "/market" },
         { label: "FAZER PIX", icon: ArrowRightLeft, color: "text-green-400", desc: "Transferir PC$", action: () => toggleModal('transfer', true) },
         { label: "MERCADO DE NOTAS", icon: BookOpen, color: "text-indigo-400", desc: "Troque PC$ por Nota", path: "/coming-soon?module=NOTAS" },
         { label: "TROCAR (TRADE)", icon: ShoppingBag, color: "text-purple-400", desc: "Negociar itens", action: () => toggleModal('userSelect', true) }
@@ -130,6 +130,7 @@ export function DashboardHome() {
       title: "ATIVIDADES & RANK",
       items: [
         { label: "HUB DE EVENTOS", icon: Calendar, color: "text-yellow-500", desc: "Taça, Intergil & Gincanas", action: () => toggleModal('events', true) },
+        { label: "MISSOES", icon: Scroll, color: "text-purple-400", desc: "Campanha e Side Quests", path: "/missoes" },
         { label: "MEUS PRESENTES", icon: Gift, color: "text-pink-500", desc: "Itens recebidos", path: "/dashboard/gifts" },
         { label: "RANKING GERAL", icon: Trophy, color: "text-orange-400", desc: "Top Global", path: "/ranking" },
         { label: "RANKING EGRESSOS", icon: GraduationCap, color: "text-violet-400", desc: "Lendas da Escola", path: "/coming-soon?module=EGRESSOS" },
@@ -140,7 +141,8 @@ export function DashboardHome() {
       items: [
         { label: "PERFIL", icon: User, color: "text-cyan-400", desc: "Seus dados", path: "/perfil" },
         { label: "MANUAL DO SISTEMA", icon: BookOpen, color: "text-slate-300", desc: "Wiki & Tutoriais", path: "/manual" },
-        { label: "FEEDBACK / BUGS", icon: MessageSquare, color: "text-pink-400", desc: "Ajude a melhorar", action: () => toggleModal('feedback', true) }
+        { label: "FEEDBACK / BUGS", icon: MessageSquare, color: "text-pink-400", desc: "Ajude a melhorar", action: () => toggleModal('feedback', true) },
+        { label: "REGULAMENTOS", icon: BookOpen, color: "text-cyan-400", desc: "Poderes por Professor", path: "/regulamentos" },
       ]
     }
   ];
@@ -151,10 +153,10 @@ export function DashboardHome() {
 
         {/* Fundo Otimizado (Radial Gradient leve) */}
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full" 
-               style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.3) 0%, rgba(0,0,0,0) 70%)' }} />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full" 
-               style={{ background: 'radial-gradient(circle, rgba(30,58,138,0.3) 0%, rgba(0,0,0,0) 70%)' }} />
+          <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(88,28,135,0.3) 0%, rgba(0,0,0,0) 70%)' }} />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(30,58,138,0.3) 0%, rgba(0,0,0,0) 70%)' }} />
         </div>
 
         <div className="md:pl-28 pt-16 md:pt-4 mb-8 relative z-10">

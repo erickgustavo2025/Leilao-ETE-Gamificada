@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookOpen, ChevronDown, CheckCircle2, XCircle,
     Shield, Zap, Lock, Search, User, Scroll,
-    Sparkles, Star, Info, ChevronRight
+     Star, Info,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateRank } from '../../utils/rankHelper';
@@ -214,7 +214,7 @@ export function Regulations() {
 
     const userPoints = user?.maxPcAchieved || 0;
     const currentRank = calculateRank(userPoints, ranks);
-    const userRankIndex = ranks.findIndex((r: any) => r.id === currentRank?.id);
+    const userRankIndex = ranks.findIndex((r: any) => r.name?.toUpperCase() === currentRank?.name?.toUpperCase());
 
     // 🔌 BACKEND: Substituir por useQuery
     const teachers = MOCK_TEACHERS;
@@ -264,11 +264,11 @@ export function Regulations() {
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             'flex items-center gap-2 px-3 py-1.5 rounded-xl border',
-                            RANK_STYLE[currentRank?.id || 'INICIANTE']?.border || 'border-slate-600',
-                        )} style={{ background: `${RANK_STYLE[currentRank?.id || 'INICIANTE']?.glow || '#94a3b8'}10` }}>
-                            <Star size={12} className={RANK_STYLE[currentRank?.id || 'INICIANTE']?.color} />
+                            RANK_STYLE[currentRank?.name?.toUpperCase() || 'INICIANTE']?.border || 'border-slate-600',
+                        )} style={{ background: `${RANK_STYLE[currentRank?.name?.toUpperCase() || 'INICIANTE']?.glow || '#94a3b8'}10` }}>
+                            <Star size={12} className={RANK_STYLE[currentRank?.name?.toUpperCase() || 'INICIANTE']?.color} />
                             {/* COM ACENTO → font-vt323 */}
-                            <span className={cn('font-vt323 text-lg', RANK_STYLE[currentRank?.id || 'INICIANTE']?.color)}>
+                            <span className={cn('font-vt323 text-lg', RANK_STYLE[currentRank?.name?.toUpperCase() || 'INICIANTE']?.color)}>
                                 Seu rank: {currentRank?.name}
                             </span>
                         </div>

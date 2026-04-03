@@ -2,18 +2,18 @@
 // ─────────────────────────────────────────────────────
 // TODO BACKEND: Conectar as funções marcadas com 🔌
 // ─────────────────────────────────────────────────────
-import { useState, useRef } from 'react';
+import { useState, } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Shield, Lock, CheckCircle2, Sword, Star, Zap,
+    Lock, CheckCircle2, Sword, Star, Zap,
     Clock, Calendar, Trophy, ChevronRight, X, Eye,
-    EyeOff, Loader2, Flame, Gem, Crown, Scroll,
+    EyeOff, Loader2, Flame, Crown, Scroll,
     BookOpen, Target, Gift
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { calculateRank } from '../../utils/rankHelper';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
+import { api } from '../../api/axios-config';
 
 // ─────────────────────────────────────────────────────
 // TIPOS
@@ -171,9 +171,9 @@ function timeLeft(iso: string): string {
 }
 
 const TYPE_CONFIG: Record<SecondaryType, { label: string; icon: any; color: string; bg: string }> = {
-    daily:  { label: 'DIARIA',   icon: Clock,    color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/30' },
-    weekly: { label: 'SEMANAL',  icon: Calendar, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30' },
-    event:  { label: 'EVENTO',   icon: Flame,    color: 'text-rose-400',   bg: 'bg-rose-500/10 border-rose-500/30' },
+    daily: { label: 'DIARIA', icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
+    weekly: { label: 'SEMANAL', icon: Calendar, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30' },
+    event: { label: 'EVENTO', icon: Flame, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' },
 };
 
 // ─────────────────────────────────────────────────────
@@ -314,8 +314,8 @@ function CampaignCard({
             className={cn(
                 'rounded-2xl border-2 overflow-hidden transition-all duration-300',
                 isCompleted ? `${quest.border} opacity-70` :
-                isUnlocked  ? quest.border :
-                              'border-slate-800 opacity-50 grayscale',
+                    isUnlocked ? quest.border :
+                        'border-slate-800 opacity-50 grayscale',
                 !isCompleted && isUnlocked && 'ring-2 ring-offset-1 ring-offset-transparent',
             )}
             style={{
@@ -336,8 +336,8 @@ function CampaignCard({
                     className={cn(
                         'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 border',
                         isCompleted ? `${quest.border} bg-black/40` :
-                        isUnlocked  ? `${quest.border} bg-black/60` :
-                                      'border-slate-800 bg-black/40'
+                            isUnlocked ? `${quest.border} bg-black/60` :
+                                'border-slate-800 bg-black/40'
                     )}
                     style={{ boxShadow: isUnlocked ? `inset 0 0 12px ${quest.glow}30` : undefined }}
                 >
@@ -353,8 +353,8 @@ function CampaignCard({
                         <span className={cn(
                             'px-1.5 py-0.5 rounded font-press text-[7px] border',
                             isCompleted ? 'border-green-600/50 text-green-400 bg-green-900/20' :
-                            isUnlocked  ? 'border-yellow-500/50 text-yellow-400 bg-yellow-900/20' :
-                                          'border-slate-700 text-slate-600 bg-slate-900'
+                                isUnlocked ? 'border-yellow-500/50 text-yellow-400 bg-yellow-900/20' :
+                                    'border-slate-700 text-slate-600 bg-slate-900'
                         )}>
                             {isCompleted ? 'CONCLUIDA' : isUnlocked ? 'DISPONIVEL' : 'BLOQUEADA'}
                         </span>
@@ -402,7 +402,7 @@ function CampaignCard({
                                             `border-opacity-40 bg-opacity-10`,
                                             quest.border, quest.color,
                                         )}
-                                        style={{ backgroundColor: `${quest.glow}15` }}>
+                                            style={{ backgroundColor: `${quest.glow}15` }}>
                                             {p.replace(/_/g, ' ')}
                                         </span>
                                     ))}
@@ -466,9 +466,9 @@ function SideQuestCard({
             transition={{ delay, type: 'spring', damping: 22 }}
             className={cn(
                 'rounded-2xl border overflow-hidden transition-all',
-                isDone    ? 'border-green-700/40 bg-green-950/20 opacity-60' :
-                isPending ? 'border-blue-500/40 bg-blue-950/20' :
-                            'border-slate-700/60 bg-[#07071a]'
+                isDone ? 'border-green-700/40 bg-green-950/20 opacity-60' :
+                    isPending ? 'border-blue-500/40 bg-blue-950/20' :
+                        'border-slate-700/60 bg-[#07071a]'
             )}
         >
             <div className="p-4">
@@ -537,7 +537,7 @@ function SideQuestCard({
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────
 export function QuestBoard() {
-    const { user, ranks } = useAuth();
+    const { user, } = useAuth();
     const [activeTab, setActiveTab] = useState<QuestTab>('campaign');
     const [validationTarget, setValidationTarget] = useState<{
         title: string; type: 'code' | 'manual'; questId: string;
@@ -564,17 +564,20 @@ export function QuestBoard() {
     async function handleValidate(code: string) {
         setIsSubmitting(true);
         try {
-            // await api.post('/quests/validate', { questId: validationTarget?.questId, code });
-            await new Promise(r => setTimeout(r, 1200)); // MOCK
-            toast.success('Código enviado! Aguardando confirmação do professor.');
+
+            await api.post('/quests/validate', { questId: validationTarget?.questId, secretCode: code });
+
+            toast.success('Código validado! Recompensas adicionadas.');
             setValidationTarget(null);
+
+            // Dica: Para atualizar a tela na hora com o novo PC$ e Badges:
+            // window.location.reload(); 
         } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Código inválido.');
+            toast.error(err?.response?.data?.error || 'Código inválido.');
         } finally {
             setIsSubmitting(false);
         }
     }
-
     return (
         <div className="min-h-screen bg-[#040415] pb-28">
             {/* ── HEADER ── */}
@@ -619,7 +622,7 @@ export function QuestBoard() {
             <div className="sticky top-0 z-20 bg-[#040415]/95 backdrop-blur-sm border-b border-white/5 px-4 md:pl-28">
                 <div className="max-w-4xl mx-auto flex">
                     {([
-                        { id: 'campaign',  label: 'CAMPANHA',   icon: Sword  },
+                        { id: 'campaign', label: 'CAMPANHA', icon: Sword },
                         { id: 'secondary', label: 'SECUNDARIAS', icon: Target },
                     ] as const).map(tab => (
                         <button
@@ -656,7 +659,7 @@ export function QuestBoard() {
                             exit={{ opacity: 0, y: -12 }}
                         >
                             <p className="font-poppins text-xs text-slate-500 mb-5 leading-relaxed">
-                                Complete a missão do seu rank atual para ganhar a badge e desbloquear os poderes. 
+                                Complete a missão do seu rank atual para ganhar a badge e desbloquear os poderes.
                                 Cards bloqueados ficam disponíveis ao atingir o PC$ máximo necessário.
                             </p>
 
@@ -690,10 +693,10 @@ export function QuestBoard() {
                             {/* Filtros */}
                             <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                                 {([
-                                    { id: 'all',    label: 'TODAS'   },
-                                    { id: 'daily',  label: 'DIARIAS' },
+                                    { id: 'all', label: 'TODAS' },
+                                    { id: 'daily', label: 'DIARIAS' },
                                     { id: 'weekly', label: 'SEMANAIS' },
-                                    { id: 'event',  label: 'EVENTOS' },
+                                    { id: 'event', label: 'EVENTOS' },
                                 ] as const).map(f => (
                                     <button
                                         key={f.id}
