@@ -477,7 +477,7 @@ export function Leilao() {
               <Gavel className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="font-press text-2xl text-amber-400">LEILÃO</h1>
+              <h1 className="font-vt323 text-4xl text-amber-400 uppercase">LEILÃO</h1>
               <p className="font-vt323 text-xl text-slate-400 uppercase tracking-widest">A disputa começou!</p>
             </div>
           </div>

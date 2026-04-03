@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'press': ['"Press Start 2P"', 'cursive'], // Fonte dos Títulos (Pixelada)
+        'press': ['"Press Start 2P"', '"VT323"', 'monospace'],
         'vt323': ['"VT323"', 'monospace'],       // 👈 ADICIONEI AQUI: A salvadora dos acentos!
         'poppins': ['"Poppins"', 'sans-serif'],   // Fonte dos Textos (Leitura fácil)
         'mono': ['"Courier New"', 'monospace'],    // Fonte para Inputs/Códigos
