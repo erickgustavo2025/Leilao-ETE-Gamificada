@@ -83,6 +83,12 @@ const userSchema = new mongoose.Schema({
         lastResetYear: { type: Number, default: new Date().getFullYear() }
     },
 
+    activeQuests: [{
+    questId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quest' },
+    progress: { type: Number, default: 0 }, // Ex: Fez 2 de 5 tarefas
+    status: { type: String, enum: ['ACCEPTED', 'COMPLETED', 'REWARD_CLAIMED'], default: 'ACCEPTED' }
+}],
+
     // 🎒 INVENTÁRIO
     inventory: [InventoryItemSchema],
 
