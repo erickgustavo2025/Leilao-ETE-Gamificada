@@ -2,9 +2,15 @@
 .env
 backend/.env
 frontend/.env
-.gitignore
 .sh
 snapShotGen.py
+claude idea.md
+DIRETRIZES_GLOBAIS_ETE.md
+FASE5_ORACULO.md
+start.sh
+stop.sh
+restart.sh
+
 
 # Dependências
 node_modules/
