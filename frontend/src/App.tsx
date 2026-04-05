@@ -82,8 +82,13 @@ const AdminConfig = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ 
 const AdminImages = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
 const AdminApprovals = lazy(() => import('./pages/admin/AdminApprovals'));
+<<<<<<< HEAD
 const AdminStartupApprovals = lazy(() => import('./pages/admin/AdminStartupApprovals').then(m => ({ default: m.AdminStartupApprovals })));
 const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));;
+=======
+
+const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
+>>>>>>> 583984fa62cf31df4c34f51b20c7bdda3a232f87
 
 // ─────────────────────────────────────────────────────────────
 // Tipos auxiliares

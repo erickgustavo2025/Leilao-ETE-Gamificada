@@ -68,10 +68,14 @@ app.use(helmet({
 }));
 
 app.use(express.json());
+<<<<<<< HEAD
 
 //app.use(mongoSanitize({
  // replaceWith: '_'
 //}));
+=======
+app.use('/api', mongoSanitize()); // 🛡️ Sanitização apenas nas rotas de API para não quebrar Socket.io
+>>>>>>> 583984fa62cf31df4c34f51b20c7bdda3a232f87
 
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({
@@ -127,10 +131,13 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/house-history', houseHistoryRoutes);
 app.use('/api/quests', questRoutes); 
 app.use('/api/admin/quests', adminQuestRoutes);
+<<<<<<< HEAD
 app.use('/api/investimentos', investmentRoutes);
 app.use('/api/startups', startupRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notas', notasRoutes);
+=======
+>>>>>>> 583984fa62cf31df4c34f51b20c7bdda3a232f87
 
 // Middleware de erro opaco para segurança
 app.use((err, req, res, next) => {
