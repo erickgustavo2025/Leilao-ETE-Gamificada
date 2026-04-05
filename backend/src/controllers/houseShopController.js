@@ -23,7 +23,7 @@ module.exports = {
         }
     },
 
-    // 💰 COMPRA COLETIVA BECO (Com regra de validade 14 dias blindada)
+    // 💰 COMPRA COLETIVA BECO (Refatorada: Método do Maior Resto + Transactions + bulkWrite)
     async buyCollective(req, res) {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -32,6 +32,7 @@ module.exports = {
             const { items } = req.body;
             const representante = req.user;
 
+            // 🛡️ TRAVA 1: Permissão de Representante
             if (!representante.cargos.includes('representante') && !representante.cargos.includes('vice_representante') && representante.role !== 'admin') {
                 throw new Error('Apenas Representantes podem fazer compras coletivas.');
             }
@@ -39,6 +40,7 @@ module.exports = {
             let totalCost = 0;
             const finalItems = [];
 
+            // 1. Processamento dos Itens e Estoque
             for (const i of items) {
                 const storeItem = await StoreItem.findById(i.itemId).session(session);
                 if (!storeItem || storeItem.estoque < i.quantity) throw new Error(`Item ${storeItem?.nome || 'Desconhecido'} sem estoque.`);
@@ -49,7 +51,7 @@ module.exports = {
 
                 const validadePadrao = 14;
                 const diasValidade = (storeItem.validadeDias && storeItem.validadeDias > 0) ? storeItem.validadeDias : validadePadrao;
-                
+
                 const expiresAt = new Date();
                 expiresAt.setDate(expiresAt.getDate() + diasValidade);
 
@@ -60,7 +62,7 @@ module.exports = {
                     description: storeItem.descricao,
                     category: storeItem.lojaTematica,
                     quantity: i.quantity,
-                    origin: 'COMPRA_COLETIVA',
+                    origin: 'PREMIO', // ⚠️ REGRA DE OURO: origin DEVE ser 'PREMIO'
                     acquiredBy: representante._id,
                     acquiredAt: new Date(),
                     expiresAt: expiresAt
@@ -72,18 +74,61 @@ module.exports = {
                 throw new Error('O valor total da compra coletiva não pode ultrapassar 10.000 PC$.');
             }
 
-            const students = await User.find({ turma: representante.turma, isBlocked: false }).session(session);
-            if (students.length === 0) throw new Error('Nenhum aluno ativo na turma.');
+            // 2. Cálculo da Vaquinha Proporcional (Método do Maior Resto)
+            const students = await User.find({
+                turma: representante.turma,
+                isBlocked: false,
+                role: { $in: ['student', 'monitor'] },
+                cargos: { $ne: 'armada_dumbledore' }
+            }).session(session);
 
-            const costPerStudent = Math.ceil(totalCost / students.length);
-            if (costPerStudent > 0) {
-                await User.updateMany(
-                    { turma: representante.turma, isBlocked: false, role: { $in: ['student', 'monitor'] }, cargos: { $ne: 'armada_dumbledore' } },
-                    { $inc: { saldoPc: -costPerStudent } },
-                    { session }
-                );
+            if (students.length === 0) throw new Error('Nenhum aluno ativo na turma para participar.');
+
+            const somaTotalSaldoPc = students.reduce((sum, s) => sum + s.saldoPc, 0);
+
+            // 🛡️ TRAVA 2: Turma Pobre
+            if (somaTotalSaldoPc < totalCost) {
+                throw new Error(`A turma não possui saldo suficiente (${somaTotalSaldoPc} PC$) para o total de ${totalCost} PC$.`);
             }
-            
+
+            // Cálculo das cotas iniciais e restos
+            let cotas = students.map(student => {
+                const cotaExata = (student.saldoPc / somaTotalSaldoPc) * totalCost;
+                const cotaInicial = Math.floor(cotaExata);
+                const resto = cotaExata - cotaInicial;
+                return { studentId: student._id, cotaInicial, resto, cotaFinal: cotaInicial };
+            });
+
+            // Distribuição do resíduo (Maior Resto)
+            let diferencaResidual = totalCost - cotas.reduce((sum, c) => sum + c.cotaInicial, 0);
+            cotas.sort((a, b) => b.resto - a.resto);
+
+            const residualUnits = Math.round(diferencaResidual); // garante inteiro
+            for (let i = 0; i < residualUnits; i++) {
+                cotas[i].cotaFinal++;
+            }
+
+            const somaFinal = cotas.reduce((sum, c) => sum + c.cotaFinal, 0);
+            if (somaFinal !== totalCost) {
+                throw new Error(`Erro interno de arredondamento no rateio (soma=${somaFinal}, esperado=${totalCost}).`);
+            }
+
+            // 3. Execução Atômica via bulkWrite ($gte)
+            const bulkOperations = cotas.filter(c => c.cotaFinal > 0).map(cota => ({
+                updateOne: {
+                    filter: { _id: cota.studentId, saldoPc: { $gte: cota.cotaFinal } },
+                    update: { $inc: { saldoPc: -cota.cotaFinal } }
+                }
+            }));
+
+            if (bulkOperations.length > 0) {
+                const bulkWriteResult = await User.bulkWrite(bulkOperations, { session });
+                if (bulkWriteResult.modifiedCount !== bulkOperations.length) {
+                    throw new Error('Falha na transação: Um ou mais alunos tiveram alteração de saldo durante o processo.');
+                }
+            }
+
+            // 4. Entrega na Sala
             const turmaClean = representante.turma.trim();
             const classroom = await Classroom.findOne({ serie: { $regex: new RegExp(`^${turmaClean}$`, 'i') } }).session(session);
             if (!classroom) throw new Error('Sala não encontrada.');
@@ -91,15 +136,16 @@ module.exports = {
             classroom.roomInventory.push(...finalItems);
             await classroom.save({ session });
 
+            // 5. Registro de Log
             await Log.create([{
                 user: representante._id,
-                action: 'BECO_COMPRA',
-                details: `Comprou ${finalItems.length} itens. Rateio: ${costPerStudent}/aluno.`,
+                action: 'BECO_COMPRA_COLETIVA',
+                details: `Compra coletiva de ${finalItems.length} itens. Rateio proporcional concluído (Total: ${totalCost} PC$).`,
                 ip: req.ip
             }], { session });
 
             await session.commitTransaction();
-            res.json({ message: `Compra realizada! Cada aluno pagou ${costPerStudent} PC$.` });
+            res.json({ message: `Compra coletiva de ${totalCost} PC$ realizada com sucesso!` });
 
         } catch (error) {
             await session.abortTransaction();
@@ -108,8 +154,8 @@ module.exports = {
             session.endSession();
         }
     },
-    
-    // 👤 COMPRA INDIVIDUAL BECO (Com regra de validade 14 dias blindada)
+
+    // 👤 COMPRA INDIVIDUAL BECO
     async buyIndividual(req, res) {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -132,7 +178,7 @@ module.exports = {
 
             const validadePadrao = 14;
             const diasValidade = (storeItem.validadeDias && storeItem.validadeDias > 0) ? storeItem.validadeDias : validadePadrao;
-            
+
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + diasValidade);
 
@@ -143,7 +189,7 @@ module.exports = {
                 description: storeItem.descricao,
                 category: storeItem.lojaTematica,
                 quantity: 1,
-                origin: 'COMPRA_INDIVIDUAL',
+                origin: 'PREMIO', // Ajustado para seguir o padrão de auditoria
                 acquiredBy: buyer._id,
                 acquiredAt: new Date(),
                 expiresAt: expiresAt

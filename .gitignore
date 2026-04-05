@@ -1,35 +1,38 @@
+.md
+.env
+backend/.env
+frontend/.env
+.gitignore
+.sh
+snapShotGen.py
+
+# Dependências
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Variáveis de Ambiente (CRÍTICO)
+.env
+.env.local
+.env.development
+.env.production
+
+# Builds do Frontend (Vite) / Backend
+dist/
+build/
+out/
+
+# Arquivos do SO
+.DS_Store
+Thumbs.db
+
 # Logs
 logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-build
-dev-dist/ 
-coverage
+# Editor de Código
+.vscode/
+.idea/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env
-restart.sh
-start.sh
-stop.sh
-passwords.txt
-juntar.py
-PROJECT_SNAPSHOT.md
-snapShotGen.py
+# Arquivos de Testes e Cobertura
+coverage/

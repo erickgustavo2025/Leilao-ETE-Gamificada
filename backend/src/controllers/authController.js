@@ -83,10 +83,10 @@ async register(req, res) {
 
         res.status(201).json({ token, user: safeUser });
 
-    } catch (error) {
-        console.error("Erro no Register:", error);
-        res.status(500).json({ message: 'Erro ao registrar', error: error.message });
-    }
+        } catch (error) {
+            console.error("Erro no Register:", error);
+            res.status(500).json({ message: 'Erro ao registrar', error: error.message });
+        }
 },
 
     // 🔑 3. LOGIN UNIFICADO

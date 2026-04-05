@@ -39,6 +39,14 @@ export interface ActiveBuff {
     expiresAt?: string;
 }
 
+export interface UserInvestment {
+    symbol: string;
+    quantity: number;
+    averagePrice: number;
+    assetType: 'STOCK' | 'CRYPTO';
+    updatedAt: string;
+}
+
 export interface User {
     _id: string;
     id: string;
@@ -57,6 +65,7 @@ export interface User {
     isBlocked?: boolean;
     inventory: InventoryItem[];
     activeBuffs: ActiveBuff[];
+    investments: UserInvestment[];
     xp?: number;
     achievements?: any[];
 }
@@ -203,7 +212,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const safeUser: User = {
             ...userData,
             inventory: userData.inventory || [],
-            activeBuffs: userData.activeBuffs || []
+            activeBuffs: userData.activeBuffs || [],
+            investments: userData.investments || []
         };
         setUser(safeUser);
 

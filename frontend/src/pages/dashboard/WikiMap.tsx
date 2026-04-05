@@ -5,7 +5,7 @@ import {
   User, Search, ChevronDown, BookOpen, Compass,
   Star, Zap, RefreshCw, Key, Flame, Ghost, Lock, AlertTriangle,
   Ticket, Sparkles, Crown, Package, TrendingUp, Users, Scroll,
-  ChevronRight, Info, ExternalLink, X
+  ChevronRight, Info, ExternalLink, X, Rocket, Building2, DollarSign
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
@@ -161,7 +161,55 @@ const WIKI_DATA: WikiSection[] = [
   },
 
   // ——————————————————————————————
-  // 3. MOCHILA & INVENTÁRIO
+  // 3. INVESTIMENTOS & STARTUPS
+  // ——————————————————————————————
+  {
+    id: 'investimentos',
+    title: 'GIL INVESTE & STARTUPS',
+    subtitle: 'Multiplique seu patrimônio',
+    color: 'text-emerald-400',
+    borderColor: 'border-emerald-500/30',
+    bg: 'bg-emerald-900/10',
+    iconBg: 'bg-emerald-900/30',
+    icon: TrendingUp,
+    items: [
+      {
+        title: 'Gil Investe — Home Broker',
+        icon: TrendingUp,
+        desc: 'Mercado financeiro real: Ações B3 e Criptomoedas.',
+        detail: 'O Gil Investe é o simulador de bolsa de valores oficial da ETE. Nele, você pode usar seu saldo PC$ para comprar ativos reais.\n\n• Cotações Reais: Os preços de Ações (B3) e Criptos (BTC, ETH, etc.) são sincronizados a cada 5 minutos com o mercado real.\n• Carteira Digital: Acompanhe seu Preço Médio e o Lucro/Prejuízo (P&L) em tempo real conforme a flutuação do mercado.\n• Sem Limites: Você pode investir quanto quiser, mas lembre-se: o mercado sobe e desce. Risco real, ganhos reais em PC$.',
+        link: '/gil-investe',
+        badge: 'MERCADO REAL',
+        badgeColor: 'text-emerald-400 border-emerald-800/50 bg-emerald-900/20',
+      },
+      {
+        title: 'Startups dos Alunos',
+        icon: Rocket,
+        desc: 'Invista em empresas criadas pelos seus próprios colegas.',
+        detail: 'Além do mercado real, você pode investir no Mercado Interno de Startups.\n\n• Startups: São empresas criadas por alunos e aprovadas pela staff.\n• Oferta e Demanda: O preço das startups flutua conforme os alunos compram ou vendem (Market Maker). Se muitos compram, o preço sobe!\n• Dividendos: Empresas com boa performance acadêmica distribuem lucros em PC$ mensalmente para seus acionistas.\n• Transparência: Todas as operações são registradas e auditadas para evitar insider trading.',
+        link: '/gil-investe',
+        badge: 'MERCADO INTERNO',
+        badgeColor: 'text-blue-400 border-blue-800/50 bg-blue-900/20',
+      },
+      {
+        title: 'Lançamento de IPO',
+        icon: Building2,
+        desc: 'Crie sua própria empresa e capte recursos na bolsa.',
+        detail: 'Tem uma ideia de projeto ou empresa? Lance um IPO!\n\n• Cadastro: Defina o nome, ticker (tag), descrição e o valuation inicial da sua empresa.\n• Incubação: Sua proposta vai para análise da staff (professores/admins).\n• Listagem: Se aprovada, sua empresa entra na bolsa e outros alunos podem comprar suas ações.\n• Responsabilidade: Como fundador, você deve manter uma boa performance acadêmica para valorizar suas ações e pagar dividendos.',
+        badge: 'EMPREENDEDORISMO',
+        badgeColor: 'text-purple-400 border-purple-800/50 bg-purple-900/20',
+      },
+      {
+        title: 'Dividendos Mensais',
+        icon: DollarSign,
+        desc: 'Receba uma parte dos lucros das empresas que você investe.',
+        detail: 'Ser acionista dá direito a dividendos!\n\n• Cálculo: Todo mês, o sistema verifica a "Performance Acadêmica" de cada startup listada.\n• Pagamento: O lucro é distribuído automaticamente em PC$ para sua conta, proporcional à quantidade de ações que você possui.\n• Reinvestimento: Você pode usar seus dividendos para comprar mais ações ou gastar na Loja Oficial.',
+      },
+    ]
+  },
+
+  // ——————————————————————————————
+  // 4. MOCHILA & INVENTÁRIO
   // ——————————————————————————————
   {
     id: 'mochila',

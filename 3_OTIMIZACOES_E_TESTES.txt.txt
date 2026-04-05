@@ -1,0 +1,8 @@
+# PROTOCOLOS DE OTIMIZAÇÃO E SEGURANÇA
+
+Enquanto executa as tarefas, aplique as seguintes diretrizes em qualquer arquivo que você tocar:
+
+1. A Lei do React Query: NENHUMA mutação (POST, PATCH, DELETE) deve depender de recarregar a página (F5). Sempre use `queryClient.invalidateQueries` após o sucesso.
+2. Tratamento de Erros: Use `toast.error` (da biblioteca `sonner`) para exibir erros do backend (`err.response?.data?.message || err.response?.data?.error`).
+3. Tipagem Estrita: Respeite as interfaces. Lembre-se que o MongoDB usa `_id` e o frontend muitas vezes mapeia para `id`. Não quebre essas pontes.
+4. Limpeza: Ao terminar de editar um arquivo, remova imports de hooks ou ícones que deixaram de ser usados.

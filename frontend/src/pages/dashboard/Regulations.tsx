@@ -240,9 +240,8 @@ export function Regulations() {
     const RANK_ORDER = ['INICIANTE','BRONZE','PRATA','OURO','DIAMANTE','EPICO','LENDARIO','SUPREMO','MITOLOGICO','SOBERANO'];
 
     return (
-        <div className="min-h-screen bg-[#040415] pb-28">
-
-            {/* ── HEADER ── */}
+        <div className="min-h-screen bg-[#040415] pb-28 pt-16 md:pt-0">
+            {/* Header */}
             <div className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-cyan-900/15 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[120px] bg-cyan-600/10 blur-3xl pointer-events-none" />

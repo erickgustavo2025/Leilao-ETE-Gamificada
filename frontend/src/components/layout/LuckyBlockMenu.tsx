@@ -2,9 +2,9 @@ import { useState, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Gift, Landmark, Gavel, X, Home, Map, Trophy, User, LogOut,
+  Gift, Landmark, Gavel, X, Home, Map, User, LogOut,
   Backpack, ShoppingBag, Volume2, VolumeX, ArrowRightLeft,
-  Store, Calendar, type LucideIcon
+  Store, Calendar, TrendingUp, BookOpen, Scroll, Swords, type LucideIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -57,9 +57,11 @@ export function LuckyBlockMenu() {
     { icon: ArrowRightLeft, label: 'TROCAS', action: () => setActiveModal('tradeSelect'), color: 'text-indigo-400' },
     { icon: ShoppingBag, label: 'LOJA', path: '/loja', color: 'text-pink-400' },
     { icon: Gavel, label: 'LEILÃO', path: '/leilao', color: 'text-yellow-400' },
-    { icon: ArrowRightLeft, label: 'PIX', action: () => setActiveModal('transfer'), color: 'text-emerald-400' },
-    { icon: Trophy, label: 'RANKING', path: '/ranking', color: 'text-purple-400' },
+    { icon: TrendingUp, label: 'GIL INVESTE', path: '/gil-investe', color: 'text-emerald-400' },
     { icon: Landmark, label: 'BANCO', path: '/banco', color: 'text-yellow-300' },
+    { icon: Scroll, label: 'MISSÕES', path: '/missoes', color: 'text-purple-400' },
+    { icon: Swords, label: 'TAÇA DAS CASAS', path: '/taca-das-casas', color: 'text-red-500' },
+    { icon: BookOpen, label: 'REGULAMENTOS', path: '/regulamentos', color: 'text-cyan-400' },
     { icon: Map, label: 'MANUAL', path: '/manual', color: 'text-slate-400' },
     { icon: User, label: 'PERFIL', path: '/perfil', color: 'text-blue-400' },
   ];

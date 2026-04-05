@@ -33,10 +33,18 @@ interface QuestKey {
 }
 
 interface RewardItem {
+    itemId: string;    // ID real do StoreItem
     name: string;
     category: ItemCategory;
     validityDays: number;
     sendToClassroom: boolean;
+}
+
+interface StoreItem {
+    _id: string;
+    nome: string;
+    tipo: 'ITEM' | 'BUFF';
+    validadeDias: number;
 }
 
 interface Quest {
@@ -293,6 +301,15 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
         rewardItems: [],
     });
 
+    // Buscar itens oficiais do banco
+    const { data: availableItems = [] } = useQuery<StoreItem[]>({
+        queryKey: ['admin', 'store-items'],
+        queryFn: async () => {
+            const res = await api.get('/inventory/items'); // Rota getAllItems no inventoryController
+            return res.data;
+        }
+    });
+
     const set = (k: keyof FormState, v: any) => setForm(p => ({ ...p, [k]: v }));
 
     // Prazos Inteligentes
@@ -302,21 +319,36 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
         if (form.type === 'DIARIA') future.setHours(now.getHours() + 24);
         else if (form.type === 'SEMANAL') future.setDate(now.getDate() + 7);
         else if (form.type === 'MENSAL') future.setMonth(now.getMonth() + 1);
-        else return; // EVENTO não tem padrão
+        else return;
 
-        // Formato YYYY-MM-DDTHH:mm para input datetime-local
         const iso = future.toISOString().slice(0, 16);
         set('expiresAt', iso);
     }, [form.type]);
 
     const addItem = () => {
-        const newItem: RewardItem = { name: '', category: 'CONSUMIVEL', validityDays: 90, sendToClassroom: false };
+        const newItem: RewardItem = { itemId: '', name: '', category: 'CONSUMIVEL', validityDays: 90, sendToClassroom: false };
         set('rewardItems', [...form.rewardItems, newItem]);
     };
 
     const updateItem = (idx: number, field: keyof RewardItem, val: any) => {
         const items = [...form.rewardItems];
-        items[idx] = { ...items[idx], [field]: val };
+
+        // Lógica de Autofill ao selecionar o item
+        if (field === 'itemId') {
+            const selected = availableItems.find(i => i._id === val);
+            if (selected) {
+                items[idx] = {
+                    ...items[idx],
+                    itemId: val,
+                    name: selected.nome,
+                    category: selected.tipo === 'BUFF' ? 'BUFF' : 'CONSUMIVEL',
+                    validityDays: selected.validadeDias || 90
+                };
+            }
+        } else {
+            items[idx] = { ...items[idx], [field]: val };
+        }
+
         set('rewardItems', items);
     };
 
@@ -459,13 +491,22 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                                         <Trash size={14} />
                                     </button>
 
-                                    <FormField label="NOME DO ITEM">
-                                        <input type="text" className={inputCls} placeholder="Ex: Ticket de Nota" value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
+                                    <FormField label="SELECIONAR ITEM">
+                                        <select
+                                            className={selectCls}
+                                            value={item.itemId}
+                                            onChange={e => updateItem(idx, 'itemId', e.target.value)}
+                                        >
+                                            <option value="">Selecione um item...</option>
+                                            {availableItems.map(i => (
+                                                <option key={i._id} value={i._id}>{i.nome}</option>
+                                            ))}
+                                        </select>
                                     </FormField>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <FormField label="CATEGORIA">
-                                            <select className={selectCls} value={item.category} onChange={e => updateItem(idx, 'category', e.target.value)}>
+                                            <select className={selectCls} value={item.category} onChange={e => updateItem(idx, 'category', e.target.value as any)}>
                                                 <option value="CONSUMIVEL">CONSUMIVEL</option>
                                                 <option value="PERMANENTE">PERMANENTE</option>
                                                 <option value="TICKET">TICKET</option>
@@ -507,11 +548,25 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
 export function AdminQuests() {
     const queryClient = useQueryClient();
 
+    // 🔌 FETCH DATA COM O TRADUTOR RESTAURADO
     const { data: quests = [], isLoading } = useQuery<Quest[]>({
         queryKey: ['admin', 'quests'],
         queryFn: async () => {
             const res = await api.get('/admin/quests');
-            return res.data;
+
+            return res.data.map((q: any) => ({
+                ...q,
+                _id: q._id,
+                status: q.isActive ? 'active' : 'inactive',
+                validationType: q.validationMethod, // Conserta o botão MANUAL/CÓDIGO
+                rewardPc: q.rewards?.pc || 0,       // Devolve o número do PC$
+                // Mapeia o array de chaves para o botão do olhinho voltar a funcionar
+                keys: (q.validCodes || []).map((c: any) => ({
+                    code: c.code,
+                    usedBy: c.isUsed ? 'Resgatado' : undefined
+                })),
+                usedCount: (q.validCodes || []).filter((c: any) => c.isUsed).length
+            }));
         }
     });
 
@@ -602,7 +657,7 @@ export function AdminQuests() {
                             {(['ALL', 'DIARIA', 'SEMANAL', 'EVENTO', 'MENSAL'] as const).map(t => {
                                 const cfg = t !== 'ALL' ? TYPE_CFG[t] : null;
                                 return (
-                                    <button key={t} onClick={() => setFilterType(t)} className={cn('flex items-center gap-1.5 px-3 py-2 rounded-xl border font-press text-[8px] transition-all shrink-0', filterType === t ? (cfg ? `${cfg.border} ${cfg.bg} ${cfg.color}` : 'border-white/20 bg-white/10 text-white') : 'border-slate-700 text-slate-500')}>
+                                    <button key={t} onClick={() => setFilterType(t)} className={cn('flex items-center gap-1.5 px-3 py-2 rounded-xl border font-press text-[8px] transition-all', filterType === t ? (cfg ? `${cfg.border} ${cfg.bg} ${cfg.color}` : 'border-white/20 bg-white/10 text-white') : 'border-slate-700 text-slate-500')}>
                                         {cfg && <cfg.icon size={10} />}
                                         {t === 'ALL' ? 'TODOS' : cfg?.label}
                                     </button>
@@ -610,11 +665,11 @@ export function AdminQuests() {
                             })}
                         </div>
 
-                        {/* 🚀 SELECT CORRIGIDO: Agora como irmão direto para alinhar perfeitamente */}
+                        {/* 🚀 FILTRO DE STATUS RESTAURADO */}
                         <select
                             value={filterStatus}
                             onChange={e => setFilterStatus(e.target.value as any)}
-                            className="bg-black/40 border border-slate-700 rounded-xl px-3 py-2 text-white text-[10px] font-press outline-none focus:border-purple-500 cursor-pointer shrink-0"
+                            className="bg-black/40 border border-slate-700 rounded-xl px-3 py-2 text-white text-[10px] font-press outline-none focus:border-purple-500 cursor-pointer"
                         >
                             <option value="ALL">TODOS STATUS</option>
                             <option value="active">ATIVAS</option>
@@ -622,8 +677,6 @@ export function AdminQuests() {
                             <option value="expired">EXPIRADAS</option>
                         </select>
                     </div>
-
-
 
                     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden">
                         <div className="hidden md:grid grid-cols-[1fr_100px_90px_110px_120px_100px] gap-3 px-4 py-3 border-b border-white/5">

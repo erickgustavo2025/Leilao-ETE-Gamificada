@@ -1,0 +1,19 @@
+# ROADMAP GLOBAL DA ETE GAMIFICADA
+
+## FASE 1: Fundação e Economia (ESTADO ATUAL - FOCO DO MANUS)
+- [x] Autenticação e Cargos (Admin, Dev, Monitor, Aluno).
+- [x] Beco Diagonal (Loja) e Inventários.
+- [x] Taverna das Missões (QuestBoard) e Sistema de Códigos (Steam Keys).
+- [ ] Refatoração da Economia (Extinção do XP genérico, PC$ é a única métrica).
+- [ ] Sistema de Aprovação Manual de Missões pelo Admin.
+- [ ] Correção Global de Assets Estáticos (Migração para .webp).
+
+## FASE 2: Otimização e "Morte ao F5" (PRÓXIMO FOCO)
+- [ ] Auditoria Global do TanStack React Query (Garantir invalidateQueries em todas as mutações do site).
+- [ ] Code Splitting e Lazy Loading (React.lazy) nas rotas protegidas para aliviar o bundle inicial.
+- [ ] Limpeza de dead code, imports não utilizados e console.logs de debug.
+
+## FASE 3: A Era da Inteligência Artificial (FUTURO - NÃO TOCAR AGORA)
+- [ ] Integração com IA para geração automática de textos e lore das missões.
+- [ ] NPC Interativo / Tutor com IA para ajudar os alunos com dúvidas da escola.
+- [ ] Dashboard preditivo para os professores (Quais alunos estão perdendo engajamento?).

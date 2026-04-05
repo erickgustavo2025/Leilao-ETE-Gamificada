@@ -42,6 +42,12 @@ export const queryKeys = {
     stats: ['public', 'stats'] as const,
   },
 
+  // 📈 INVESTIMENTOS DOMAIN
+  investments: {
+    cotacoes: (assetType?: string) => 
+      assetType ? ['investments', 'cotacoes', assetType] as const : ['investments', 'cotacoes'] as const,
+  },
+
   // 🏠 SYSTEM DOMAIN (Alias para compatibilidade)
   system: {
     config: ['system', 'config'] as const,

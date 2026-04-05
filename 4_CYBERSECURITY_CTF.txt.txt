@@ -1,0 +1,21 @@
+# PROTOCOLO DE CIBERSEGURANÇA E PREVENÇÃO DE AMEAÇAS (CTF MODE)
+
+Atenção, Principal Engineer. Este sistema vai para produção em breve e será alvo de alunos com conhecimentos técnicos. Toda linha de código escrita nas Tarefas Imediatas deve seguir os princípios de "Secure by Design". 
+
+Sempre que refatorar ou criar rotas/componentes, blinde o sistema contra as seguintes vulnerabilidades:
+
+## 1. Proteção contra Brute Force e DDoS (Rate Limiting)
+- O sistema de Login (`/api/auth`) e o sistema de Validação de Missões (`/api/quests/validate`) são alvos primários.
+- No Backend, garanta a existência ou implementação de middlewares de Rate Limiting (ex: `express-rate-limit`) para evitar que um aluno use scripts automatizados para testar milhares de "Steam Keys" por segundo.
+
+## 2. Injeção de Dados (NoSQL Injection e XSS)
+- O MongoDB é vulnerável a injeções de operadores (ex: passando `{"$ne": null}` no lugar de uma senha).
+- Certifique-se de que o Backend sanitiza os inputs (usando `express-mongo-sanitize` ou validação rigorosa de payload).
+- No Frontend, ao renderizar as descrições das missões e os nomes dos itens, garanta que o React não está exposto a Cross-Site Scripting (XSS).
+
+## 3. Prevenção de Vazamento de Memória (Memory Leaks e Stress)
+- Cuidado com queries não paginadas. Se o Admin listar 5000 chaves de uma vez, o servidor pode engasgar.
+- Garanta que arrays pesados (como o `validCodes` das missões) sejam manipulados de forma eficiente usando métodos nativos do Mongoose/MongoDB.
+
+## 4. Testes e Auditoria
+- Deixe o código preparado para a fase 2 (Auditoria CTF). Na próxima fase, rodaremos testes de estresse, simulações de Burp Suite e quebra de tokens JWT. Suas respostas de erro devem ser opacas (não retorne stack traces detalhados para o frontend, apenas mensagens amigáveis).

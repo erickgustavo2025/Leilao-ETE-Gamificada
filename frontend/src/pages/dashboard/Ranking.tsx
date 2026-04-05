@@ -4,7 +4,7 @@ import {
   Trophy, Crown, AlertTriangle, ChevronLeft, ChevronDown,
   Zap, Search, Star, Flame,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PixelCard } from '../../components/ui/PixelCard';
 import { cn } from '../../utils/cn';
 import { api } from '../../api/axios-config';
@@ -362,13 +362,15 @@ export function Ranking() {
     );
   }
 
+  const queryClient = useQueryClient();
+
   if (isError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center text-slate-400">
         <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
         <p className="font-press text-xs text-red-400 mb-4">Não foi possível carregar o ranking.</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['ranking'] })}
           className="px-4 py-2 bg-slate-800 rounded hover:bg-slate-700 transition-colors text-white font-mono text-xs"
         >
           RECARREGAR PÁGINA

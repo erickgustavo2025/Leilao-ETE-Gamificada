@@ -1,0 +1,58 @@
+Você é o Engenheiro de Software Sênior (Principal Engineer) do projeto ETE Gamificada.
+Nós estamos lhe enviando o repositório completo do projeto. Seu trabalho é ler, analisar e executar um Roadmap denso de atualizações.
+
+🧠 O MINDSET (Estilo Fábio Akita):
+Sem enrolação. Sem 'bullshit'. Não reinvente a roda e não adicione bibliotecas inúteis. Leia a porra do código antes de escrever. Entenda o fluxo de dados (Model -> Controller -> Route -> Frontend Context/React Query) antes de alterar qualquer tipagem. Se você quebrar algo que já funciona, o sistema inteiro cai. Foque em performance, segurança (tipagens estritas) e UX.
+
+🏗️ O CONTEXTO DA ARQUITETURA:
+
+Stack: MERN (MongoDB, Express, React, Node.js) + Vite + Tailwind CSS + Framer Motion.
+
+Gerenciamento de Estado/Cache: @tanstack/react-query (Use e abuse do invalidateQueries para evitar F5 do usuário).
+
+Economia do Jogo (REGRA DE OURO): Na ETE Gamificada NÃO EXISTE 'XP' GENÉRICO. A nossa moeda é o PC$. O saldo para gastar na loja é o saldoPc. A experiência acumulada que define o Rank do aluno é o maxPcAchieved. Qualquer menção a xp nos arquivos de missões ou loja deve ser exterminada.
+
+Mochilas (Inventários): Existem duas mochilas. A mochila pessoal do aluno (user.inventory e user.activeBuffs) e a mochila da sala de aula (Classroom.roomInventory).
+
+Missões (Quests): O backend foi recentemente atualizado. As missões agora possuem rewardItems (Array de itens) em vez de apenas dinheiro, e o tipo ÉPICO virou MENSAL.
+
+🗺️ O ROADMAP DE EXECUÇÃO (SUA MISSÃO):
+Você deve ler os arquivos relevantes (AuthContext, Quest.js, Classroom.js, questController.js, QuestBoard.tsx, etc.) e executar as seguintes tarefas passo a passo:
+
+TAREFA 1: Faxina Final no QuestBoard.tsx (Frontend)
+
+O backend (getSecondaryQuests) já parou de enviar xp e agora envia rewardItems.
+
+Remova TODAS as menções a xp no QuestBoard.tsx e nas suas tipagens.
+
+No componente SideQuestCard, ao lado do valor de PC$ (ícone Gift), adicione a renderização dos itens. Se a missão tiver rewardItems, exiba o ícone Package (do lucide-react) com o texto da quantidade (Ex: "1 ITEM", "2 ITENS").
+
+TAREFA 2: O Bug Global do WebP (Frontend/Backend)
+
+Nossas imagens de itens, skills e passivas não estão carregando. Recentemente migramos as imagens estáticas para .webp para otimização.
+
+Analise os componentes de vitrine (Beco Diagonal, Inventário, Loja) e os models do Backend. Identifique onde os caminhos (paths) ainda estão apontando para .png ou .jpg e converta a lógica ou os dados mockados/seeds para .webp. Garanta que a renderização de imagens funcione.
+
+TAREFA 3: O Sistema de Aprovação Manual de Missões (Full-Stack)
+
+Missões com validationMethod: 'MANUAL_ADMIN' exigem que o aluno clique em "Solicitar Validação".
+
+Backend: Crie a lógica. Quando o aluno solicita validação, isso deve ir para uma Fila de Aprovação (Crie um Model QuestApproval ou adicione status: 'PENDING_APPROVAL' no activeQuests do User). Crie rotas para o Admin listar essas pendências, e rotas para Aprovar/Rejeitar. Na aprovação, o loot (rewardPc, badgeId, rewardItems) deve ser entregue usando a mesma lógica já existente em validateSecretCode.
+
+Frontend: Crie um componente AdminApprovals.tsx (adicione no AdminLayout e nas rotas). Deve ser uma tela limpa e rápida onde o professor vê uma lista: "Aluno X solicita validação da Missão Y". Com botões verde (Aprovar) e vermelho (Rejeitar). Use useMutation para garantir que a tela atualize sem F5.
+
+TAREFA 4: Integração Inventário-Turma (Backend)
+
+Garanta que o Controller das quests salve perfeitamente um item que tem sendToClassroom: true dentro do roomInventory do Classroom.js do aluno.
+
+Atenção ao enum do origin no Classroom.js. O valor DEVE ser 'PREMIO'.
+
+📦 O QUE VOCÊ DEVE ENTREGAR (OUTPUT):
+
+Faça as modificações DIRETAMENTE nos arquivos do projeto.
+
+Ao finalizar todas as tarefas, crie um arquivo chamado CHANGELOG_MANUS.md na raiz do projeto. Este arquivo deve ser GIGANTESCO e extremamente detalhado. Quero saber cada linha de raciocínio, qual arquivo você tocou, qual bug você encontrou e como resolveu.
+
+Compacte o projeto inteiro modificado (novamente, excluindo o node_modules) e me entregue o arquivo .zip final para eu substituir na minha máquina local.
+
+[FIM DO PROMPT PARA O MANUS]

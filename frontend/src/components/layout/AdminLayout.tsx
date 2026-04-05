@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Settings, Gift, QrCode, ShieldCheck, Grid,
   Coins, Users, Scroll, LogOut, Menu, X, Gavel,
-  Image as ImageIcon, Trophy, Sword // <--- ADICIONE O TROPHY AQUI
+  Image as ImageIcon, Trophy, Sword, Rocket
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -29,6 +29,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'LOJA E ITENS', path: '/admin/store', icon: Coins, color: 'text-purple-400' },
     { icon: Gavel, label: 'PUNIÇÕES', path: '/admin/punishments' },
     { icon: Sword, label: 'MISSÕES', path: '/admin/quests', color: 'text-purple-400' },
+    { icon: Scroll, label: 'APROVAÇÕES', path: '/admin/approvals', color: 'text-blue-400' },
+    { icon: Rocket, label: 'STARTUPS ', path: '/admin/startups', color: 'text-emerald-400' },
     { label: 'SCANNER', path: '/admin/scanner', icon: QrCode, color: 'text-white' },
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },

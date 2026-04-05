@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize'); // 🛡️ NOVO
 
 // Rotas
 const authRoutes = require('./routes/authRoutes');
@@ -28,6 +29,10 @@ const feedbackRoutes = require('./routes/feedbackRoutes');
 const houseHistoryRoutes = require('./routes/houseHistoryRoutes');
 const questRoutes = require('./routes/questRoutes');
 const adminQuestRoutes = require('./routes/adminQuestRoutes');
+const investmentRoutes = require('./routes/investmentRoutes');
+const startupRoutes = require('./routes/startupRoutes');
+const aiRoutes = require('./routes/aiRoutes');
+const notasRoutes = require('./routes/notasRoutes');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -40,14 +45,12 @@ const app = express();
 app.set("trust proxy", 1);
 
 // 🔒 CORS INTELIGENTE (PRODUÇÃO / DEV)
-// Lê a variável FRONTEND_URL do .env (se não existir, libera localhost)
 const allowedOrigins = process.env.FRONTEND_URL 
     ? process.env.FRONTEND_URL.split(',') 
     : ['http://localhost:5173',];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Permite requisições sem origin (Postman/Mobile) ou se a origem estiver na lista permitida
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -60,35 +63,45 @@ app.use(cors({
     credentials: true
 }));
 
-// Helmet (Permite carregar imagens de outros domínios se precisar)
 app.use(helmet({
     crossOriginResourcePolicy: false, 
 }));
 
 app.use(express.json());
 
-// RATE LIMITERS (Ajustados para Dev/Teste)
+//app.use(mongoSanitize({
+ // replaceWith: '_'
+//}));
+
+// 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20, // 20 tentativas por 15 min
+    message: { error: "Muitas tentativas de login. Tente novamente em 15 minutos." }
+});
+app.use('/api/auth/login', authLimiter);
+
+const questValidationLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 30, // 30 tentativas por 10 min
+    message: { error: "Muitas tentativas de validação. Tente novamente em 10 minutos." }
+});
+app.use('/api/quests/validate', questValidationLimiter);
+
+// RATE LIMITER GERAL
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, message: "Muitas requisições." });
 app.use('/api/', generalLimiter);
 
-// 📂 SERVIR IMAGENS (Correção da Lógica)
-// Tenta achar a pasta de uploads em dois lugares comuns
+// 📂 SERVIR IMAGENS
 let uploadDir = path.join(__dirname, '../public/uploads'); 
 if (!fs.existsSync(uploadDir)) {
-    // Se não achar em public, tenta na raiz (padrão docker as vezes)
     uploadDir = path.join(__dirname, '../uploads');
 }
-
-// Garante que a pasta existe para não dar crash
 if (!fs.existsSync(uploadDir)) {
-    console.log("⚠️ Pasta de uploads não encontrada. Criando em:", uploadDir);
     fs.mkdirSync(uploadDir, { recursive: true });
 }
-
-console.log("📂 Servindo uploads de:", uploadDir);
 app.use('/uploads', express.static(uploadDir));
 
-// --- 3. PORTEIRO ---
 app.use(checkMaintenance); 
 
 // --- 4. ROTAS DA API ---
@@ -114,9 +127,17 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/house-history', houseHistoryRoutes);
 app.use('/api/quests', questRoutes); 
 app.use('/api/admin/quests', adminQuestRoutes);
+app.use('/api/investimentos', investmentRoutes);
+app.use('/api/startups', startupRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/notas', notasRoutes);
 
+// Middleware de erro opaco para segurança
+app.use((err, req, res, next) => {
+    console.error('❌ Erro não tratado:', err.stack);
+    res.status(500).json({ error: 'Ocorreu um erro interno no servidor.' });
+});
 
-// Fallback da API
 app.use((req, res) => {
     res.status(404).json({ message: 'Rota da API não encontrada.' });
 });

@@ -185,7 +185,26 @@ const schemas = {
                 message: "Deve fornecer studentId ou userId"
             })
         })
-    }
+    },
+
+    // 📈 INVESTIMENTOS
+    investments: z.object({
+        body: z.object({
+            symbol: z.string().min(1, "Símbolo do ativo é obrigatório"),
+            quantity: z.coerce.number().int().positive("A quantidade deve ser um número inteiro positivo")
+        })
+    }),
+
+    // 🏢 STARTUPS
+    startupCreate: z.object({
+        body: z.object({
+            nome: z.string().min(3, "Nome da empresa deve ter no mínimo 3 caracteres"),
+            tag: z.string().min(3, "Ticker deve ter no mínimo 3 caracteres").max(6, "Ticker deve ter no máximo 6 caracteres"),
+            descricao: z.string().min(10, "Descrição deve ter no mínimo 10 caracteres"),
+            valuationInicial: z.coerce.number().positive("Valuation deve ser um número positivo"),
+            totalAcoes: z.coerce.number().int().min(1, "Total de ações deve ser no mínimo 1")
+        })
+    })
 };
 
 module.exports = schemas;

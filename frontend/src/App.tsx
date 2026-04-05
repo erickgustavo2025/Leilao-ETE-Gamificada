@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LuckyBlockMenu } from './components/layout/LuckyBlockMenu';
 import { ChatWidget } from './components/features/ChatWidget';
+import { AIWidget } from './components/features/AIWidget';
 import { Toaster, toast } from 'sonner';
 import { Loader2, Eye, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { api } from './api/axios-config';
@@ -35,6 +36,7 @@ const Ranking = lazy(() => import('./pages/dashboard/Ranking').then(m => ({ defa
 const Mochila = lazy(() => import('./pages/dashboard/Mochila').then(m => ({ default: m.Mochila })));
 const Loja = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m.Loja })));
 const Leilao = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
+const GilInveste = lazy(() => import('./pages/dashboard/investimentos/GilInveste').then(m => ({ default: m.GilInveste })));
 
 const QuestBoard = lazy(() => import('./pages/dashboard/QuestBoard').then(m => ({ default: m.QuestBoard })));
 const Regulations = lazy(() => import('./pages/dashboard/Regulations').then(m => ({ default: m.Regulations })));
@@ -79,8 +81,9 @@ const AdminGifts = lazy(() => import('./pages/admin/AdminGifts').then(m => ({ de
 const AdminConfig = lazy(() => import('./pages/admin/AdminConfig').then(m => ({ default: m.AdminConfig })));
 const AdminImages = lazy(() => import('./pages/admin/AdminImages').then(m => ({ default: m.AdminImages })));
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
-
-const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
+const AdminApprovals = lazy(() => import('./pages/admin/AdminApprovals'));
+const AdminStartupApprovals = lazy(() => import('./pages/admin/AdminStartupApprovals').then(m => ({ default: m.AdminStartupApprovals })));
+const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));;
 
 // ─────────────────────────────────────────────────────────────
 // Tipos auxiliares
@@ -104,6 +107,15 @@ const PUBLIC_PATHS = ['/', '/login', '/first-access', '/forgot-password', '/rese
 
 const isPublicPath = (path: string) =>
   PUBLIC_PATHS.includes(path) || path.startsWith('/login/') || path.startsWith('/armada/login');
+
+function AIWidgetWrapper() {
+  const { signed } = useAuth();
+  const location = useLocation();
+  
+  if (!signed || isPublicPath(location.pathname)) return null;
+  
+  return <AIWidget />;
+}
 
 const LAST_PATH_KEY = '@ETEGamificada:lastPath';
 
@@ -427,6 +439,7 @@ function AppContent() {
             <Route path="/mochila" element={<PrivateRoute><Mochila /></PrivateRoute>} />
             <Route path="/loja" element={<PrivateRoute><Loja /></PrivateRoute>} />
             <Route path="/leilao" element={<PrivateRoute><Leilao /></PrivateRoute>} />
+            <Route path="/gil-investe" element={<PrivateRoute><GilInveste /></PrivateRoute>} />
             <Route path="/market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
 
             <Route path="/missoes" element={<PrivateRoute><QuestBoard /></PrivateRoute>} />
@@ -472,6 +485,8 @@ function AppContent() {
             <Route path="/admin/config" element={<PrivateRoute roles={['admin']}><AdminConfig /></PrivateRoute>} />
             <Route path="/admin/images" element={<PrivateRoute roles={['admin']}><AdminImages /></PrivateRoute>} />
             <Route path="/admin/punishments" element={<PrivateRoute roles={['admin']}><AdminPunishments /></PrivateRoute>} />
+            <Route path="/admin/approvals" element={<PrivateRoute roles={['admin']}><AdminApprovals /></PrivateRoute>} />
+            <Route path="/admin/startups" element={<PrivateRoute roles={['admin']}><AdminStartupApprovals /></PrivateRoute>} />
             <Route path="/admin/house" element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -479,6 +494,7 @@ function AppContent() {
         </AnimatePresence>
       </Suspense>
 
+      <AIWidgetWrapper />
       <Toaster
         position="top-right"
         toastOptions={{

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Gift, Landmark, LogOut, Store, ShoppingBag, Backpack,
   Trophy, User, Calendar, Gavel, BookOpen, ArrowRightLeft,
-  MessageSquare, GraduationCap, Loader2, Scroll
+  MessageSquare, Loader2, Scroll, TrendingUp, Swords
 } from 'lucide-react';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { PageTransition } from '../../components/layout/PageTransition';
@@ -117,32 +117,32 @@ export function DashboardHome() {
       title: "ECONOMIA & MERCADO",
       items: [
         { label: "LOJA OFICIAL", icon: Store, color: "text-blue-400", desc: "Gaste seus PC$", path: "/loja" },
+        { label: "GIL INVESTE", icon: TrendingUp, color: "text-emerald-400", desc: "Ações e Criptos", path: "/gil-investe" },
         { label: "BANCO GERAL", icon: Landmark, color: "text-yellow-300", desc: "Extratos e Poupança", path: "/banco" },
         { label: "CASA DE LEILÕES", icon: Gavel, color: "text-amber-500", desc: "Itens raros", path: "/leilao" },
         { label: "MOCHILA", icon: Backpack, color: "text-yellow-400", desc: "Seu inventário", path: "/mochila" },
-        { label: "MERCADO PÚBLICO", icon: Store, color: "text-red-400", desc: "Coloque os Seus Itens à Venda", path: "/market" },
+        { label: "MERCADO PÚBLICO", icon: Store, color: "text-red-400", desc: "Venda Seus Itens", path: "/market" },
         { label: "FAZER PIX", icon: ArrowRightLeft, color: "text-green-400", desc: "Transferir PC$", action: () => toggleModal('transfer', true) },
-        { label: "MERCADO DE NOTAS", icon: BookOpen, color: "text-indigo-400", desc: "Troque PC$ por Nota", path: "/coming-soon?module=NOTAS" },
         { label: "TROCAR (TRADE)", icon: ShoppingBag, color: "text-purple-400", desc: "Negociar itens", action: () => toggleModal('userSelect', true) }
       ]
     },
     {
       title: "ATIVIDADES & RANK",
       items: [
-        { label: "HUB DE EVENTOS", icon: Calendar, color: "text-yellow-500", desc: "Taça, Intergil & Gincanas", action: () => toggleModal('events', true) },
         { label: "MISSÕES", icon: Scroll, color: "text-purple-400", desc: "Campanha e Side Quests", path: "/missoes" },
+        { label: "TAÇA DAS CASAS", icon: Swords, color: "text-red-500", desc: "Hub da Competição", path: "/taca-das-casas" },
+        { label: "HUB DE EVENTOS", icon: Calendar, color: "text-yellow-500", desc: "Intergil & Gincanas", action: () => toggleModal('events', true) },
         { label: "MEUS PRESENTES", icon: Gift, color: "text-pink-500", desc: "Itens recebidos", path: "/dashboard/gifts" },
         { label: "RANKING GERAL", icon: Trophy, color: "text-orange-400", desc: "Top Global", path: "/ranking" },
-        { label: "RANKING EGRESSOS", icon: GraduationCap, color: "text-violet-400", desc: "Lendas da Escola", path: "/coming-soon?module=EGRESSOS" },
       ]
     },
     {
       title: "INSTITUCIONAL",
       items: [
         { label: "PERFIL", icon: User, color: "text-cyan-400", desc: "Seus dados", path: "/perfil" },
+        { label: "REGULAMENTOS", icon: BookOpen, color: "text-cyan-400", desc: "Poderes por Professor", path: "/regulamentos" },
         { label: "MANUAL DO SISTEMA", icon: BookOpen, color: "text-slate-300", desc: "Wiki & Tutoriais", path: "/manual" },
         { label: "FEEDBACK / BUGS", icon: MessageSquare, color: "text-pink-400", desc: "Ajude a melhorar", action: () => toggleModal('feedback', true) },
-        { label: "REGULAMENTOS", icon: BookOpen, color: "text-cyan-400", desc: "Poderes por Professor", path: "/regulamentos" },
       ]
     }
   ];

@@ -42,6 +42,15 @@ const InventoryItemSchema = new mongoose.Schema({
     origin: { type: String }
 });
 
+// Sub-schema: Investimento (Portfólio)
+const InvestmentSchema = new mongoose.Schema({
+    symbol: { type: String, required: true, uppercase: true },
+    quantity: { type: Number, required: true, min: 0 },
+    averagePrice: { type: Number, required: true, min: 0 },
+    assetType: { type: String, enum: ['STOCK', 'CRYPTO'], required: true },
+    updatedAt: { type: Date, default: Date.now }
+});
+
 // Sub-schema: Buff Ativo (Efeito Passivo)
 // ✅ RELATÓRIO: Schema blindado para suportar todos os campos necessários
 const ActiveBuffSchema = new mongoose.Schema({
@@ -95,6 +104,17 @@ const userSchema = new mongoose.Schema({
     // ✨ BUFFS (Efeitos passivos)
     activeBuffs: [ActiveBuffSchema],
 
+    // 📈 INVESTIMENTOS (GIL INVESTE)
+    investments: [InvestmentSchema],
+
+    // 🎓 ACADÊMICO (FASE 5 - ORÁCULO)
+    notas: {
+        n1: { type: [Number], default: [] },    // Array com notas N1 de cada disciplina
+        n2: { type: [Number], default: [] },    // Array com notas N2
+        redacoes: { type: [Number], default: [] }, // Notas de redação (0-1000)
+        simulados: { type: [Number], default: [] }, // Pontuações de simulados ENEM
+        ultimaAtualizacao: { type: Date, default: null },
+    },
 
 }, {
     collection: 'alunos',
