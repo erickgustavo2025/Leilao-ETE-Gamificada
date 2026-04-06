@@ -289,7 +289,7 @@ export function AIWidget() {
                                     </button>
                                 </div>
                                 <p className="text-[8px] text-slate-700 font-mono mt-2 text-center uppercase tracking-tighter">
-                                    Powered by OpenRouter • Qwen 2.5 Plus
+                                    Powered by OpenRouter • Qwen 3.6 Plus
                                 </p>
                             </div>
                         </div>

@@ -11,6 +11,7 @@ export interface StudentProfileData {
   _id: string;
   nome: string;
   turma: string;
+  matricula?: string; // ✅ Adicionado para corrigir erro de build
   saldoPc: number;
   maxPcAchieved: number;
   avatar?: string;
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData }: Props) {
-  const { ranks } = useAuth();
+  const { ranks, user } = useAuth();
   const [data, setData] = useState<StudentProfileData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -162,29 +163,38 @@ export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData
                     </div>
                   </div>
 
-                  {/* Ações Rápidas */}
-                  <div className="grid grid-cols-2 gap-2 pt-2">
-                    <button
-                      onClick={() => {
-                        onClose();
-                        window.dispatchEvent(new CustomEvent('openTransferModal', { detail: { matricula: data.matricula } }));
-                      }}
-                      className="flex items-center justify-center gap-2 p-2 bg-green-600/20 border border-green-500/50 rounded-lg hover:bg-green-600/40 transition-all group"
-                    >
-                      <Coins size={14} className="text-green-400 group-hover:scale-110 transition-transform" />
-                      <span className="font-press text-[8px] text-green-400">PIX</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        onClose();
-                        window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { targetUser: data } }));
-                      }}
-                      className="flex items-center justify-center gap-2 p-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/40 transition-all group"
-                    >
-                      <ArrowRightLeft size={14} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                      <span className="font-press text-[8px] text-blue-400">TRADE</span>
-                    </button>
-                  </div>
+                  {/* Ações Rápidas — Somente se não for o próprio perfil */}
+                  {user && data._id !== user._id && (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      {/* Botão PIX: Requer cargo PODE_TRANSFERIR */}
+                      {user.cargos?.includes('PODE_TRANSFERIR') && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            window.dispatchEvent(new CustomEvent('openTransferModal', { detail: { matricula: data.matricula } }));
+                          }}
+                          className="flex items-center justify-center gap-2 p-2 bg-green-600/20 border border-green-500/50 rounded-lg hover:bg-green-600/40 transition-all group"
+                        >
+                          <Coins size={14} className="text-green-400 group-hover:scale-110 transition-transform" />
+                          <span className="font-press text-[8px] text-green-400">PIX</span>
+                        </button>
+                      )}
+
+                      {/* Botão TRADE: Requer cargo PODE_FAZER_TRADE */}
+                      {user.cargos?.includes('PODE_FAZER_TRADE') && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { targetUser: data } }));
+                          }}
+                          className="flex items-center justify-center gap-2 p-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/40 transition-all group"
+                        >
+                          <ArrowRightLeft size={14} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                          <span className="font-press text-[8px] text-blue-400">TRADE</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}

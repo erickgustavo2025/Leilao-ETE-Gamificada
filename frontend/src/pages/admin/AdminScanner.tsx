@@ -51,7 +51,7 @@ export function AdminScanner() {
     });
 
     const handleValidate = (code: string) => {
-        if (!code || code.length < 6) return;
+        if (!code || code.length < 6) return; // Mantém compatibilidade com tickets antigos de 6 caracteres
         validateMutation.mutate(code);
     };
 
@@ -103,7 +103,7 @@ export function AdminScanner() {
                                 type="text" 
                                 value={hash}
                                 onChange={e => setHash(e.target.value.toUpperCase())}
-                                placeholder="DIGITE O CÓDIGO (EX: A7X9B2)"
+                                placeholder="DIGITE O CÓDIGO (EX: A7X9B2C4)"
                                 className="w-full bg-black border-2 border-slate-500 p-4 text-center font-mono text-xl text-white uppercase focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700"
                             />
                             <PixelButton 

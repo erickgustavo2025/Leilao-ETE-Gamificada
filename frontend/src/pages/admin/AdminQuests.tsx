@@ -15,7 +15,7 @@ import {
     Eye, Trash2, ToggleLeft, ToggleRight,
     Clock, Calendar, Flame, Trophy, Search,
     Loader2, Shield,
-    Gift, Users, Sword, Package, Trash,
+    Gift, Users, Sword, Package, Trash, Crown, Zap
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────
@@ -505,36 +505,7 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                                             ))}
                                         </select>
                                     </FormField>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                           <FormField label="TIPO">
-                                        <select className={selectCls} value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })}>
-                                            <option value="DIARIA">DIARIA</option>
-                                            <option value="SEMANAL">SEMANAL</option>
-                                            <option value="EVENTO">EVENTO</option>
-                                            <option value="MENSAL">MENSAL</option>
-                                            <option value="CAMPANHA">CAMPANHA (RANK)</option>
-                                            <option value="FUNCIONALIDADE">FUNCIONALIDADE (SITE)</option>
-                                        </select>
-                                    </FormField>                                 </FormField>
-                                      <FormField label="RECOMPENSA PC$">
-                                        <input type="number" className={inputCls} value={form.rewardPc} onChange={e => setForm({ ...form, rewardPc: Number(e.target.value) })} />
-                                    </FormField>
-
-                                    <FormField label="ID DA BADGE (OPCIONAL)">
-                                        <input 
-                                            type="text" 
-                                            className={inputCls} 
-                                            placeholder="Ex: PODE_TRANSFERIR" 
-                                            value={form.rewardBadgeId || ''} 
-                                            onChange={e => setForm({ ...form, rewardBadgeId: e.target.value })} 
-                                        />
-                                        <p className="text-[7px] font-mono text-slate-500 mt-1 uppercase">
-                                            {form.type === 'FUNCIONALIDADE' ? 'Use: PODE_TRANSFERIR, PODE_FAZER_TRADE ou PODE_PEDIR_EMPRESTIMO' : 'Define a badge de rank ou benefício que o aluno ganhará.'}
-                                        </p>
-                                    </FormField>    </FormField>
-                                    </div>
-
+                                    
                                     <label className="flex items-center gap-2 cursor-pointer select-none">
                                         <div className={cn('w-4 h-4 rounded border flex items-center justify-center transition-all', item.sendToClassroom ? 'bg-purple-600 border-purple-500' : 'border-slate-700 bg-black/20')}>
                                             {item.sendToClassroom && <Check size={10} className="text-white" />}

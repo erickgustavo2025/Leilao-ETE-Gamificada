@@ -36,6 +36,7 @@
     "pdf-parse": "^1.1.1",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "yahoo-finance2": "^3.14.0",
     "zod": "^4.3.5"
   },

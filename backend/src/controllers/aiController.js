@@ -7,7 +7,7 @@ const ChatSession = require("../models/ChatSession");
 const DocumentEmbedding = require("../models/DocumentEmbedding");
 const { SYSTEM_PROMPT_BASE, PAGE_CONTEXTS } = require("../config/aiSystemPrompt");
 
-// Embeddings continuam no Gemini (text-embedding-004 tem 1500 req/dia grátis)
+// Embeddings exclusivos no Gemini-001 (Estável)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ── HELPER: Produto Escalar ──────────────────────────────────────────
@@ -23,30 +23,50 @@ const detectMode = (pergunta, path) => {
     return "SUPORTE";
 };
 
-// ── CHAMAR OPENROUTER (substitui Gemini para geração de texto) ───────
+// ── CHAMAR OPENROUTER (com Exponential Backoff) ───────────────────────
 async function callOpenRouter(messages, systemPrompt) {
-    const response = await axios.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-            model: "qwen/qwen3.6-plus:free", // MODELO EXATO CONFORME ORDEM DE SERVIÇO
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...messages
-            ],
-            max_tokens: 1024,
-            temperature: 0.7,
-        },
-        {
-            headers: {
-                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:5173",
-                "X-Title": "ETE Gamificada 2K26 — Oráculo GIL",
-            },
-            timeout: 30000, // 30s timeout
+    const maxRetries = 3;
+    let retryDelay = 2000; // Começa com 2s
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`[AI] Chamando OpenRouter (Tentativa ${attempt}/${maxRetries})...`);
+            const response = await axios.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                {
+                    model: process.env.OPENROUTER_MODEL || "qwen/qwen3.6-plus:free",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        ...messages
+                    ],
+                    max_tokens: 1024,
+                    temperature: 0.7,
+                },
+                {
+                    headers: {
+                        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:5173",
+                        "X-Title": "ETE Gamificada",
+                    },
+                    timeout: 45000, // Aumentado para 45s
+                }
+            );
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            const status = error.response?.status;
+            const isRetryable = status === 429 || status >= 500;
+
+            if (isRetryable && attempt < maxRetries) {
+                console.warn(`⚠️ [AI] Erro ${status} no OpenRouter. Retentando em ${retryDelay/1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                retryDelay *= 2; // Exponential Backoff: 2s -> 4s -> 8s
+            } else {
+                console.error(`❌ [AI] Erro fatal no OpenRouter:`, error.message);
+                throw error;
+            }
         }
-    );
-    return response.data.choices[0].message.content;
+    }
 }
 
 // ── ROTA: POST /api/ai/ask ───────────────────────────────────────────
@@ -92,7 +112,7 @@ exports.processAIRequest = async (req, res) => {
 
         if (modo === "TUTOR" || modo === "CONSULTOR") {
             try {
-                const modelEmb = genAI.getGenerativeModel({ model: "text-embedding-004" });
+                const modelEmb = genAI.getGenerativeModel({ model: "embedding-001" });
                 const resEmb = await modelEmb.embedContent(pergunta);
                 const queryVector = resEmb.embedding.values;
 

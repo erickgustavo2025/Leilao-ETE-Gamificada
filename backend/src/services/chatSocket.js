@@ -39,7 +39,7 @@ module.exports = (io) => {
     });
 
     io.on('connection', (socket) => {
-        // 🏫 ENTRAR AUTOMATICAMENTE NA SALA DA TURMA
+        // 🏫 ENTRAR AUTOMATICAMENTE NA SALA DA TURMA (Validado)
         if (socket.user.turma) {
             const turmaRoom = `turma_${socket.user.turma}`;
             socket.join(turmaRoom);
@@ -50,6 +50,16 @@ module.exports = (io) => {
         // 🟢 ENTRAR NA SALA
         socket.on('join_chat_room', ({ room }) => {
             if (!room) return;
+
+            // 🛡️ TRAVA DE SEGURANÇA: Alunos só podem entrar na sala da própria turma
+            if (room.startsWith('turma_')) {
+                const userTurmaRoom = `turma_${socket.user.turma}`;
+                if (room !== userTurmaRoom && socket.user.role !== 'admin') {
+                    console.warn(`[SECURITY] Tentativa de invasão de sala: ${socket.user.nome} tentou entrar em ${room}`);
+                    return; // Bloqueia o join
+                }
+            }
+
             socket.join(room);
 
             const history = chatHistory[room] || [];
@@ -63,6 +73,15 @@ module.exports = (io) => {
 
         // 📨 ENVIAR MENSAGEM — user vem do socket.user (validado no handshake)
         socket.on('send_message', ({ room, message }) => {
+            // 🛡️ TRAVA DE SEGURANÇA NO TOPO: Validar se o usuário pertence à sala antes de qualquer processamento
+            if (room.startsWith('turma_')) {
+                const userTurmaRoom = `turma_${socket.user.turma}`;
+                if (room !== userTurmaRoom) {
+                    console.warn(`⚠️ BLOQUEIO: Tentativa de envio para sala não autorizada: ${socket.user.nome} -> ${room}`);
+                    return;
+                }
+            }
+
             if (!message || !message.trim()) return;
 
             // Limita tamanho da mensagem para evitar spam/flood
@@ -76,6 +95,7 @@ module.exports = (io) => {
                 room // ✅ Adicionado para evitar vazamento de mensagens entre salas no frontend
             };
 
+            // Gerenciamento de Histórico (Apenas após validação)
             if (!chatHistory[room]) chatHistory[room] = [];
             chatHistory[room].push(msgData);
 
@@ -83,6 +103,7 @@ module.exports = (io) => {
                 chatHistory[room].shift();
             }
 
+            // ✅ EMISSÃO SEGURA: Usar io.to(room).emit garante que APENAS os membros da sala recebam.
             io.to(room).emit('receive_message', msgData);
         });
     });

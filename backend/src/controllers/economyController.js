@@ -99,7 +99,7 @@ module.exports = {
             if (sender.saldoPc < totalCost) throw new Error(`Saldo insuficiente. Necessário: ${totalCost} PC$.`);
 
             // Valida Limite Anual
-            const limit = getAnnualLimit(receiver.turma);
+            const limit = getAnnualLimit(receiver.turma || receiver.serie);
             if (!receiver.financialLimits) receiver.financialLimits = { receivedThisYear: 0 };
             const spaceLeft = limit - receiver.financialLimits.receivedThisYear;
 

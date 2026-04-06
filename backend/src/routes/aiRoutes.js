@@ -14,8 +14,11 @@ const router = express.Router();
 // ── RATE LIMITER ESPECÍFICO PARA IA
 const aiLimiter = rateLimit({
     windowMs: 60 * 1000,     // 1 minuto
-    max: 15,                  // 15 perguntas por minuto por usuário
-    message: { error: 'Muitas perguntas. Aguarde um momento.' },
+    max: 25,                  // Aumentado para 25 para permitir maior fluidez sob carga
+    message: { error: 'O Oráculo está meditando sobre muitas perguntas. Aguarde um minuto.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: true,
     keyGenerator: (req) => req.user?._id?.toString() || req.ip,
 });
 

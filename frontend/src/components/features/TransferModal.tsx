@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Coins, ShieldCheck, Loader2, Sparkles, Briefcase, Zap } from 'lucide-react';
 import { toast } from 'sonner';

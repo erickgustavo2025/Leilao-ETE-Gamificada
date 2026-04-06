@@ -142,7 +142,7 @@ module.exports = {
                 }
             }
 
-            const hash = crypto.randomBytes(3).toString('hex').toUpperCase();
+            const hash = crypto.randomBytes(4).toString('hex').toUpperCase();
             
             const ticket = await Ticket.create([{
                 user: userId,
@@ -214,7 +214,7 @@ module.exports = {
 
             await classroom.save({ session });
 
-            const hash = crypto.randomBytes(3).toString('hex').toUpperCase();
+            const hash = crypto.randomBytes(4).toString('hex').toUpperCase();
 
             const ticket = await Ticket.create([{
                 user: userId,
