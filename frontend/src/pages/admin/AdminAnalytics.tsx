@@ -1,11 +1,10 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-    LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+import {
+    LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { 
-    Activity, TrendingUp, PieChart as PieIcon, BarChart3, 
+import {
+    Activity, PieChart as PieIcon,
     Loader2, AlertCircle, Microscope, GraduationCap, Star
 } from 'lucide-react';
 import { api } from '../../api/axios-config';
@@ -22,6 +21,10 @@ interface AnalyticsData {
 }
 
 const COLORS = ['#8b5cf6', '#ec4899', '#06b6d4', '#eab308', '#ef4444'];
+const renderCustomizedLabel = ({ name, percent }: { name?: string; percent?: number }) => {
+    if (!name || !percent) return `${name || 'N/A'}: 0%`;
+    return `${name}: ${(percent * 100).toFixed(0)}%`;
+};
 
 // ─────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
@@ -70,15 +73,15 @@ export default function AdminAnalytics() {
 
             {/* Grid de Gráficos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+
                 {/* 1. Uso Diário do GIL */}
                 <ChartCard title="Uso Diário do Oráculo GIL" icon={Activity} subtitle="Volume de interações por dia">
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={data?.interactionsByDay}>
+                        <LineChart data={data?.interactionsByDay || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                             <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickFormatter={(val) => val.split('-').slice(1).join('/')} />
                             <YAxis stroke="#64748b" fontSize={10} />
-                            <Tooltip 
+                            <Tooltip
                                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
                                 itemStyle={{ color: '#8b5cf6', fontSize: '12px' }}
                             />
@@ -90,11 +93,11 @@ export default function AdminAnalytics() {
                 {/* 2. Performance por Modo */}
                 <ChartCard title="Performance por Modo de Uso" icon={GraduationCap} subtitle="Média de notas (N1/N2) por categoria de IA">
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={data?.performanceByMode}>
+                        <BarChart data={data?.performanceByMode || []}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                             <XAxis dataKey="modo" stroke="#64748b" fontSize={10} />
                             <YAxis stroke="#64748b" fontSize={10} domain={[0, 10]} />
-                            <Tooltip 
+                            <Tooltip
                                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
                                 cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                             />
@@ -111,7 +114,7 @@ export default function AdminAnalytics() {
                         <ResponsiveContainer width="100%" height={250}>
                             <PieChart>
                                 <Pie
-                                    data={data?.distributionByMode}
+                                    data={data?.distributionByMode || []}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
@@ -119,11 +122,11 @@ export default function AdminAnalytics() {
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
-                                    {data?.distributionByMode.map((entry, index) => (
+                                    {data?.distributionByMode.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip 
+                                <Tooltip
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
                                 />
                                 <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px' }} />
@@ -137,27 +140,27 @@ export default function AdminAnalytics() {
                     <ResponsiveContainer width="100%" height={250}>
                         <PieChart>
                             <Pie
-                                data={data?.distributionByRating}
+                                data={data?.distributionByRating || []}
                                 cx="50%"
                                 cy="50%"
                                 outerRadius={80}
                                 labelLine={false}
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                label={renderCustomizedLabel}
                                 dataKey="value"
                             >
-                                {data?.distributionByRating.map((entry, index) => (
+                                {data?.distributionByMode.map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
                                 ))}
-                            </Pie>
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </ChartCard>
+                        </Pie>
+                        <Tooltip
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
+            </ChartCard>
 
-            </div>
         </div>
+        </div >
     );
 }
 

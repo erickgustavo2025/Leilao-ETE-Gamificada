@@ -1,6 +1,6 @@
 import { useState, useMemo, memo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   ShoppingCart, Loader2, Search, WifiOff, Coins, Store, Ghost,
   Package, ShoppingBag, Lock,
 } from 'lucide-react';
@@ -117,12 +117,12 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
   const style = getStyle(item.raridade);
   const canAfford = (user?.saldoPc || 0) >= item.preco;
   const hasStock = item.estoque > 0;
-  
+
   // 🛡️ VALIDAÇÃO DE BADGE (Fase 3)
-  const hasBadge = !item.cargoExclusivo || 
-                   item.cargoExclusivo === 'Todos' || 
-                   (user?.cargos || []).includes(item.cargoExclusivo) ||
-                   user?.role === 'admin';
+  const hasBadge = !item.cargoExclusivo ||
+    item.cargoExclusivo === 'Todos' ||
+    (user?.cargos || []).includes(item.cargoExclusivo) ||
+    user?.role === 'admin';
 
   const borderColor = style.split(' ')[0];
 
@@ -134,7 +134,7 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
 
   return (
     <motion.div {...motionProps} onClick={onClick} className="group cursor-pointer h-full">
-      <div 
+      <div
         className={cn(
           "relative h-full flex flex-col overflow-hidden rounded-xl transition-all duration-200 border",
           isMobile ? "bg-[#0f0f13]" : "bg-slate-900/60 backdrop-blur-xl",
@@ -198,7 +198,7 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
                 <Package className="w-3 h-3" /> {item.estoque}
               </span>
             </div>
-            
+
             <button
               className={cn(
                 "w-full py-2 rounded font-press text-[9px] flex items-center justify-center gap-2 transition-all",
@@ -207,7 +207,7 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
                   : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-sm"
               )}
               disabled={!canAfford || !hasStock || !hasBadge}
-              title={!hasBadge ? `Exige badge: ${item.cargoExclusivo}` : ""}
+              title={!hasBadge ? `Exige badge: ${item.cargoExclusivo}` : undefined}
             >
               {!hasStock ? "SEM ESTOQUE" : !hasBadge ? (
                 <><Lock className="w-3 h-3" /> BLOQUEADO</>
@@ -288,7 +288,7 @@ export function Loja() {
       const isRare = item.raridade.includes('Épico') || item.raridade.includes('Diamante');
       isRare ? triggerEpicConfetti() : triggerSimpleConfetti();
       toast.success("COMPRA REALIZADA!", { description: `${item.nome} adicionado.` });
-      
+
       refreshUser();
       queryClient.invalidateQueries({ queryKey: ['storeItems'] });
       setSelectedItem(null);
@@ -477,14 +477,14 @@ export function Loja() {
         <AnimatePresence>
           {selectedItem && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                onClick={() => setSelectedItem(null)} 
+                onClick={() => setSelectedItem(null)}
               />
-              
+
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
@@ -496,9 +496,9 @@ export function Loja() {
               >
                 <div className="p-6 text-center">
                   <div className="w-32 h-32 mx-auto mb-4 bg-black/50 rounded-full flex items-center justify-center border border-white/10">
-                    <img 
-                      src={getImageUrl(selectedItem.imagem)} 
-                      alt={selectedItem.nome} 
+                    <img
+                      src={getImageUrl(selectedItem.imagem)}
+                      alt={selectedItem.nome}
                       className="w-24 h-24 object-contain"
                     />
                   </div>
@@ -531,16 +531,19 @@ export function Loja() {
                   <button
                     onClick={() => handleBuy(selectedItem)}
                     disabled={
-                      (user?.saldoPc || 0) < selectedItem.preco || 
-                      selectedItem.estoque <= 0 || 
-                      buyingId === selectedItem._id ||
-                      (selectedItem.cargoExclusivo && selectedItem.cargoExclusivo !== 'Todos' && !(user?.cargos || []).includes(selectedItem.cargoExclusivo) && user?.role !== 'admin')
+                      !!(
+                        (user?.saldoPc || 0) < selectedItem.preco ||
+                        selectedItem.estoque <= 0 ||
+                        buyingId === selectedItem._id ||
+                        (selectedItem.cargoExclusivo && selectedItem.cargoExclusivo !== 'Todos' && !(user?.cargos || []).includes(selectedItem.cargoExclusivo) && user?.role !== 'admin')
+                      )
                     }
+                    
                     className={cn(
                       "w-full py-3 rounded-lg font-press text-xs flex items-center justify-center gap-2 transition-all",
-                      (user?.saldoPc || 0) >= selectedItem.preco && 
-                      selectedItem.estoque > 0 && 
-                      (!selectedItem.cargoExclusivo || selectedItem.cargoExclusivo === 'Todos' || (user?.cargos || []).includes(selectedItem.cargoExclusivo) || user?.role === 'admin')
+                      (user?.saldoPc || 0) >= selectedItem.preco &&
+                        selectedItem.estoque > 0 &&
+                        (!selectedItem.cargoExclusivo || selectedItem.cargoExclusivo === 'Todos' || (user?.cargos || []).includes(selectedItem.cargoExclusivo) || user?.role === 'admin')
                         ? "bg-green-600 text-white hover:bg-green-500"
                         : "bg-slate-800 text-slate-500 cursor-not-allowed"
                     )}

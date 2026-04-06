@@ -75,8 +75,7 @@ export function Banco() {
     // ========================
     const { 
       data: bankData, 
-      isLoading,
-      isError 
+      isLoading, 
     } = useQuery({
       queryKey: ['bank'],
       queryFn: async () => {

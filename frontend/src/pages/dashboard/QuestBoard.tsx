@@ -538,7 +538,7 @@ export function QuestBoard() {
             const response = await api.get('/quests/secondary');
             return response.data;
         },
-        staleTime: 30000, // 30s — missões não mudam a cada segundo
+        staleTime: 60000, // 60s — missões não mudam a cada segundo
         retry: 2,
     });
 
@@ -660,7 +660,7 @@ export function QuestBoard() {
                         >
                             <tab.icon size={13} />
                             {tab.label}
-                            {tab.id === 'campaign' && availableCampaign > 0 && (
+                            {tab.id === 'rank' && availableCampaign > 0 && (
                                 <span className="w-4 h-4 rounded-full bg-green-500 text-black font-press text-[7px] flex items-center justify-center">
                                     {availableCampaign}
                                 </span>
@@ -803,11 +803,6 @@ export function QuestBoard() {
                                         onRequestManual={handleRequestManual}
                                     />
                                 ))}
-                            </div>
-                        </motion.div>
-                    )}
-                                    </>
-                                )}
                             </div>
                         </motion.div>
                     )}

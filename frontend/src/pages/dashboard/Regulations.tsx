@@ -8,7 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/axios-config';
 import { PixelCard } from '../../components/ui/PixelCard';
 import { cn } from '../../utils/cn';
-import { queryKeys } from '../../utils/queryKeys';
 
 interface Regulation {
     _id: string;
@@ -30,7 +29,7 @@ export function Regulations() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const { data: regulations = [], isLoading } = useQuery({
-        queryKey: queryKeys.public.regulations,
+        queryKey: ['public', 'regulations'],
         queryFn: async () => {
             const res = await api.get('/regulations');
             return res.data as Regulation[];
@@ -38,7 +37,7 @@ export function Regulations() {
         staleTime: 1000 * 60 * 5, // 5 minutos
     });
 
-    const filteredRegs = regulations.filter(reg => 
+    const filteredRegs = regulations.filter(reg =>
         reg.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         reg.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (reg.teacherName && reg.teacherName.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -61,7 +60,7 @@ export function Regulations() {
 
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-400 transition-colors" size={16} />
-                        <input 
+                        <input
                             type="text"
                             placeholder="BUSCAR REGRA OU PROFESSOR..."
                             value={searchTerm}
@@ -94,8 +93,8 @@ export function Regulations() {
                                             <div className="flex items-center gap-3">
                                                 <span className={cn(
                                                     "px-2 py-0.5 rounded font-press text-[7px] border",
-                                                    reg.type === 'GENERAL' 
-                                                        ? "bg-blue-900/20 border-blue-500/30 text-blue-400" 
+                                                    reg.type === 'GENERAL'
+                                                        ? "bg-blue-900/20 border-blue-500/30 text-blue-400"
                                                         : "bg-purple-900/20 border-purple-500/30 text-purple-400"
                                                 )}>
                                                     {reg.type === 'GENERAL' ? 'GERAL' : 'PROFESSOR'}
