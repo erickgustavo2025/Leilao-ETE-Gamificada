@@ -39,6 +39,13 @@ module.exports = (io) => {
     });
 
     io.on('connection', (socket) => {
+        // 🏫 ENTRAR AUTOMATICAMENTE NA SALA DA TURMA
+        if (socket.user.turma) {
+            const turmaRoom = `turma_${socket.user.turma}`;
+            socket.join(turmaRoom);
+            console.log(`[Socket] Usuário ${socket.user.nome} entrou na sala ${turmaRoom}`);
+        }
+
 
         // 🟢 ENTRAR NA SALA
         socket.on('join_chat_room', ({ room }) => {
@@ -65,7 +72,8 @@ module.exports = (io) => {
                 id: Date.now().toString(),
                 text,
                 sender: socket.user, // ✅ Dados reais do banco, não do cliente
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                room // ✅ Adicionado para evitar vazamento de mensagens entre salas no frontend
             };
 
             if (!chatHistory[room]) chatHistory[room] = [];

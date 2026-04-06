@@ -33,6 +33,16 @@ module.exports = {
             if (targetMatricula === req.user.matricula) throw new Error('Não pode transferir para si mesmo.');
 
             const sender = await User.findById(senderId).select('+senha').session(session);
+
+            // 🛡️ RESTRIÇÃO DE BADGE PARA TRANSFERÊNCIA (Fase 4)
+            const BADGE_TRANSFERENCIA = 'PODE_TRANSFERIR';
+            const podeTransferir = (sender.cargos || []).includes(BADGE_TRANSFERENCIA);
+            if (!podeTransferir && req.user.role !== 'admin') {
+                return res.status(403).json({
+                    error: 'Você precisa completar a Missão de Transferência para usar o PIX Escolar.',
+                    badgeNecessaria: BADGE_TRANSFERENCIA
+                });
+            }
             const receiver = await User.findOne({ matricula: targetMatricula }).session(session);
 
             if (!receiver) throw new Error('Destinatário não encontrado.');

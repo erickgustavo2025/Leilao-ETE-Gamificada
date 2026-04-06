@@ -44,6 +44,15 @@ module.exports = {
             if (!item) throw new Error('Item não encontrado.');
             if (!item.ativo) throw new Error('Item indisponível.');
             if (item.estoque <= 0) throw new Error('Estoque esgotado.');
+
+            // 🛡️ VALIDAÇÃO DE BADGE (Fase 3)
+            if (item.cargoExclusivo && item.cargoExclusivo !== 'Todos') {
+                const userCargos = user.cargos || [];
+                if (!userCargos.includes(item.cargoExclusivo) && req.user.role !== 'admin') {
+                    throw new Error(`Exige badge: ${item.cargoExclusivo}`);
+                }
+            }
+
             if (user.saldoPc < item.preco) throw new Error('Saldo insuficiente.');
 
             user.saldoPc -= item.preco;

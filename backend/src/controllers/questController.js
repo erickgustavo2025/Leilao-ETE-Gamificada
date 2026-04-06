@@ -114,7 +114,7 @@ const questController = {
       const userId = req.user._id;
       const quests = await Quest.find({
         isActive: true,
-        type: { $in: ["DIARIA", "SEMANAL", "EVENTO"] },
+        type: { $in: ["DIARIA", "SEMANAL", "EVENTO", "MENSAL", "CAMPANHA", "FUNCIONALIDADE"] },
       }).sort({ createdAt: -1 });
 
       const user = await User.findById(userId);
@@ -143,6 +143,12 @@ const questController = {
               ? "daily"
               : q.type.toLowerCase() === "semanal"
               ? "weekly"
+              : q.type.toLowerCase() === "mensal"
+              ? "monthly"
+              : q.type.toLowerCase() === "campanha"
+              ? "campaign"
+              : q.type.toLowerCase() === "funcionalidade"
+              ? "functionality"
               : "event",
           reward: { pc: q.rewards?.pc || 0 },
           rewardItems: q.rewardItems || [],

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Trophy } from 'lucide-react';
+import { X, Zap, Trophy, ArrowRightLeft, Coins } from 'lucide-react';
 import { api } from '../../api/axios-config';
 import { getImageUrl } from '../../utils/imageHelper';
 import { calculateRank } from '../../utils/rankHelper';
@@ -160,6 +160,30 @@ export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData
                       </div>
                       <p className="font-vt323 text-xl text-blue-400">#{data.rankPosition}</p>
                     </div>
+                  </div>
+
+                  {/* Ações Rápidas */}
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <button
+                      onClick={() => {
+                        onClose();
+                        window.dispatchEvent(new CustomEvent('openTransferModal', { detail: { matricula: data.matricula } }));
+                      }}
+                      className="flex items-center justify-center gap-2 p-2 bg-green-600/20 border border-green-500/50 rounded-lg hover:bg-green-600/40 transition-all group"
+                    >
+                      <Coins size={14} className="text-green-400 group-hover:scale-110 transition-transform" />
+                      <span className="font-press text-[8px] text-green-400">PIX</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { targetUser: data } }));
+                      }}
+                      className="flex items-center justify-center gap-2 p-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/40 transition-all group"
+                    >
+                      <ArrowRightLeft size={14} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                      <span className="font-press text-[8px] text-blue-400">TRADE</span>
+                    </button>
                   </div>
                 </div>
               </>

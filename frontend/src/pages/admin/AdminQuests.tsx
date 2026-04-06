@@ -21,7 +21,7 @@ import {
 // ─────────────────────────────────────────────────────────────────
 // TIPOS
 // ─────────────────────────────────────────────────────────────────
-type QuestType = 'DIARIA' | 'SEMANAL' | 'EVENTO' | 'MENSAL';
+type QuestType = 'DIARIA' | 'SEMANAL' | 'EVENTO' | 'MENSAL' | 'CAMPANHA' | 'FUNCIONALIDADE';
 type ValidationType = 'SECRET_CODE' | 'MANUAL_ADMIN';
 type QuestStatus = 'active' | 'inactive' | 'expired';
 type ItemCategory = 'CONSUMIVEL' | 'PERMANENTE' | 'TICKET' | 'BUFF';
@@ -81,6 +81,8 @@ const TYPE_CFG: Record<QuestType, { label: string; icon: any; color: string; bor
     SEMANAL: { label: 'SEMANAL', icon: Calendar, color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
     EVENTO: { label: 'EVENTO', icon: Flame, color: 'text-rose-400', border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
     MENSAL: { label: 'MENSAL', icon: Trophy, color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
+    CAMPANHA: { label: 'CAMPANHA', icon: Crown, color: 'text-fuchsia-400', border: 'border-fuchsia-500/50', bg: 'bg-fuchsia-500/10' },
+    FUNCIONALIDADE: { label: 'FUNCIONALIDADE', icon: Zap, color: 'text-cyan-400', border: 'border-cyan-500/50', bg: 'bg-cyan-500/10' },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -505,17 +507,32 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                                     </FormField>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <FormField label="CATEGORIA">
-                                            <select className={selectCls} value={item.category} onChange={e => updateItem(idx, 'category', e.target.value as any)}>
-                                                <option value="CONSUMIVEL">CONSUMIVEL</option>
-                                                <option value="PERMANENTE">PERMANENTE</option>
-                                                <option value="TICKET">TICKET</option>
-                                                <option value="BUFF">BUFF</option>
-                                            </select>
-                                        </FormField>
-                                        <FormField label="VALIDADE (DIAS)">
-                                            <input type="number" className={inputCls} value={item.validityDays} onChange={e => updateItem(idx, 'validityDays', Number(e.target.value))} />
-                                        </FormField>
+                                           <FormField label="TIPO">
+                                        <select className={selectCls} value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })}>
+                                            <option value="DIARIA">DIARIA</option>
+                                            <option value="SEMANAL">SEMANAL</option>
+                                            <option value="EVENTO">EVENTO</option>
+                                            <option value="MENSAL">MENSAL</option>
+                                            <option value="CAMPANHA">CAMPANHA (RANK)</option>
+                                            <option value="FUNCIONALIDADE">FUNCIONALIDADE (SITE)</option>
+                                        </select>
+                                    </FormField>                                 </FormField>
+                                      <FormField label="RECOMPENSA PC$">
+                                        <input type="number" className={inputCls} value={form.rewardPc} onChange={e => setForm({ ...form, rewardPc: Number(e.target.value) })} />
+                                    </FormField>
+
+                                    <FormField label="ID DA BADGE (OPCIONAL)">
+                                        <input 
+                                            type="text" 
+                                            className={inputCls} 
+                                            placeholder="Ex: PODE_TRANSFERIR" 
+                                            value={form.rewardBadgeId || ''} 
+                                            onChange={e => setForm({ ...form, rewardBadgeId: e.target.value })} 
+                                        />
+                                        <p className="text-[7px] font-mono text-slate-500 mt-1 uppercase">
+                                            {form.type === 'FUNCIONALIDADE' ? 'Use: PODE_TRANSFERIR, PODE_FAZER_TRADE ou PODE_PEDIR_EMPRESTIMO' : 'Define a badge de rank ou benefício que o aluno ganhará.'}
+                                        </p>
+                                    </FormField>    </FormField>
                                     </div>
 
                                     <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -654,7 +671,7 @@ export function AdminQuests() {
                             <input type="text" placeholder="Buscar missão..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-black/40 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-white text-sm font-mono outline-none focus:border-slate-600 placeholder:text-slate-700" />
                         </div>
                         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-                            {(['ALL', 'DIARIA', 'SEMANAL', 'EVENTO', 'MENSAL'] as const).map(t => {
+                            {(['ALL', 'DIARIA', 'SEMANAL', 'EVENTO', 'MENSAL', 'CAMPANHA', 'FUNCIONALIDADE'] as const).map(t => {
                                 const cfg = t !== 'ALL' ? TYPE_CFG[t] : null;
                                 return (
                                     <button key={t} onClick={() => setFilterType(t)} className={cn('flex items-center gap-1.5 px-3 py-2 rounded-xl border font-press text-[8px] transition-all', filterType === t ? (cfg ? `${cfg.border} ${cfg.bg} ${cfg.color}` : 'border-white/20 bg-white/10 text-white') : 'border-slate-700 text-slate-500')}>

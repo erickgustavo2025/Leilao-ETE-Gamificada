@@ -26,12 +26,12 @@ export function ParticleBackground() {
           key={i}
           initial={{
             opacity: 0,
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: Math.random() * 100 + "%",
+            y: Math.random() * 100 + "%",
           }}
           animate={{
-            opacity: [0, 0.5, 0], // Opacidade reduzida para pesar menos
-            y: [null, Math.random() * -50], // Movimento menor
+            opacity: [0, 0.4, 0],
+            y: [null, "-10vh"],
           }}
           transition={{
             duration: Math.random() * 5 + 5, // Mais lento = Menos FPS necessário

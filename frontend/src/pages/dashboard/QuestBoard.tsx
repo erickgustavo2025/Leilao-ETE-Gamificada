@@ -19,9 +19,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 // ─────────────────────────────────────────────────────
 // TIPOS
 // ─────────────────────────────────────────────────────
-type QuestTab = 'campaign' | 'secondary';
+type QuestTab = 'taverna' | 'rank' | 'site';
 type QuestStatus = 'locked' | 'available' | 'pending' | 'completed';
-type SecondaryType = 'daily' | 'weekly' | 'event';
+type SecondaryType = 'daily' | 'weekly' | 'event' | 'monthly' | 'campaign' | 'functionality';
 
 interface CampaignQuest {
     rankId: string;
@@ -134,10 +134,13 @@ function timeLeft(iso: string): string {
     return `${h}h ${m}m`;
 }
 
-const TYPE_CONFIG: Record<SecondaryType, { label: string; icon: any; color: string; bg: string }> = {
+const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
     daily: { label: 'DIARIA', icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
     weekly: { label: 'SEMANAL', icon: Calendar, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30' },
     event: { label: 'EVENTO', icon: Flame, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' },
+    monthly: { label: 'MENSAL', icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
+    campaign: { label: 'RANK', icon: Crown, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10 border-fuchsia-500/30' },
+    functionality: { label: 'SITE', icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/30' },
 };
 
 // ─────────────────────────────────────────────────────
@@ -517,12 +520,12 @@ function SideQuestCard({
 export function QuestBoard() {
     const { user, refreshUser } = useAuth();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<QuestTab>('campaign');
+    const [activeTab, setActiveTab] = useState<QuestTab>('taverna');
     const [validationTarget, setValidationTarget] = useState<{
         title: string; type: 'code' | 'manual'; questId: string;
     } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [filterType, setFilterType] = useState<'all' | SecondaryType>('all');
+    const [filterType, setFilterType] = useState<'all' | string>('all');
 
     const userPoints = user?.maxPcAchieved || 0;
     const userBalance = user?.saldoPc || 0;
@@ -534,12 +537,18 @@ export function QuestBoard() {
         queryFn: async () => {
             const response = await api.get('/quests/secondary');
             return response.data;
-        }
+        },
+        staleTime: 30000, // 30s — missões não mudam a cada segundo
+        retry: 2,
     });
 
-    const filteredSecondary = filterType === 'all'
-        ? secondaryQuests
-        : secondaryQuests.filter(q => q.type === filterType);
+    const tavernaQuests = secondaryQuests.filter(q => ['daily', 'weekly', 'event', 'monthly'].includes(q.type));
+    const rankQuests = secondaryQuests.filter(q => q.type === 'campaign');
+    const siteQuests = secondaryQuests.filter(q => q.type === 'functionality');
+
+    const filteredTaverna = filterType === 'all'
+        ? tavernaQuests
+        : tavernaQuests.filter(q => q.type === filterType);
 
     // Estatísticas da campanha
     const completedCampaign = CAMPAIGN_QUESTS_STATIC.filter(q => userCargos.includes(q.badge)).length;
@@ -635,8 +644,9 @@ export function QuestBoard() {
             <div className="sticky top-0 z-20 bg-[#040415]/95 backdrop-blur-sm border-b border-white/5 px-4 md:pl-28">
                 <div className="max-w-4xl mx-auto flex">
                     {([
-                        { id: 'campaign', label: 'CAMPANHA', icon: Sword },
-                        { id: 'secondary', label: 'SECUNDARIAS', icon: Target },
+                        { id: 'taverna', label: 'TAVERNA', icon: Target },
+                        { id: 'rank', label: 'MISSÕES DE RANK', icon: Sword },
+                        { id: 'site', label: 'MISSÕES DE SITE', icon: Zap },
                     ] as const).map(tab => (
                         <button
                             key={tab.id}
@@ -663,42 +673,10 @@ export function QuestBoard() {
             <div className="px-4 md:pl-28 pt-6 max-w-4xl mx-auto">
                 <AnimatePresence mode="wait">
 
-                    {/* ═══════════════════ CAMPANHA ═══════════════════ */}
-                    {activeTab === 'campaign' && (
+                    {/* ═══════════════════ TAVERNA ═══════════════════ */}
+                    {activeTab === 'taverna' && (
                         <motion.div
-                            key="campaign"
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -12 }}
-                        >
-                            <p className="font-poppins text-xs text-slate-500 mb-5 leading-relaxed">
-                                Complete a missão do seu rank atual para ganhar a badge e desbloquear os poderes.
-                                Cards bloqueados ficam disponíveis ao atingir o PC$ máximo necessário.
-                            </p>
-
-                            <div className="space-y-3">
-                                {CAMPAIGN_QUESTS_STATIC.map((q, i) => (
-                                    <CampaignCard
-                                        key={q.rankId}
-                                        quest={q}
-                                        userPoints={userPoints}
-                                        userCargos={userCargos}
-                                        delay={i * 0.04}
-                                        onValidate={(quest) => setValidationTarget({
-                                            title: quest.badgeName,
-                                            type: 'code',
-                                            questId: quest.rankId,
-                                        })}
-                                    />
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ═══════════════════ SECUNDARIAS ═══════════════════ */}
-                    {activeTab === 'secondary' && (
-                        <motion.div
-                            key="secondary"
+                            key="taverna"
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
@@ -709,6 +687,7 @@ export function QuestBoard() {
                                     { id: 'all', label: 'TODAS' },
                                     { id: 'daily', label: 'DIARIAS' },
                                     { id: 'weekly', label: 'SEMANAIS' },
+                                    { id: 'monthly', label: 'MENSAL' },
                                     { id: 'event', label: 'EVENTOS' },
                                 ] as const).map(f => (
                                     <button
@@ -734,7 +713,7 @@ export function QuestBoard() {
                                     </div>
                                 ) : (
                                     <>
-                                        {filteredSecondary.map((q, i) => (
+                                        {filteredTaverna.map((q, i) => (
                                             <SideQuestCard
                                                 key={q.id}
                                                 quest={q}
@@ -747,11 +726,86 @@ export function QuestBoard() {
                                                 onRequestManual={handleRequestManual}
                                             />
                                         ))}
-                                        {filteredSecondary.length === 0 && (
-                                            <div className="text-center py-16">
-                                                <p className="font-vt323 text-3xl text-slate-700">Nenhuma missão disponível.</p>
-                                            </div>
-                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══════════════════ MISSÕES DE RANK ═══════════════════ */}
+                    {activeTab === 'rank' && (
+                        <motion.div
+                            key="rank"
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -12 }}
+                        >
+                            <p className="font-poppins text-xs text-slate-500 mb-5 leading-relaxed">
+                                Complete a missão do seu rank atual para ganhar a badge e desbloquear os poderes.
+                            </p>
+
+                            <div className="space-y-3">
+                                {rankQuests.map((q, i) => (
+                                    <SideQuestCard
+                                        key={q.id}
+                                        quest={q}
+                                        delay={i * 0.05}
+                                        onValidate={(quest) => setValidationTarget({
+                                            title: quest.title,
+                                            type: quest.validationType,
+                                            questId: quest.id,
+                                        })}
+                                        onRequestManual={handleRequestManual}
+                                    />
+                                ))}
+                                {/* Fallback para as estáticas se não houver no banco */}
+                                {rankQuests.length === 0 && CAMPAIGN_QUESTS_STATIC.map((q, i) => (
+                                    <CampaignCard
+                                        key={q.rankId}
+                                        quest={q}
+                                        userPoints={userPoints}
+                                        userCargos={userCargos}
+                                        delay={i * 0.04}
+                                        onValidate={(quest) => setValidationTarget({
+                                            title: quest.badgeName,
+                                            type: 'code',
+                                            questId: quest.rankId,
+                                        })}
+                                    />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══════════════════ MISSÕES DE SITE ═══════════════════ */}
+                    {activeTab === 'site' && (
+                        <motion.div
+                            key="site"
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -12 }}
+                        >
+                            <p className="font-poppins text-xs text-slate-500 mb-5 leading-relaxed">
+                                Desbloqueie funcionalidades do sistema completando estas missões.
+                            </p>
+
+                            <div className="space-y-3">
+                                {siteQuests.map((q, i) => (
+                                    <SideQuestCard
+                                        key={q.id}
+                                        quest={q}
+                                        delay={i * 0.05}
+                                        onValidate={(quest) => setValidationTarget({
+                                            title: quest.title,
+                                            type: quest.validationType,
+                                            questId: quest.id,
+                                        })}
+                                        onRequestManual={handleRequestManual}
+                                    />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
                                     </>
                                 )}
                             </div>

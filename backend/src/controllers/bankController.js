@@ -81,6 +81,12 @@ module.exports = {
 
             const user = await User.findById(userId).session(session);
 
+            // 🛡️ RESTRIÇÃO DE BADGE PARA EMPRÉSTIMO (Fase 4)
+            const BADGE_EMPRESTIMO = 'PODE_PEDIR_EMPRESTIMO';
+            if (!(user.cargos || []).includes(BADGE_EMPRESTIMO) && req.user.role !== 'admin') {
+                throw new Error("Complete a Missão do Banco para solicitar empréstimos.");
+            }
+
             // --- LÓGICA DE CONSUMO FLEXÍVEL ---
             let consumedSource = '';
 

@@ -181,9 +181,21 @@ export function Marketplace() {
     onError: (error: any) => toast.error(error.response?.data?.message || "Erro ao anunciar.")
   });
 
-  const handleBuy = useCallback((id: string) => confirm("Confirmar compra?") && buyItemMutation.mutate(id), [buyItemMutation]);
-  const handleCancel = useCallback((id: string) => confirm("Remover anúncio?") && cancelListingMutation.mutate(id), [cancelListingMutation]);
-  const handleSell = useCallback((id: string, price: number, qtd: number, isHouseItem: boolean) => sellItemMutation.mutate({ slotId: id, price, quantity: qtd, isHouseItem }), [sellItemMutation]);
+  const handleBuy = useCallback((id: string) => {
+    if (window.confirm("Confirmar compra?")) {
+      buyItemMutation.mutate(id);
+    }
+  }, [buyItemMutation]);
+
+  const handleCancel = useCallback((id: string) => {
+    if (window.confirm("Remover anúncio?")) {
+      cancelListingMutation.mutate(id);
+    }
+  }, [cancelListingMutation]);
+
+  const handleSell = useCallback((id: string, price: number, qtd: number, isHouseItem: boolean) => {
+    sellItemMutation.mutate({ slotId: id, price, quantity: qtd, isHouseItem });
+  }, [sellItemMutation]);
 
   const currentList = activeTab === 'global' ? globalListings : mySales;
   const filteredListings = currentList.filter(item => (item.item?.name || item.itemData?.name || '').toLowerCase().includes(searchTerm.toLowerCase()));

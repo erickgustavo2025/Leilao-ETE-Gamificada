@@ -83,7 +83,9 @@ const AdminImages = lazy(() => import('./pages/admin/AdminImages').then(m => ({ 
 const AdminPunishments = lazy(() => import('./pages/admin/AdminPunishments').then(m => ({ default: m.AdminPunishments })));
 const AdminApprovals = lazy(() => import('./pages/admin/AdminApprovals'));
 const AdminStartupApprovals = lazy(() => import('./pages/admin/AdminStartupApprovals').then(m => ({ default: m.AdminStartupApprovals })));
-const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));;
+const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
+const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminRegulations = lazy(() => import('./pages/admin/AdminRegulations').then(m => ({ default: m.AdminRegulations })));
 
 // ─────────────────────────────────────────────────────────────
 // Tipos auxiliares
@@ -402,12 +404,30 @@ function AppContent() {
 
   useEffect(() => {
     const handleOpenTrade = (e: Event) => {
-      const tradeId = (e as CustomEvent<string>).detail;
-      navigate('/market', { state: { tab: 'trades', tradeId } });
-      toast.info("Abrindo central de trocas...");
+      const detail = (e as CustomEvent<any>).detail;
+      if (detail?.tradeId) {
+        navigate('/market', { state: { tab: 'trades', tradeId: detail.tradeId } });
+        toast.info("Abrindo central de trocas...");
+      } else if (detail?.targetUser) {
+        // O DashboardHome já lida com isso se estiver montado, 
+        // mas aqui garantimos que o evento chegue onde deve.
+        window.dispatchEvent(new CustomEvent('openTradeModalInternal', { detail: detail.targetUser }));
+      }
     };
+
+    const handleOpenTransfer = (e: Event) => {
+      const detail = (e as CustomEvent<any>).detail;
+      if (detail?.matricula) {
+        window.dispatchEvent(new CustomEvent('openTransferModalInternal', { detail: detail.matricula }));
+      }
+    };
+
     window.addEventListener('openTradeModal', handleOpenTrade);
-    return () => window.removeEventListener('openTradeModal', handleOpenTrade);
+    window.addEventListener('openTransferModal', handleOpenTransfer);
+    return () => {
+      window.removeEventListener('openTradeModal', handleOpenTrade);
+      window.removeEventListener('openTransferModal', handleOpenTransfer);
+    };
   }, [navigate]);
 
   if (loading) return <LoadingScreen />;
@@ -488,6 +508,8 @@ function AppContent() {
             <Route path="/admin/approvals" element={<PrivateRoute roles={['admin']}><AdminApprovals /></PrivateRoute>} />
             <Route path="/admin/startups" element={<PrivateRoute roles={['admin']}><AdminStartupApprovals /></PrivateRoute>} />
             <Route path="/admin/house" element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
+            <Route path="/admin/analytics" element={<PrivateRoute roles={['admin']}><AdminAnalytics /></PrivateRoute>} />
+            <Route path="/admin/regulations" element={<PrivateRoute roles={['admin']}><AdminRegulations /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

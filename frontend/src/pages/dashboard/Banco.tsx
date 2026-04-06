@@ -155,10 +155,6 @@ export function Banco() {
     // ========================
     // ERROR HANDLING
     // ========================
-    if (isError) {
-      toast.error("Erro ao carregar dados do banco.");
-    }
-
     if (isLoading || !bankData) {
         return (
             <div className="h-screen flex items-center justify-center text-white font-press">

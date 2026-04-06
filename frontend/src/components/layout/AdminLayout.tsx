@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Settings, Gift, QrCode, ShieldCheck, Grid,
   Coins, Users, Scroll, LogOut, Menu, X, Gavel,
-  Image as ImageIcon, Trophy, Sword, Rocket
+  Image as ImageIcon, Trophy, Sword, Rocket, Microscope, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -34,6 +34,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'SCANNER', path: '/admin/scanner', icon: QrCode, color: 'text-white' },
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },
+    { label: 'ANALYTICS', path: '/admin/analytics', icon: Microscope, color: 'text-purple-400' },
+    { label: 'REGULAMENTOS', path: '/admin/regulations', icon: BookOpen, color: 'text-blue-400' },
     { label: 'AUDITORIA', path: '/admin/logs', icon: Scroll, color: 'text-green-400' },
   ];
 

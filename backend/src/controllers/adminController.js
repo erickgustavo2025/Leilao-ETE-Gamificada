@@ -292,13 +292,10 @@ async updateBalance(req, res) {
     
     async getAllUsers(req, res) {
         try {
-            console.log("📥 [DEV] Buscando todos os usuários...");
-            
             const users = await User.find()
                 .select('nome matricula turma role saldoPc isFirstAccess') 
                 .sort({ nome: 1 });
 
-            console.log(`✅ [DEV] Encontrados ${users.length} usuários.`);
             return res.json(users);
             
         } catch (error) {

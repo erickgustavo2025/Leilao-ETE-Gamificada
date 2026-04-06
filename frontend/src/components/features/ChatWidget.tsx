@@ -71,7 +71,10 @@ export function ChatWidget() {
             socket.emit('join_chat_room', { room: 'global', user });
         }
 
-        const onMessage = (msg: Message) => {
+        const onMessage = (msg: Message & { room?: string }) => {
+            // ✅ FIX: Filtra mensagens que não pertencem à sala ativa para evitar vazamento
+            if (msg.room && msg.room !== activeRoom) return;
+
             setMessages((prev) => {
                 const newHistory = [...prev, msg];
                 if (newHistory.length > 100) return newHistory.slice(newHistory.length - 100);
@@ -130,6 +133,7 @@ export function ChatWidget() {
 
     const getRoomConfig = () => {
         if (activeRoom === 'global') return { label: 'GLOBAL', icon: Users, color: 'text-blue-400' };
+        if (activeRoom.startsWith('turma_')) return { label: `TURMA ${user?.turma || ''}`, icon: Users, color: 'text-green-400' };
         if (activeRoom === 'auction') return { label: 'CASA DE LEILÕES', icon: Gavel, color: 'text-yellow-400' };
         if (activeRoom === 'market') return { label: 'MERCADO PÚBLICO', icon: Store, color: 'text-cyan-400' };
         if (activeRoom.startsWith('trade_')) return { label: 'NEGOCIAÇÃO PRIVADA', icon: ArrowRightLeft, color: 'text-indigo-400' };
@@ -149,7 +153,7 @@ export function ChatWidget() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => { setIsOpen(true); setUnreadCount(0); scrollToBottom(); }}
-                    className="fixed bottom-4 right-4 z-[90] w-14 h-14 bg-slate-900 border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] group"
+                    className="fixed bottom-6 right-6 z-[90] w-14 h-14 bg-slate-900 border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] group"
                 >
                     <MessageSquare className="text-blue-400 group-hover:text-white transition-colors" />
                     {unreadCount > 0 && (
@@ -168,7 +172,7 @@ export function ChatWidget() {
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
                         className={cn(
                             "fixed right-4 z-[100] transition-all duration-300",
-                            isMinimized ? "bottom-4 w-72" : "bottom-4 w-[90vw] md:w-96"
+                            isMinimized ? "bottom-6 w-72" : "bottom-6 w-[90vw] md:w-96"
                         )}
                     >
                         <PixelCard className="p-0 overflow-hidden shadow-2xl bg-slate-900 border-2 border-slate-600">
@@ -202,6 +206,14 @@ export function ChatWidget() {
                                         >
                                             <Users size={12} /> GLOBAL
                                         </button>
+                                        {user?.turma && (
+                                            <button
+                                                onClick={() => handleSwitchRoom(`turma_${user.turma}`)}
+                                                className={cn("flex-1 py-2 text-[10px] font-press flex justify-center gap-1", activeRoom.startsWith('turma_') ? "bg-green-900/20 text-green-400" : "text-slate-500 hover:text-white")}
+                                            >
+                                                <Users size={12} /> TURMA
+                                            </button>
+                                        )}
                                         {location.pathname.includes('/leilao') && (
                                             <button
                                                 onClick={() => handleSwitchRoom('auction')}

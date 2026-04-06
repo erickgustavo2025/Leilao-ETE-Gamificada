@@ -2,7 +2,7 @@ import { useState, useMemo, memo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingCart, Loader2, Search, WifiOff, Coins, Store, Ghost,
-  Package, ShoppingBag,
+  Package, ShoppingBag, Lock,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -117,6 +117,13 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
   const style = getStyle(item.raridade);
   const canAfford = (user?.saldoPc || 0) >= item.preco;
   const hasStock = item.estoque > 0;
+  
+  // 🛡️ VALIDAÇÃO DE BADGE (Fase 3)
+  const hasBadge = !item.cargoExclusivo || 
+                   item.cargoExclusivo === 'Todos' || 
+                   (user?.cargos || []).includes(item.cargoExclusivo) ||
+                   user?.role === 'admin';
+
   const borderColor = style.split(' ')[0];
 
   const motionProps = isMobile ? {
@@ -195,13 +202,16 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
             <button
               className={cn(
                 "w-full py-2 rounded font-press text-[9px] flex items-center justify-center gap-2 transition-all",
-                !canAfford || !hasStock
+                !canAfford || !hasStock || !hasBadge
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                   : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-sm"
               )}
-              disabled={!canAfford || !hasStock}
+              disabled={!canAfford || !hasStock || !hasBadge}
+              title={!hasBadge ? `Exige badge: ${item.cargoExclusivo}` : ""}
             >
-              {!hasStock ? "SEM ESTOQUE" : !canAfford ? "FALTA GRANA" : buyingId === item._id ? (
+              {!hasStock ? "SEM ESTOQUE" : !hasBadge ? (
+                <><Lock className="w-3 h-3" /> BLOQUEADO</>
+              ) : !canAfford ? "FALTA GRANA" : buyingId === item._id ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <><ShoppingCart className="w-3 h-3" /> COMPRAR</>
@@ -509,12 +519,28 @@ export function Loja() {
                     </p>
                   </div>
 
+                  {selectedItem.cargoExclusivo && selectedItem.cargoExclusivo !== 'Todos' && !(user?.cargos || []).includes(selectedItem.cargoExclusivo) && user?.role !== 'admin' && (
+                    <div className="flex items-center gap-2 bg-red-900/20 border border-red-500/30 p-3 rounded-lg mb-4">
+                      <Lock className="w-4 h-4 text-red-400" />
+                      <p className="text-[10px] font-mono text-red-300 uppercase">
+                        Este item exige a badge: <span className="font-bold text-red-400">{selectedItem.cargoExclusivo}</span>
+                      </p>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => handleBuy(selectedItem)}
-                    disabled={(user?.saldoPc || 0) < selectedItem.preco || selectedItem.estoque <= 0 || buyingId === selectedItem._id}
+                    disabled={
+                      (user?.saldoPc || 0) < selectedItem.preco || 
+                      selectedItem.estoque <= 0 || 
+                      buyingId === selectedItem._id ||
+                      (selectedItem.cargoExclusivo && selectedItem.cargoExclusivo !== 'Todos' && !(user?.cargos || []).includes(selectedItem.cargoExclusivo) && user?.role !== 'admin')
+                    }
                     className={cn(
                       "w-full py-3 rounded-lg font-press text-xs flex items-center justify-center gap-2 transition-all",
-                      (user?.saldoPc || 0) >= selectedItem.preco && selectedItem.estoque > 0
+                      (user?.saldoPc || 0) >= selectedItem.preco && 
+                      selectedItem.estoque > 0 && 
+                      (!selectedItem.cargoExclusivo || selectedItem.cargoExclusivo === 'Todos' || (user?.cargos || []).includes(selectedItem.cargoExclusivo) || user?.role === 'admin')
                         ? "bg-green-600 text-white hover:bg-green-500"
                         : "bg-slate-800 text-slate-500 cursor-not-allowed"
                     )}
@@ -523,6 +549,8 @@ export function Loja() {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : selectedItem.estoque <= 0 ? (
                       "ESGOTADO"
+                    ) : (selectedItem.cargoExclusivo && selectedItem.cargoExclusivo !== 'Todos' && !(user?.cargos || []).includes(selectedItem.cargoExclusivo) && user?.role !== 'admin') ? (
+                      "BADGE NECESSÁRIA"
                     ) : (user?.saldoPc || 0) < selectedItem.preco ? (
                       "SALDO INSUFICIENTE"
                     ) : (

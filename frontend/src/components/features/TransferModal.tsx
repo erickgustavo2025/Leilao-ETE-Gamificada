@@ -62,6 +62,15 @@ export function TransferModal({ isOpen, onClose, onSuccess }: TransferModalProps
     const hasSkill = skillCharges > 0;
     const hasConsum = itemQuantity > 0;
     
+    useEffect(() => {
+        const handleSetMatricula = (e: Event) => {
+            const matricula = (e as CustomEvent<string>).detail;
+            if (matricula) setTargetMatricula(matricula);
+        };
+        window.addEventListener('setTransferMatricula', handleSetMatricula);
+        return () => window.removeEventListener('setTransferMatricula', handleSetMatricula);
+    }, []);
+
     const handleClose = () => {
         setStep(1);
         setTargetMatricula('');

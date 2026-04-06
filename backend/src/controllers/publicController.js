@@ -50,7 +50,7 @@ exports.getPublicProfile = async (req, res) => {
         const { userId } = req.params;
 
         const user = await User.findById(userId)
-            .select('nome turma saldoPc maxPcAchieved avatar isVip');
+            .select('nome turma saldoPc maxPcAchieved avatar isVip matricula');
 
         if (!user) {
             return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -66,6 +66,7 @@ exports.getPublicProfile = async (req, res) => {
             _id: user._id,
             nome: user.nome,
             turma: user.turma,
+            matricula: user.matricula, // ✅ Adicionado para que o botão PIX funcione no frontend
             saldoPc: user.saldoPc,
             maxPcAchieved: user.maxPcAchieved || 0,
             avatar: user.avatar,

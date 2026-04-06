@@ -17,6 +17,15 @@ module.exports = {
             const { targetId, offerInitiator, offerTarget } = req.body;
             const initiatorId = req.user._id;
 
+            // 🛡️ RESTRIÇÃO DE BADGE PARA TRADE (Fase 4)
+            const BADGE_TRADE = 'PODE_FAZER_TRADE';
+            if (!(req.user.cargos || []).includes(BADGE_TRADE) && req.user.role !== 'admin') {
+                return res.status(403).json({
+                    error: 'Complete a Missão de Trade para negociar itens.',
+                    badgeNecessaria: BADGE_TRADE
+                });
+            }
+
             if (targetId === initiatorId.toString()) return res.status(400).json({ error: "Não pode trocar consigo mesmo." });
 
             const initiator = await User.findById(initiatorId);
@@ -81,6 +90,12 @@ module.exports = {
 
             const initiator = await User.findById(trade.initiator).session(session);
             const target = await User.findById(trade.target).session(session);
+
+            // 🛡️ RESTRIÇÃO DE BADGE PARA QUEM ACEITA (Fase 4)
+            const BADGE_TRADE = 'PODE_FAZER_TRADE';
+            if (!(target.cargos || []).includes(BADGE_TRADE) && target.role !== 'admin') {
+                throw new Error("O destinatário não tem permissão para fazer trades ainda.");
+            }
 
             // Validação de Saldos (PC$)
             if (initiator.saldoPc < (trade.offerInitiator.pc || 0)) throw new Error("O iniciador não tem saldo suficiente.");

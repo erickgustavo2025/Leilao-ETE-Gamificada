@@ -6,7 +6,7 @@ const questSchema = new mongoose.Schema({
     description: { type: String, required: true },
     type: {
         type: String,
-        enum: ['DIARIA', 'SEMANAL', 'EVENTO', 'MENSAL'], // EPICA virou MENSAL!
+        enum: ['DIARIA', 'SEMANAL', 'EVENTO', 'MENSAL', 'CAMPANHA', 'FUNCIONALIDADE'],
         required: true
     },
     validationMethod: {

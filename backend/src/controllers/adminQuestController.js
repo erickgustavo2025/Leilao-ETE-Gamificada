@@ -147,6 +147,7 @@ const adminQuestController = {
       }
 
       // 🏆 ENTREGA DO LOOT (Usando a função unificada)
+      const { deliverQuestRewards } = require('../utils/questRewards');
       await deliverQuestRewards(user, quest);
 
       // Atualiza o status da submissão

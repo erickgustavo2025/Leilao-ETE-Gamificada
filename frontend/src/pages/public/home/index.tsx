@@ -26,34 +26,37 @@ export function LandingPage() {
 
     const [isLoaded, setIsLoaded] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [isTouch, setIsTouch] = useState(false);
     
     // Scroll Progress Global
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
 
     useEffect(() => {
+        setIsTouch(window.matchMedia('(hover: none)').matches);
+        
         const timer = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(timer);
-                    setTimeout(() => setIsLoaded(true), 500);
+                    setTimeout(() => setIsLoaded(true), 300);
                     return 100;
                 }
-                return prev + 10;
+                return prev + 15;
             });
-        }, 80);
+        }, 60);
         return () => clearInterval(timer);
     }, []);
 
     if (!isLoaded) return <UltraLoadingScreen progress={progress} />;
 
     return (
-        <div className="bg-[#030303] text-white overflow-x-hidden relative cursor-none min-h-screen">
-            <CustomCursor />
+        <div className={`bg-[#030303] text-white overflow-x-hidden relative ${isTouch ? 'cursor-auto' : 'cursor-none'} min-h-screen`}>
+            {!isTouch && <CustomCursor />}
             
             <div className="fixed inset-0 z-0">
                 <BackgroundLayers />
-                <FloatingShapes />
+                {!isTouch && <FloatingShapes />}
             </div>
 
             {/* Barra de Progresso de Leitura (CORRIGIDA) */}

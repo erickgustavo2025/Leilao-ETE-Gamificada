@@ -33,6 +33,9 @@ const investmentRoutes = require('./routes/investmentRoutes');
 const startupRoutes = require('./routes/startupRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const notasRoutes = require('./routes/notasRoutes');
+const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
+const adminRegulationRoutes = require('./routes/adminRegulationRoutes');
+const publicRegulationRoutes = require('./routes/publicRegulationRoutes');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -40,6 +43,7 @@ const logger = require('./services/logger');
 const SystemConfig = require('./models/SystemConfig');
 
 require('./models/GameSkill');
+require('./models/ChatSession');
 
 const app = express();
 app.set("trust proxy", 1);
@@ -131,6 +135,9 @@ app.use('/api/investimentos', investmentRoutes);
 app.use('/api/startups', startupRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notas', notasRoutes);
+app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/regulations', adminRegulationRoutes);
+app.use('/api/regulations', publicRegulationRoutes);
 
 // Middleware de erro opaco para segurança
 app.use((err, req, res, next) => {

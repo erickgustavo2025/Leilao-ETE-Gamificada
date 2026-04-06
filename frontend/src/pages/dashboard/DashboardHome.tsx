@@ -39,6 +39,30 @@ export function DashboardHome() {
 
   // 🔥 EFEITO DE CARREGAMENTO BLINDADO
   useEffect(() => {
+    const handleOpenTradeInternal = (e: Event) => {
+      const targetUser = (e as CustomEvent<any>).detail;
+      if (targetUser) setTradeTarget(targetUser);
+    };
+
+    const handleOpenTransferInternal = (e: Event) => {
+      const matricula = (e as CustomEvent<any>).detail;
+      if (matricula) {
+        setModalState(prev => ({ ...prev, transfer: true }));
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('setTransferMatricula', { detail: matricula }));
+        });
+      }
+    };
+
+    window.addEventListener('openTradeModalInternal', handleOpenTradeInternal);
+    window.addEventListener('openTransferModalInternal', handleOpenTransferInternal);
+    return () => {
+      window.removeEventListener('openTradeModalInternal', handleOpenTradeInternal);
+      window.removeEventListener('openTransferModalInternal', handleOpenTransferInternal);
+    };
+  }, [navigate]);
+
+  useEffect(() => {
     let mounted = true;
 
     // 1. Cria um "Cronômetro de Segurança"
