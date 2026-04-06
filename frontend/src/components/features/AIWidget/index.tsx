@@ -72,7 +72,7 @@ export function AIWidget() {
             {/* ── BOTÃO FLUTUANTE ── */}
             <motion.button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed bottom-6 right-6 z-[150] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl"
+                className="fixed bottom-24 right-6 z-[150] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl"
                 style={{
                     background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
                     boxShadow: isOpen
@@ -81,9 +81,10 @@ export function AIWidget() {
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                animate={{ boxShadow: isOpen
-                    ? '0 0 30px rgba(124,58,237,0.6)'
-                    : ['0 0 15px rgba(124,58,237,0.3)', '0 0 25px rgba(124,58,237,0.6)', '0 0 15px rgba(124,58,237,0.3)']
+                animate={{
+                    boxShadow: isOpen
+                        ? '0 0 30px rgba(124,58,237,0.6)'
+                        : ['0 0 15px rgba(124,58,237,0.3)', '0 0 25px rgba(124,58,237,0.6)', '0 0 15px rgba(124,58,237,0.3)']
                 }}
                 transition={{ repeat: isOpen ? 0 : Infinity, duration: 2 }}
                 aria-label="Abrir Oráculo GIL"
@@ -92,10 +93,10 @@ export function AIWidget() {
                     {isOpen
                         ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
                             <X size={22} className="text-white" />
-                          </motion.div>
+                        </motion.div>
                         : <motion.div key="spark" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
                             <Sparkles size={22} className="text-white" />
-                          </motion.div>
+                        </motion.div>
                     }
                 </AnimatePresence>
             </motion.button>
@@ -145,7 +146,7 @@ export function AIWidget() {
                                 placeholder="Pergunte ao Oráculo..."
                                 disabled={askMutation.isPending}
                                 className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-3 py-2 text-white text-sm font-mono outline-none focus:border-purple-400 placeholder:text-slate-700 disabled:opacity-50"
-                                maxLength={1000}
+                                maxLength={3000}
                             />
                             <button
                                 onClick={handleSend}

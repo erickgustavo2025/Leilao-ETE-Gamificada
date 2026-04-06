@@ -34,7 +34,7 @@ exports.processAIRequest = async (req, res) => {
 
         // 3. RAG Condicional (Só TUTOR ou CONSULTOR)
         if (modo === 'TUTOR' || modo === 'CONSULTOR') {
-            const modelEmb = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const modelEmb = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
             const resEmb = await modelEmb.embedContent(pergunta);
             const queryVector = resEmb.embedding.values;
 
@@ -64,7 +64,7 @@ exports.processAIRequest = async (req, res) => {
             })) + `\n\nCONHECIMENTO ADICIONAL (RAG):\n${contextRAG}\n\nPERGUNTA: ${pergunta}`;
 
         // 5. Chama Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const resposta = result.response.text();
 
@@ -79,13 +79,18 @@ exports.processAIRequest = async (req, res) => {
             trimestre: `${new Date().getFullYear()}-T${Math.ceil((new Date().getMonth() + 1) / 4)}`
         };
 
-        // 7. Salva Interação (Assíncrono sem await - Seção 3.2)
-        AIInteraction.create({
-            userId, pergunta, resposta, modo, paginaOrigem, snapshotNotas: snapshot
-        }).catch(err => console.error('❌ Erro ao salvar interação:', err));
+        let interactionId;
+        try {
+            const interaction = await AIInteraction.create({
+                userId, pergunta, resposta, modo, paginaOrigem, snapshotNotas: snapshot
+            });
+            interactionId = interaction._id.toString();
+        } catch (err) {
+            console.error('❌ Erro ao salvar interação:', err);
+            // Não bloqueia a resposta ao aluno se o log falhar
+        }
 
-        res.json({ resposta, modo });
-
+        res.json({ resposta, modo, interactionId });
     } catch (error) {
         console.error('❌ Erro no Oráculo:', error);
         res.status(500).json({ error: 'Erro ao processar pergunta.' });

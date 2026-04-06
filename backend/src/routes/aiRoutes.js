@@ -11,7 +11,7 @@ const aiLimiter = rateLimit({
     windowMs: 60 * 1000,     // 1 minuto
     max: 10,                  // 10 perguntas por minuto por usuário
     message: { error: 'Muitas perguntas. Aguarde um momento.' },
-    keyGenerator: (req) => req.user?._id?.toString() || req.ip, // Por usuário
+    keyGenerator: (req) => req.user?._id?.toString() || 'aluno-anonimo'
 });
 
 // Rotas protegidas por autenticação

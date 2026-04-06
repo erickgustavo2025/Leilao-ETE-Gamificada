@@ -42,3 +42,9 @@ logs
 
 # Arquivos de Testes e Cobertura
 coverage/
+passwords.txt
+
+# Ignorar arquivos confidenciais de conhecimento e materiais do Assaad
+backend/src/config/*.md
+backend/documentos/enem/*
+!backend/documentos/enem/.gitkeep
