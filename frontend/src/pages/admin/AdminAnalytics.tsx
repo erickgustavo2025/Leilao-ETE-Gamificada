@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api/axios-config';
 import { cn } from '../../utils/cn';
+import { AdminLayout } from '../../components/layout/AdminLayout';
 
 // ─────────────────────────────────────────────────────────────────
 // TIPOS
@@ -57,6 +58,8 @@ export default function AdminAnalytics() {
     }
 
     return (
+
+        <AdminLayout>
         <div className="space-y-8 pb-12">
             {/* Header */}
             <div className="flex items-center gap-4 mb-2">
@@ -161,6 +164,7 @@ export default function AdminAnalytics() {
 
         </div>
         </div >
+        </AdminLayout>
     );
 }
 

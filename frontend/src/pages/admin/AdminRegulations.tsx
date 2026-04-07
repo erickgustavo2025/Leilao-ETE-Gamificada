@@ -5,6 +5,8 @@ import { api } from '../../api/axios-config';
 import { toast } from 'sonner';
 import { PixelCard } from '../../components/ui/PixelCard';
 import { PixelButton } from '../../components/ui/PixelButton';
+import { AdminLayout } from '../../components/layout/AdminLayout';
+
 
 interface Regulation {
     _id?: string;
@@ -82,6 +84,7 @@ export function AdminRegulations() {
     };
 
     return (
+        <AdminLayout>
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
@@ -238,5 +241,6 @@ export function AdminRegulations() {
                 )}
             </div>
         </div>
+        </AdminLayout>
     );
 }

@@ -48,3 +48,4 @@ passwords.txt
 backend/src/config/*.md
 backend/documentos/enem/*
 !backend/documentos/enem/.gitkeep
+ULTRA_SAFE_FINAL_REPORT_V6.1.md

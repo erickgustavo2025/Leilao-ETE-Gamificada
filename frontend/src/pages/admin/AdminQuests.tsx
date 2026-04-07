@@ -67,11 +67,32 @@ interface FormState {
     description: string;
     type: QuestType;
     rewardPc: number;
+    badgeId: string;
     validationType: ValidationType;
     expiresAt: string;
     generateKeysCount: number;
     rewardItems: RewardItem[];
 }
+
+// ─────────────────────────────────────────────────────────────────
+// CATÁLOGO DE BADGES DISPONÍVEIS PARA MISSÕES
+// ─────────────────────────────────────────────────────────────────
+const BADGE_OPTIONS: { value: string; label: string; group: string }[] = [
+    // Badges de Funcionalidade — desbloqueiam features do sistema
+    { value: 'PODE_TRANSFERIR',       label: '💸 Pode Transferir (PIX Escolar)',      group: 'FUNCIONALIDADE' },
+    { value: 'PODE_FAZER_TRADE',      label: '🔄 Pode Fazer Trade (Mercado P2P)',     group: 'FUNCIONALIDADE' },
+    { value: 'PODE_PEDIR_EMPRESTIMO', label: '🏦 Pode Pedir Empréstimo (ETE Bank)',   group: 'FUNCIONALIDADE' },
+    // Badges de Rank — desbloqueiam skills de rank
+    { value: 'bronze',     label: '🥉 Guardião de Bronze',      group: 'RANK' },
+    { value: 'prata',      label: '🥈 Cavaleiro de Prata',      group: 'RANK' },
+    { value: 'ouro',       label: '🥇 Campeão de Ouro',         group: 'RANK' },
+    { value: 'diamante',   label: '💎 Mestre Diamante',         group: 'RANK' },
+    { value: 'epico',      label: '👑 Herói Épico',             group: 'RANK' },
+    { value: 'lendario',   label: '🌟 Lendário da ETE',         group: 'RANK' },
+    { value: 'supremo',    label: '🔥 Supremo Imortal',         group: 'RANK' },
+    { value: 'mitologico', label: '🔱 Entidade Mitológica',     group: 'RANK' },
+    { value: 'soberano',   label: '⚡ Soberano Absoluto',       group: 'RANK' },
+];
 
 // ─────────────────────────────────────────────────────────────────
 // CONFIG VISUAL POR TIPO
@@ -297,6 +318,7 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
         description: '',
         type: 'DIARIA',
         rewardPc: 50,
+        badgeId: '',
         validationType: 'SECRET_CODE',
         expiresAt: '',
         generateKeysCount: 30,
@@ -435,6 +457,44 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
                                 <input type="number" className={cn(inputCls, 'pl-9')} min={0} value={form.rewardPc} onChange={e => set('rewardPc', Number(e.target.value))} />
                             </div>
                         </FormField>
+                    </div>
+
+                    {/* ── BADGE REWARD ── */}
+                    <div className="p-4 rounded-xl bg-fuchsia-500/5 border border-fuchsia-500/20 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Trophy size={13} className="text-fuchsia-400" />
+                            <span className="font-press text-[9px] text-fuchsia-400">BADGE DE RECOMPENSA (OPCIONAL)</span>
+                        </div>
+                        <p className="font-poppins text-[10px] text-slate-500 leading-relaxed">
+                            Se preenchido, o aluno receberá esta badge em <code className="text-fuchsia-400">user.cargos</code> ao completar a missão — desbloqueando funcionalidades ou skills de rank.
+                        </p>
+                        <FormField label="SELECIONAR BADGE">
+                            <select
+                                className={selectCls}
+                                value={form.badgeId}
+                                onChange={e => set('badgeId', e.target.value)}
+                            >
+                                <option value="">Nenhuma badge (só PC$ / itens)</option>
+                                <optgroup label="── FUNCIONALIDADE (desbloqueiam features) ──">
+                                    {BADGE_OPTIONS.filter(b => b.group === 'FUNCIONALIDADE').map(b => (
+                                        <option key={b.value} value={b.value}>{b.label}</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="── RANK (desbloqueiam skills de rank) ──">
+                                    {BADGE_OPTIONS.filter(b => b.group === 'RANK').map(b => (
+                                        <option key={b.value} value={b.value}>{b.label}</option>
+                                    ))}
+                                </optgroup>
+                            </select>
+                        </FormField>
+                        {form.badgeId && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-fuchsia-900/30 border border-fuchsia-500/30">
+                                <Check size={12} className="text-fuchsia-400 shrink-0" />
+                                <span className="font-mono text-[10px] text-fuchsia-300">
+                                    Badge <strong>{form.badgeId}</strong> será entregue ao completar
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <FormField label="EXPIRA EM">

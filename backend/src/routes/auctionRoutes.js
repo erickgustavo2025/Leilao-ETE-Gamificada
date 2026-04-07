@@ -10,6 +10,8 @@ const schemas = require('../validators/schemas'); // <--- Importando a central
 
 router.get('/', protect, auctionController.getItems);
 router.get('/history', protect, auctionController.getStudentHistory);
+router.get('/global-history', protect, auctionController.getGlobalHistory);
+
 
 // Dar Lance (Agora usa o schema centralizado)
 router.post('/bid/:id', 

@@ -1,9 +1,9 @@
-// frontend/src/components/features/AIWidget/index.tsx
+// ARQUIVO: frontend/src/components/features/AIWidget/index.tsx
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Sparkles, X, Send, MessageSquare, Plus, Clock, 
-    ChevronLeft, BrainCircuit 
+import {
+    Sparkles, X, Send, MessageSquare, Plus, Clock,
+    ChevronLeft, BrainCircuit, Trash2, Pencil
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -17,6 +17,7 @@ interface Message {
     role: 'user' | 'ai';
     content: string;
     interactionId?: string;
+    userRating?: number;
     modo?: string;
 }
 
@@ -31,7 +32,8 @@ export function AIWidget() {
     const { signed } = useAuth();
     const location = useLocation();
     const queryClient = useQueryClient();
-    
+    const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+
     const [isOpen, setIsOpen] = useState(false);
     const [view, setView] = useState<'chat' | 'sessions'>('chat');
     const [input, setInput] = useState('');
@@ -39,53 +41,87 @@ export function AIWidget() {
         { role: 'ai', content: 'Olá! Sou o Oráculo GIL. Como posso ajudar na sua jornada hoje? 🔮' }
     ]);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-    
+
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    // ── BUSCAR SESSÕES
     const { data: sessions = [], refetch: refetchSessions } = useQuery<SessionSummary[]>({
         queryKey: ['ai-sessions'],
         queryFn: async () => {
             const res = await api.get('/ai/sessions');
             return res.data;
         },
-        enabled: signed && isOpen
+        enabled: signed && isOpen,
+        staleTime: 30000,
     });
 
-    // ── ENVIAR PERGUNTA
     const askMutation = useMutation({
         mutationFn: async (pergunta: string) => {
             const res = await api.post('/ai/ask', {
                 pergunta,
                 paginaOrigem: location.pathname,
-                sessionId: currentSessionId
+                sessionId: currentSessionId,
             });
             return res.data;
         },
         onSuccess: (data) => {
-            setMessages(prev => [...prev, { 
-                role: 'ai', 
-                content: data.resposta,
-                modo: data.modo,
-                interactionId: data.interactionId
-            }]);
+            setMessages((prev) => [
+                ...prev,
+                {
+                    role: 'ai',
+                    content: data.resposta,
+                    modo: data.modo,
+                    interactionId: data.interactionId,
+                    userRating: 0,
+                },
+            ]);
             if (!currentSessionId) {
                 setCurrentSessionId(data.sessionId);
                 queryClient.invalidateQueries({ queryKey: ['ai-sessions'] });
             }
-        }
+        },
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => { await api.delete(`/ai/sessions/${id}`); },
+        onSuccess: (_data, deletedId) => {
+            queryClient.invalidateQueries({ queryKey: ['ai-sessions'] });
+            if (currentSessionId === deletedId) handleNewChat();
+        },
+    });
+
+    const renameMutation = useMutation({
+        mutationFn: async ({ id, newTitle }: { id: string; newTitle: string }) => {
+            await api.patch(`/ai/sessions/${id}`, { newTitle });
+        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ai-sessions'] }); },
+    });
+
+    // 2. Adicione este useEffect para ouvir o Chat Global:
     useEffect(() => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [messages, askMutation.isPending]);
+        const handleGlobalChat = (e: any) => setIsGlobalChatOpen(e.detail);
+        window.addEventListener('chatGlobalToggled', handleGlobalChat);
+        return () => window.removeEventListener('chatGlobalToggled', handleGlobalChat);
+    }, []);
+
+    
+
+    useEffect(() => {
+        // Adicionamos um pequeno delay (setTimeout) para dar tempo
+        // da animação do Framer Motion terminar de abrir a janela
+        // antes de forçar o scroll para baixo.
+        const scrollTimer = setTimeout(() => {
+            if (bottomRef.current && isOpen && view === 'chat') {
+                bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 150); // 150ms é o "ponto doce" para a interface renderizar
+
+        return () => clearTimeout(scrollTimer); // Limpeza de memória
+    }, [messages, askMutation.isPending, isOpen, view]); // Adicionamos isOpen e view nas dependências
 
     const handleSend = () => {
         if (!input.trim() || askMutation.isPending) return;
         const userMsg = input.trim();
-        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
         setInput('');
         askMutation.mutate(userMsg);
     };
@@ -102,59 +138,83 @@ export function AIWidget() {
             const history: Message[] = res.data.map((m: any) => ({
                 role: m.role,
                 content: m.content,
+                interactionId: m.interactionId,
+                userRating: m.userRating ?? 0,
+                modo: m.modo,
             }));
-            setMessages(history.length > 0 ? history : [{
-                role: 'ai', content: 'Continuando nossa conversa... 🔮'
-            }]);
+            setMessages(history.length > 0 ? history : [{ role: 'ai', content: 'Continuando nossa conversa... 🔮' }]);
             setCurrentSessionId(sessionId);
             setView('chat');
         } catch (err) {
-            console.error("Erro ao carregar sessão:", err);
+            console.error('Erro ao carregar sessão:', err);
+        }
+    };
+
+    // Quando o aluno vota, atualiza o userRating no array local.
+    // Assim, ao fechar e reabrir o widget, as estrelas chegam já travadas
+    // via initialRating — sem precisar buscar o banco de novo.
+    const handleMessageRated = (interactionId: string, rating: number) => {
+        setMessages((prev) =>
+            prev.map((m) =>
+                m.interactionId === interactionId ? { ...m, userRating: rating } : m
+            )
+        );
+    };
+
+    const handleRename = (s: SessionSummary) => {
+        const novo = window.prompt('Novo título para esta conversa:', s.title);
+        if (novo && novo.trim() && novo.trim() !== s.title) {
+            renameMutation.mutate({ id: s._id, newTitle: novo.trim() });
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        if (window.confirm('Apagar esta conversa e limpar a memória do Oráculo?')) {
+            deleteMutation.mutate(id);
         }
     };
 
     const isPublicPath = (path: string) => {
         const publics = ['/login', '/maintenance', '/first-access', '/forgot-password', '/reset-password'];
-        return publics.some(p => path.startsWith(p)) || path === '/';
+        return publics.some((p) => path.startsWith(p)) || path === '/';
     };
 
     if (!signed || isPublicPath(location.pathname)) return null;
 
     return (
         <>
-            {/* ── BOTÃO FLUTUANTE — canto inferior ESQUERDO ── */}
+        {!isGlobalChatOpen && (
             <motion.button
                 onClick={() => setIsOpen(!isOpen)}
                 className="fixed bottom-6 left-6 z-[150] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl"
                 style={{
                     background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                    boxShadow: isOpen
-                        ? '0 0 30px rgba(124,58,237,0.7)'
-                        : '0 0 15px rgba(124,58,237,0.4)',
+                    boxShadow: isOpen ? '0 0 30px rgba(124,58,237,0.7)' : '0 0 15px rgba(124,58,237,0.4)',
                 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 animate={{
                     boxShadow: isOpen
                         ? '0 0 30px rgba(124,58,237,0.6)'
-                        : ['0 0 12px rgba(124,58,237,0.3)', '0 0 24px rgba(124,58,237,0.6)', '0 0 12px rgba(124,58,237,0.3)']
+                        : ['0 0 12px rgba(124,58,237,0.3)', '0 0 24px rgba(124,58,237,0.6)', '0 0 12px rgba(124,58,237,0.3)'],
                 }}
                 transition={{ repeat: isOpen ? 0 : Infinity, duration: 2.5 }}
                 aria-label="Abrir Oráculo GIL"
             >
                 <AnimatePresence mode="wait">
-                    {isOpen
-                        ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+                    {isOpen ? (
+                        <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
                             <X size={22} className="text-white" />
-                          </motion.div>
-                        : <motion.div key="spark" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="spark" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
                             <Sparkles size={22} className="text-white" />
-                          </motion.div>
-                    }
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </motion.button>
+            )}
 
-            {/* ── CHAT BOX — abre para CIMA e para a DIREITA do botão ── */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -175,7 +235,7 @@ export function AIWidget() {
                             transition: 'width 0.25s ease',
                         }}
                     >
-                        {/* ── SIDEBAR DE SESSÕES ── */}
+                        {/* SIDEBAR DE SESSÕES */}
                         <AnimatePresence>
                             {view === 'sessions' && (
                                 <motion.div
@@ -187,28 +247,47 @@ export function AIWidget() {
                                 >
                                     <div className="px-4 py-3 border-b border-purple-500/20 flex items-center justify-between">
                                         <span className="font-press text-[8px] text-purple-400 uppercase tracking-widest">Histórico</span>
-                                        <button onClick={handleNewChat} className="p-1 hover:bg-purple-500/20 rounded text-purple-300 transition-colors">
+                                        <button onClick={handleNewChat} className="p-1 hover:bg-purple-500/20 rounded text-purple-300 transition-colors" title="Nova conversa">
                                             <Plus size={14} />
                                         </button>
                                     </div>
-                                    
+
                                     <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                        {sessions.map(s => (
-                                            <button
-                                                key={s._id}
-                                                onClick={() => handleLoadSession(s._id)}
-                                                className={cn(
-                                                    "w-full text-left px-4 py-3 text-[11px] font-mono hover:bg-purple-500/10 transition-colors border-b border-white/5",
-                                                    currentSessionId === s._id && "bg-purple-500/15 text-purple-300"
-                                                )}
-                                            >
-                                                <p className="text-slate-200 truncate font-bold mb-1">{s.title || 'Conversa'}</p>
-                                                <div className="flex items-center gap-1 text-slate-500 text-[9px]">
-                                                    <Clock size={10} />
-                                                    {new Date(s.updatedAt).toLocaleDateString('pt-BR')}
+                                        {sessions.map((s) => (
+                                            <div key={s._id} className="group relative border-b border-white/5">
+                                                <button
+                                                    onClick={() => handleLoadSession(s._id)}
+                                                    className={cn(
+                                                        'w-full text-left px-4 py-3 text-[11px] font-mono hover:bg-purple-500/10 transition-colors',
+                                                        currentSessionId === s._id && 'bg-purple-500/15 text-purple-300'
+                                                    )}
+                                                >
+                                                    <p className="text-slate-200 truncate font-bold mb-1 pr-12">{s.title || 'Conversa'}</p>
+                                                    <div className="flex items-center gap-1 text-slate-500 text-[9px]">
+                                                        <Clock size={10} />
+                                                        {new Date(s.updatedAt).toLocaleDateString('pt-BR')}
+                                                    </div>
+                                                    <p className="text-slate-600 text-[9px] truncate mt-1 italic">{s.lastMessage}</p>
+                                                </button>
+                                                <div className="absolute right-2 top-3 hidden group-hover:flex items-center gap-1">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleRename(s); }}
+                                                        className="p-1.5 hover:bg-white/10 rounded text-slate-400 hover:text-purple-300 transition-colors"
+                                                        title="Renomear"
+                                                        disabled={renameMutation.isPending}
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(s._id); }}
+                                                        className="p-1.5 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400 transition-colors"
+                                                        title="Apagar"
+                                                        disabled={deleteMutation.isPending}
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
                                                 </div>
-                                                <p className="text-slate-600 text-[9px] truncate mt-1 italic">{s.lastMessage}</p>
-                                            </button>
+                                            </div>
                                         ))}
                                         {sessions.length === 0 && (
                                             <div className="flex flex-col items-center justify-center h-40 opacity-30">
@@ -217,7 +296,7 @@ export function AIWidget() {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="p-3 text-[8px] text-slate-600 font-mono text-center border-t border-white/5 bg-black/20">
                                         Memória de 7 dias ativada 🧠
                                     </div>
@@ -225,9 +304,8 @@ export function AIWidget() {
                             )}
                         </AnimatePresence>
 
-                        {/* ── ÁREA DO CHAT ── */}
+                        {/* ÁREA DO CHAT */}
                         <div className="flex flex-col flex-1 min-w-0">
-                            {/* Header */}
                             <div className="flex items-center gap-3 px-4 py-3 border-b border-purple-500/20 shrink-0 bg-purple-500/5">
                                 <div className="relative">
                                     <div className="w-8 h-8 rounded-lg bg-purple-600/30 flex items-center justify-center border border-purple-500/40">
@@ -235,19 +313,14 @@ export function AIWidget() {
                                     </div>
                                     <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-[#07071a] animate-pulse" />
                                 </div>
-                                
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-press text-[9px] text-purple-100 uppercase tracking-widest truncate">Oráculo GIL</h3>
                                     <p className="text-[8px] text-purple-400/70 font-mono truncate">Inteligência Artificial ETE</p>
                                 </div>
-
                                 <div className="flex items-center gap-1">
                                     <button
-                                        onClick={() => { setView(v => v === 'sessions' ? 'chat' : 'sessions'); refetchSessions(); }}
-                                        className={cn(
-                                            "p-2 rounded-lg transition-all",
-                                            view === 'sessions' ? 'bg-purple-500/30 text-purple-200' : 'text-slate-500 hover:text-purple-300 hover:bg-purple-500/10'
-                                        )}
+                                        onClick={() => { setView((v) => (v === 'sessions' ? 'chat' : 'sessions')); refetchSessions(); }}
+                                        className={cn('p-2 rounded-lg transition-all', view === 'sessions' ? 'bg-purple-500/30 text-purple-200' : 'text-slate-500 hover:text-purple-300 hover:bg-purple-500/10')}
                                         title="Histórico de conversas"
                                     >
                                         {view === 'sessions' ? <ChevronLeft size={16} /> : <MessageSquare size={16} />}
@@ -258,23 +331,26 @@ export function AIWidget() {
                                 </div>
                             </div>
 
-                            {/* Mensagens */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/10">
                                 {messages.map((msg, i) => (
-                                    <ChatBubble key={i} message={msg} />
+                                    <ChatBubble
+                                        key={i}
+                                        message={msg}
+                                        sessionId={currentSessionId}
+                                        onRated={handleMessageRated}
+                                    />
                                 ))}
                                 {askMutation.isPending && <TypingIndicator />}
                                 <div ref={bottomRef} />
                             </div>
 
-                            {/* Input */}
                             <div className="p-4 border-t border-purple-500/20 bg-black/20">
                                 <div className="relative flex items-center gap-2">
                                     <input
                                         type="text"
                                         value={input}
-                                        onChange={e => setInput(e.target.value)}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                                         placeholder="Pergunte ao Oráculo..."
                                         disabled={askMutation.isPending}
                                         className="flex-1 bg-black/40 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm font-mono outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/30 placeholder:text-slate-700 disabled:opacity-50 transition-all"
@@ -289,7 +365,7 @@ export function AIWidget() {
                                     </button>
                                 </div>
                                 <p className="text-[8px] text-slate-700 font-mono mt-2 text-center uppercase tracking-tighter">
-                                    Powered by OpenRouter • Qwen 3.6 Plus
+                                    Powered by Gemini • OpenRouter Backup
                                 </p>
                             </div>
                         </div>

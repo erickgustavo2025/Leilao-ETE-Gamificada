@@ -1,11 +1,13 @@
 // backend/src/routes/aiRoutes.js
 const express = require('express');
 const { protect } = require('../middlewares/authMiddleware');
-const { 
-    processAIRequest, 
-    submitFeedback, 
-    getSessions, 
-    getSessionById 
+const {
+    processAIRequest,
+    submitFeedback,
+    getSessions,
+    getSessionById,
+    deleteSession, 
+    renameSession  
 } = require('../controllers/aiController');
 const rateLimit = require('express-rate-limit');
 
@@ -20,6 +22,9 @@ const aiLimiter = rateLimit({
     legacyHeaders: false,
     validate: true,
     keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+    validate: {
+        keyGeneratorIpFallback: false
+    }
 });
 
 // Rotas de Chat e IA
@@ -29,5 +34,9 @@ router.post('/feedback', protect, submitFeedback);
 // Rotas de Histórico/Sessões
 router.get('/sessions', protect, getSessions);
 router.get('/sessions/:id', protect, getSessionById);
+
+// Novas rotas para o aluno gerenciar a própria memória da IA:
+router.patch('/sessions/:id', protect, renameSession); // Renomear título
+router.delete('/sessions/:id', protect, deleteSession); // Apagar conversa/Limpar memória
 
 module.exports = router;

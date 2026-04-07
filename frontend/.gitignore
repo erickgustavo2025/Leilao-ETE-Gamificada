@@ -26,6 +26,9 @@ coverage
 *.sln
 *.sw?
 .env
+.github
+workflows
+tests
 
 # Playwright
 /test-results/

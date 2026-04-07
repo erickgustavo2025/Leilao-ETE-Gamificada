@@ -14,6 +14,9 @@ import { PageTransition } from '../../components/layout/PageTransition';
 import { calculateRank } from '../../utils/rankHelper';
 import { StudentProfilePopup, type StudentProfileData } from '../../components/features/StudentProfilePopup';
 
+
+
+
 // ========================
 // HOOK: Detectar Mobile
 // ========================
@@ -99,7 +102,7 @@ const PodiumItem = memo(({ student, rank, isMobile, getRankName, style, onAvatar
 
         <div className={cn("absolute -bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full font-press text-xs shadow-lg border",
           isFirst ? "bg-yellow-400 text-yellow-900 border-yellow-200" :
-          isSecond ? "bg-slate-300 text-slate-900 border-slate-200" : "bg-orange-700 text-white border-orange-500"
+            isSecond ? "bg-slate-300 text-slate-900 border-slate-200" : "bg-orange-700 text-white border-orange-500"
         )}>
           #{rank}
         </div>
@@ -199,6 +202,7 @@ export function Ranking() {
   const [showAllHeroes, setShowAllHeroes] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
 
   // Estado do popup de perfil
   const [profilePopup, setProfilePopup] = useState<{ isOpen: boolean; data: StudentProfileData | null }>({ isOpen: false, data: null });
@@ -362,7 +366,6 @@ export function Ranking() {
     );
   }
 
-  const queryClient = useQueryClient();
 
   if (isError) {
     return (

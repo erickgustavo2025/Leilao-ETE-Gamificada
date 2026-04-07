@@ -1,34 +1,71 @@
 // backend/src/scripts/cleanAndReindex.js
 const mongoose = require('mongoose');
+const path = require('path');
 const DocumentEmbedding = require('../models/DocumentEmbedding');
-const { execSync } = require('child_process');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
+// Importa a lógica de processamento diretamente — sem execSync, sem dois connects.
+// O processDocuments.js exporta main() para ser chamado como módulo.
+// Se você precisar rodar cleanAndReindex standalone, ele encapsula tudo aqui.
 
 async function cleanAndReindex() {
-    console.log('🧹 Iniciando limpeza da coleção de embeddings...');
-    
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('🔌 Conectado ao MongoDB.');
+    console.log('');
+    console.log('╔══════════════════════════════════════════╗');
+    console.log('║   🧹  CLEAN & REINDEX — Oráculo GIL     ║');
+    console.log('╚══════════════════════════════════════════╝');
+    console.log('');
 
-        // Deleta todos os documentos da coleção
-        const result = await DocumentEmbedding.deleteMany({});
-        console.log(`✅ Coleção limpa! Documentos removidos: ${result.deletedCount}`);
-
-        await mongoose.disconnect();
-        console.log('🔌 Desconectado do MongoDB para iniciar o script de indexação.');
-
-        console.log('🚀 Iniciando re-indexação de documentos (processDocuments.js)...');
-        // Executa o script de processamento de documentos original
-        // Certifique-se de que o processDocuments.js está configurado para gemini-embedding-001
-        execSync('node src/scripts/processDocuments.js', { stdio: 'inherit' });
-
-        console.log('\n✨ Processo de limpeza e re-indexação concluído com sucesso!');
-        console.log('⚠️ IMPORTANTE: O gemini-embedding-001 possui 768 dimensões.');
-        console.log('⚠️ Se você estiver usando MongoDB Atlas Vector Search, certifique-se de que o índice "vector_index" está configurado para 768 dimensões.');
-    } catch (error) {
-        console.error('❌ Erro durante o processo:', error.message);
+    if (!process.env.MONGO_URI) {
+        console.error('❌ MONGO_URI não encontrado no .env');
         process.exit(1);
+    }
+
+    const hasAnyKey = process.env.GEMINI_API_KEY ||
+        Object.keys(process.env).some(k => k.match(/^GEMINI_KEY_\d+$/));
+
+    if (!hasAnyKey) {
+        console.error('❌ Nenhuma chave Gemini encontrada. Configure GEMINI_KEY_1 (ou GEMINI_API_KEY) no .env');
+        process.exit(1);
+    }
+
+    try {
+        // ── FASE 1: LIMPEZA ───────────────────────────────────────────
+        console.log('🔌 Conectando ao MongoDB...');
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('✅ Conectado.\n');
+
+        console.log('🗑️  Limpando coleção de embeddings...');
+        const { deletedCount } = await DocumentEmbedding.deleteMany({});
+        console.log(`✅ ${deletedCount} documentos removidos.\n`);
+
+        // ── FASE 2: RE-INDEXAÇÃO ──────────────────────────────────────
+        // Reutiliza a conexão existente — não desconecta para reconectar.
+        // O processDocuments.js exporta processAll() para uso como módulo.
+        console.log('🚀 Iniciando re-indexação...');
+        console.log('   Modelo de embedding: gemini-embedding-001 (768 dims)');
+        console.log('   Rotação de chaves: ativa\n');
+
+        // Importação dinâmica para garantir que o .env já foi carregado
+        const { processAll } = require('./processDocuments');
+        await processAll();
+
+        // ── FASE 3: SUMMARY ───────────────────────────────────────────
+        const total = await DocumentEmbedding.countDocuments();
+        console.log('');
+        console.log('╔══════════════════════════════════════════╗');
+        console.log(`║  ✨ Concluído! ${String(total).padStart(4)} chunks indexados.    ║`);
+        console.log('║                                          ║');
+        console.log('║  ⚠️  Atlas Vector Search:                ║');
+        console.log('║     Índice "vector_index" = 768 dims     ║');
+        console.log('╚══════════════════════════════════════════╝');
+        console.log('');
+
+    } catch (error) {
+        console.error('\n❌ Erro durante o processo:', error.message);
+        process.exit(1);
+    } finally {
+        await mongoose.disconnect();
+        console.log('🔌 Desconectado do MongoDB.');
     }
 }
 

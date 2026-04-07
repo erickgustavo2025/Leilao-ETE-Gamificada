@@ -152,7 +152,13 @@ export function ChatWidget() {
                     initial={{ scale: 0 }} animate={{ scale: 1 }}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => { setIsOpen(true); setUnreadCount(0); scrollToBottom(); }}
+                    // Onde o botão de abrir o chat é clicado (linha ~155):
+                    onClick={() => {
+                        setIsOpen(true);
+                        setUnreadCount(0);
+                        scrollToBottom();
+                        window.dispatchEvent(new CustomEvent('chatGlobalToggled', { detail: true }));
+                    }}
                     className="fixed bottom-6 right-6 z-[90] w-14 h-14 bg-slate-900 border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] group"
                 >
                     <MessageSquare className="text-blue-400 group-hover:text-white transition-colors" />
@@ -191,7 +197,11 @@ export function ChatWidget() {
                                     <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} className="text-slate-400 hover:text-white">
                                         <Minimize2 size={16} />
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="text-slate-400 hover:text-red-500">
+                                    <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsOpen(false);
+                                        window.dispatchEvent(new CustomEvent('chatGlobalToggled', { detail: false }));
+                                    }} className="text-slate-400 hover:text-red-500">
                                         <X size={16} />
                                     </button>
                                 </div>

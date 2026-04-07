@@ -44,7 +44,7 @@ export function Regulations() {
     );
 
     return (
-        <div className="min-h-screen bg-[#050505] p-4 md:p-8">
+        <div className="min-h-screen bg-[#050505] p-4 md:p-8 pt-24 md:pt-28">
             <div className="max-w-5xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
