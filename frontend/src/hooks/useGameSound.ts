@@ -18,7 +18,7 @@ export function useGameSound() {
           // Erro silencioso para não sujar o console
         });
       }
-    } catch (e) {
+    } catch {
       // Ignora erro de criação
     }
   }, [soundEnabled]);

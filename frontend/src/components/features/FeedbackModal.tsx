@@ -40,7 +40,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       setMensagem('');
       setTipo('');
       onClose();
-    } catch (error) {
+    } catch {
       toast.error('Erro ao enviar. Tente novamente.');
     } finally {
       setLoading(false);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom'; // <--- IMPORTANTE
 import { Bell, X, Check, MessageSquare, AlertCircle, Coins, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,11 +8,7 @@ import { getSocket } from '../../services/socket';
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 import { PixelCard } from '../ui/PixelCard';
-
-export const openTradeEvent = (tradeId: string) => {
-    const event = new CustomEvent('openTradeModal', { detail: tradeId });
-    window.dispatchEvent(event);
-};
+import { openTradeEvent } from '../../utils/events';
 
 const getIcon = (type: string) => {
     switch (type) {
@@ -30,32 +26,13 @@ export function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
 
     const socket = getSocket();
+    const isOpenRef = useRef(isOpen);
 
     useEffect(() => {
-        if (user) {
-            if (!socket.connected) socket.connect();
-            socket.emit('join_user_room', user._id);
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
 
-            fetchNotifications();
-
-            const handleNewNotification = (notif: any) => {
-                setNotifications(prev => [notif, ...prev]);
-                setUnreadCount(prev => prev + 1);
-                
-                if (!isOpen) {
-                    toast.info("Nova Notificação", { description: notif.message });
-                }
-            };
-
-            socket.on('new_notification', handleNewNotification);
-
-            return () => {
-                socket.off('new_notification', handleNewNotification);
-            };
-        }
-    }, [user, isOpen]);
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
             const res = await api.get('/users/notifications');
             setNotifications(res.data);
@@ -63,7 +40,7 @@ export function NotificationBell() {
         } catch (error) {
             console.error(error);
         }
-    };
+    }, []);
 
     const markAllAsRead = async () => {
         try {
@@ -75,6 +52,34 @@ export function NotificationBell() {
             console.error(e);
         }
     };
+
+    useEffect(() => {
+        if (user) {
+            if (!socket.connected) socket.connect();
+            socket.emit('join_user_room', user._id);
+
+            // Fetch initial notifications with a slight delay to avoid "cascading render" warning
+            const timer = setTimeout(() => {
+                fetchNotifications();
+            }, 0);
+
+            const handleNewNotification = (notif: any) => {
+                setNotifications(prev => [notif, ...prev]);
+                setUnreadCount(prev => prev + 1);
+                
+                if (!isOpenRef.current) {
+                    toast.info("Nova Notificação", { description: notif.message });
+                }
+            };
+
+            socket.on('new_notification', handleNewNotification);
+
+            return () => {
+                clearTimeout(timer);
+                socket.off('new_notification', handleNewNotification);
+            };
+        }
+    }, [user, fetchNotifications, socket]);
 
     const handleClickNotification = async (notif: any) => {
         setIsOpen(false);
@@ -161,7 +166,10 @@ export function NotificationBell() {
         <>
             {/* BOTÃO DO SINO (Renderizado no lugar normal) */}
             <button 
-                onClick={() => setIsOpen(true)} 
+                onClick={() => {
+                    setIsOpen(true);
+                    fetchNotifications();
+                }} 
                 className="relative p-2 text-slate-400 hover:text-white transition-colors group"
             >
                 <Bell size={24} className="group-hover:animate-swing" />

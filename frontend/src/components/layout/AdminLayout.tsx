@@ -35,6 +35,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },
     { label: 'ANALYTICS', path: '/admin/analytics', icon: Microscope, color: 'text-purple-400' },
+    { label: 'ECONOMIA', path: '/admin/economy', icon: TrendingUp, color: 'text-emerald-400' },
     { label: 'REGULAMENTOS', path: '/admin/regulations', icon: BookOpen, color: 'text-blue-400' },
     { label: 'AUDITORIA', path: '/admin/logs', icon: Scroll, color: 'text-green-400' },
   ];

@@ -26,7 +26,7 @@ const detectMode = (pergunta, path) => {
 
 async function callGemini(messages, systemPrompt) {
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash",
         // ✅ CORREÇÃO: systemInstruction exige objeto com parts[], não string crua
         systemInstruction: {
             parts: [{ text: systemPrompt }]

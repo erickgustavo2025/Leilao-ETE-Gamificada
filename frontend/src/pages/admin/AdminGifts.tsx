@@ -242,7 +242,12 @@ export function AdminGifts() {
     createGiftMutation.mutate({
       ...formData,
       turmasPermitidas: finalClasses,
-      recompensaItens: addedItems.map(({ tempName, tempImage, ...rest }) => rest),
+      recompensaItens: addedItems.map(({ item, quantidade, validadeValor, unidadeValidade }) => ({
+        item,
+        quantidade,
+        validadeValor,
+        unidadeValidade,
+      })),
     });
   };
 

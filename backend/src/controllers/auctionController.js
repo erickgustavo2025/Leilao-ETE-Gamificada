@@ -125,6 +125,25 @@ exports.executeAuctionClosure = async (itemId) => {
     }
 };
 
+exports.checkAndCloseAuctions = async () => {
+    try {
+        const expiredItems = await Item.find({
+            status: 'ativo',
+            dataFim: { $lte: new Date() }
+        });
+
+        for (const item of expiredItems) {
+            await exports.executeAuctionClosure(item._id);
+        }
+        
+        if (expiredItems.length > 0) {
+            console.log(`✅ [CRON] ${expiredItems.length} leilões encerrados automaticamente.`);
+        }
+    } catch (error) {
+        console.error('❌ Erro no cron checkAndCloseAuctions:', error);
+    }
+};
+
 // ==================================================================================
 // 🟢 ROTAS PÚBLICAS/ALUNO
 // ==================================================================================

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Wifi, CircuitBoard, CreditCard as CardIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { type User } from '../../contexts/AuthContext';
+import { type User } from '../../types/auth';
 
 // ✅ Interface atualizada para aceitar o User do contexto
 interface CreditCardProps {

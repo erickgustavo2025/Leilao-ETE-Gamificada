@@ -1,4 +1,4 @@
-import type { RankRule } from '../contexts/AuthContext';
+import type { RankRule } from '../types/auth';
 
 export function calculateRank(points: number, ranks: RankRule[]): RankRule {
     const sorted = [...ranks].sort((a, b) => b.min - a.min);

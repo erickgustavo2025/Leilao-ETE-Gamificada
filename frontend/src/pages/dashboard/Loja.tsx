@@ -259,8 +259,12 @@ export function Loja() {
   // ✅ RELATÓRIO 2.3: Trava de segurança — Admin fecha o Beco enquanto aluno está dentro
   useEffect(() => {
     if (storeSection === 'BECO' && systemConfig?.becoDiagonalOpen === false) {
-      setStoreSection('NORMAL');
-      toast.error('O Beco Diagonal foi fechado pelo Ministério!');
+      // ✅ Ajuste assíncrono para evitar o erro "cascading renders" do React
+      const timer = setTimeout(() => {
+        setStoreSection('NORMAL');
+        toast.error('O Beco Diagonal foi fechado pelo Ministério!');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [systemConfig?.becoDiagonalOpen, storeSection]);
 
@@ -286,7 +290,11 @@ export function Loja() {
       const item = result.item;
       playSuccess();
       const isRare = item.raridade.includes('Épico') || item.raridade.includes('Diamante');
-      isRare ? triggerEpicConfetti() : triggerSimpleConfetti();
+      if (isRare) {
+        triggerEpicConfetti();
+      } else {
+        triggerSimpleConfetti();
+      }
       toast.success("COMPRA REALIZADA!", { description: `${item.nome} adicionado.` });
 
       refreshUser();
@@ -318,11 +326,14 @@ export function Loja() {
     const isBecoItem = item.isHouseItem === true;
     if (storeSection === 'NORMAL' && isBecoItem) return false;
     if (storeSection === 'BECO' && !isBecoItem) return false;
+    
+    // ✅ RELATÓRIO 2.3: Trava extra de segurança no render
+    if (storeSection === 'BECO' && !systemConfig?.becoDiagonalOpen) return false;
 
     const matchesSearch = item.nome.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = activeTab === 'Todos' || item.raridade === activeTab;
     return matchesSearch && matchesFilter;
-  }), [items, storeSection, searchTerm, activeTab]);
+  }), [items, storeSection, searchTerm, activeTab, systemConfig?.becoDiagonalOpen]);
 
   const particleCount = isMobile ? 0 : 15;
 

@@ -18,7 +18,7 @@ export function Maintenance() {
       try {
         const { data } = await api.get('/public/config');
         return data as { siteName?: string };
-      } catch (error) {
+      } catch {
         // Se o backend barrar por causa da manutenção (503), não faz nada.
         return null; 
       }

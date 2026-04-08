@@ -114,6 +114,9 @@ const userSchema = new mongoose.Schema({
         redacoes: { type: [Number], default: [] }, // Notas de redação (0-1000)
         simulados: { type: [Number], default: [] }, // Pontuações de simulados ENEM
         ultimaAtualizacao: { type: Date, default: null },
+        ultimaVenda: { type: Date, default: null }, // Controle do Mercado de Notas
+        // Controle de limites da Loja de Notas: { disciplinaId_tipo: quantidade }
+        comprasPorDisciplina: { type: Map, of: Number, default: {} }
     },
 
 }, {

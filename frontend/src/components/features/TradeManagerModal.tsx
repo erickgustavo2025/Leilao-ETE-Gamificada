@@ -16,6 +16,78 @@ interface TradeManagerModalProps {
     onClose: () => void;
 }
 
+// --- SUBCOMPONENTE DE LISTA ---
+interface TradeListProps {
+    title: string;
+    list: any[];
+    isSent: boolean;
+    onSelectTrade: (trade: any) => void;
+}
+
+const TradeList = ({ title, list, isSent, onSelectTrade }: TradeListProps) => (
+    <div className="mb-6">
+        <h3 className="font-vt323 text-xl text-slate-400 border-b border-slate-700 pb-1 mb-3 uppercase tracking-widest">{title}</h3>
+        {list.length === 0 ? (
+            <p className="font-mono text-xs text-slate-600 italic">Nenhuma solicitação.</p>
+        ) : (
+            <div className="space-y-2">
+                {list.map((trade) => {
+                    const otherUser = isSent ? trade.target : trade.initiator;
+                    return (
+                        <div key={trade._id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex justify-between items-center hover:border-slate-500 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border", isSent ? "bg-blue-900/20 border-blue-500" : "bg-purple-900/20 border-purple-500")}>
+                                    <ArrowRightLeft size={14} className={isSent ? "text-blue-400" : "text-purple-400"} />
+                                </div>
+                                <div>
+                                    <p className="font-vt323 text-xl text-white leading-none">{otherUser?.nome?.split(' ')[0]}</p>
+                                    <p className="font-mono text-[10px] text-slate-400">{otherUser?.turma || 'Turma N/A'}</p>
+                                </div>
+                            </div>
+                            <PixelButton onClick={() => onSelectTrade(trade)} className="px-3 py-1.5 text-[10px]">
+                                VER
+                            </PixelButton>
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+    </div>
+);
+
+// --- SUBCOMPONENTE DE DETALHES DO OFERENTE ---
+interface OfferSideProps {
+    title: string;
+    offer: any;
+    userName: string;
+}
+
+const OfferSide = ({ title, offer, userName }: OfferSideProps) => (
+    <div className="flex-1 bg-black/40 border border-slate-700 rounded p-3">
+        <p className="font-vt323 text-lg text-slate-400 text-center mb-2">{title} <br/><span className="text-white">{userName}</span></p>
+        <div className="space-y-2">
+            <div className="bg-slate-900 p-2 rounded flex justify-between items-center border border-slate-800">
+                <span className="font-mono text-xs text-slate-500">PC$ Ofertado:</span>
+                <span className="font-vt323 text-xl text-green-400">{offer.pc} PC$</span>
+            </div>
+            <div className="space-y-1">
+                {offer.items?.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
+                        <img src={getImageUrl(item.image)} className="w-8 h-8 object-contain bg-black rounded" alt="item" />
+                        <div className="flex-1 min-w-0">
+                            <p className="font-vt323 text-base text-white truncate leading-none">{item.name}</p>
+                            {item.isHouseItem && <span className="text-[8px] bg-purple-900 text-purple-300 px-1 rounded font-press">SALA</span>}
+                        </div>
+                    </div>
+                ))}
+                {(!offer.items || offer.items.length === 0) && (
+                    <p className="font-mono text-[10px] text-slate-600 text-center py-2">Sem itens.</p>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
 export function TradeManagerModal({ isOpen, onClose }: TradeManagerModalProps) {
     const { user, refreshUser } = useAuth();
     const queryClient = useQueryClient();
@@ -69,64 +141,6 @@ export function TradeManagerModal({ isOpen, onClose }: TradeManagerModalProps) {
     const sentTrades = trades.filter((t: any) => t.initiator?._id === myId);
     const receivedTrades = trades.filter((t: any) => t.target?._id === myId);
 
-    // Subcomponente de lista
-    const TradeList = ({ title, list, isSent }: { title: string, list: any[], isSent: boolean }) => (
-        <div className="mb-6">
-            <h3 className="font-vt323 text-xl text-slate-400 border-b border-slate-700 pb-1 mb-3 uppercase tracking-widest">{title}</h3>
-            {list.length === 0 ? (
-                <p className="font-mono text-xs text-slate-600 italic">Nenhuma solicitação.</p>
-            ) : (
-                <div className="space-y-2">
-                    {list.map((trade) => {
-                        const otherUser = isSent ? trade.target : trade.initiator;
-                        return (
-                            <div key={trade._id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex justify-between items-center hover:border-slate-500 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border", isSent ? "bg-blue-900/20 border-blue-500" : "bg-purple-900/20 border-purple-500")}>
-                                        <ArrowRightLeft size={14} className={isSent ? "text-blue-400" : "text-purple-400"} />
-                                    </div>
-                                    <div>
-                                        <p className="font-vt323 text-xl text-white leading-none">{otherUser?.nome?.split(' ')[0]}</p>
-                                        <p className="font-mono text-[10px] text-slate-400">{otherUser?.turma || 'Turma N/A'}</p>
-                                    </div>
-                                </div>
-                                <PixelButton onClick={() => setSelectedTrade(trade)} className="px-3 py-1.5 text-[10px]">
-                                    VER
-                                </PixelButton>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-
-    // Subcomponente de detalhes do Oferente
-    const OfferSide = ({ title, offer, userName }: { title: string, offer: any, userName: string }) => (
-        <div className="flex-1 bg-black/40 border border-slate-700 rounded p-3">
-            <p className="font-vt323 text-lg text-slate-400 text-center mb-2">{title} <br/><span className="text-white">{userName}</span></p>
-            <div className="space-y-2">
-                <div className="bg-slate-900 p-2 rounded flex justify-between items-center border border-slate-800">
-                    <span className="font-mono text-xs text-slate-500">PC$ Ofertado:</span>
-                    <span className="font-vt323 text-xl text-green-400">{offer.pc} PC$</span>
-                </div>
-                <div className="space-y-1">
-                    {offer.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
-                            <img src={getImageUrl(item.image)} className="w-8 h-8 object-contain bg-black rounded" alt="item" />
-                            <div className="flex-1 min-w-0">
-                                <p className="font-vt323 text-base text-white truncate leading-none">{item.name}</p>
-                                {item.isHouseItem && <span className="text-[8px] bg-purple-900 text-purple-300 px-1 rounded font-press">SALA</span>}
-                            </div>
-                        </div>
-                    ))}
-                    {(!offer.items || offer.items.length === 0) && (
-                        <p className="font-mono text-[10px] text-slate-600 text-center py-2">Sem itens.</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <AnimatePresence>
@@ -149,8 +163,8 @@ export function TradeManagerModal({ isOpen, onClose }: TradeManagerModalProps) {
                                     <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-500" /></div>
                                 ) : !selectedTrade ? (
                                     <>
-                                        <TradeList title="RECEBIDAS (Para Aceitar)" list={receivedTrades} isSent={false} />
-                                        <TradeList title="ENVIADAS (Aguardando eles)" list={sentTrades} isSent={true} />
+                                        <TradeList title="RECEBIDAS (Para Aceitar)" list={receivedTrades} isSent={false} onSelectTrade={setSelectedTrade} />
+                                        <TradeList title="ENVIADAS (Aguardando eles)" list={sentTrades} isSent={true} onSelectTrade={setSelectedTrade} />
                                     </>
                                 ) : (
                                     /* DETALHES DA TROCA SELECIONADA */

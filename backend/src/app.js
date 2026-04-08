@@ -34,6 +34,7 @@ const startupRoutes = require('./routes/startupRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const notasRoutes = require('./routes/notasRoutes');
 const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
+const adminEconomyRoutes = require('./routes/adminEconomyRoutes');
 const adminRegulationRoutes = require('./routes/adminRegulationRoutes');
 const publicRegulationRoutes = require('./routes/publicRegulationRoutes');
 
@@ -80,7 +81,7 @@ app.use(express.json());
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20, // 20 tentativas por 15 min
+    max: process.env.NODE_ENV === 'production' ? 20 : 500, // 500 tentativas para testes locais (Playwright)
     message: { error: "Muitas tentativas de login. Tente novamente em 15 minutos." }
 });
 app.use('/api/auth/login', authLimiter);
@@ -136,6 +137,7 @@ app.use('/api/startups', startupRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/notas', notasRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/economy', adminEconomyRoutes);
 app.use('/api/admin/regulations', adminRegulationRoutes);
 app.use('/api/regulations', publicRegulationRoutes);
 

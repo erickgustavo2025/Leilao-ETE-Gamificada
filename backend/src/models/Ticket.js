@@ -10,7 +10,7 @@ const TicketSchema = new mongoose.Schema({
     itemExpiresAt: Date,
     tipo: { 
         type: String, 
-        enum: ['personal_item', 'room_item'], 
+        enum: ['personal_item', 'room_item', 'rank_skill'], 
         default: 'personal_item' 
     },
     classroomOrigin: { type: String },

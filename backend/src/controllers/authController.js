@@ -8,7 +8,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const sendMail = require('../config/mail');
-const { RANKS } = require('../config/gameRules');
+const { RANKS: STATIC_RANKS } = require('../config/gameRules');
+const Rank = require('../models/Rank');
 const skillService = require('../services/skillService');
 
 const generateToken = (id, role) => {
@@ -330,9 +331,18 @@ async register(req, res) {
 
     // 7. REGRAS DO SISTEMA
     async getSystemRules(req, res) {
-        return res.json({
-            ranks: RANKS
-        });
+        try {
+            let ranks = await Rank.find().sort({ order: 1 });
+            if (ranks.length === 0) {
+                ranks = STATIC_RANKS;
+            }
+            return res.json({
+                ranks
+            });
+        } catch (error) {
+            console.error('Erro ao buscar regras:', error);
+            return res.json({ ranks: STATIC_RANKS });
+        }
     },
 
     // 🔒 8. ALTERAR SENHA (LOGADO)

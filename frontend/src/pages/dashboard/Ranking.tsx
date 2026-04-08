@@ -308,8 +308,8 @@ export function Ranking() {
   // ========================
   // COMPUTED VALUES
   // ========================
-  const allStudents = rankingData?.allStudents || [];
-  const topClasses = rankingData?.topClasses || [];
+  const allStudents = useMemo(() => rankingData?.allStudents || [], [rankingData?.allStudents]);
+  const topClasses = useMemo(() => rankingData?.topClasses || [], [rankingData?.topClasses]);
 
   const getRankName = (maxPoints: number) => calculateRank(maxPoints, ranks)?.name || "INICIANTE";
 

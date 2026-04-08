@@ -20,6 +20,16 @@ module.exports = {
             const userId = req.user.id;
 
             const user = await User.findById(userId).session(session);
+
+            // 🛡️ RESTRIÇÃO DE BADGE PARA MARKETPLACE (Fase 4)
+            const BADGE_MARKET = 'PODE_COMPRAR_VENDER';
+            const podeUsarMarket = (user.cargos || []).includes(BADGE_MARKET);
+            if (!podeUsarMarket && req.user.role !== 'admin') {
+                return res.status(403).json({
+                    error: 'Você precisa completar a Missão do Marketplace para anunciar itens.',
+                    badgeNecessaria: BADGE_MARKET
+                });
+            }
             let slot = null;
             let ownerContainer = null;
             let isItemFromHouse = false; // Descobriremos a verdade aqui
@@ -125,7 +135,7 @@ module.exports = {
         }
     },
 
-   // 🛍️ 2. COMPRAR (Sem bloqueio de limite de transferência)
+    // 🛍️ 2. COMPRAR (Sem bloqueio de limite de transferência)
     async buyItem(req, res) {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -133,11 +143,22 @@ module.exports = {
             const { listingId } = req.body;
             const buyerId = req.user.id;
 
+            const buyer = await User.findById(buyerId).session(session);
+            
+            // 🛡️ RESTRIÇÃO DE BADGE PARA COMPRA NO MARKETPLACE
+            const BADGE_MARKET = 'PODE_COMPRAR_VENDER';
+            const podeUsarMarket = (buyer.cargos || []).includes(BADGE_MARKET);
+            if (!podeUsarMarket && req.user.role !== 'admin') {
+                return res.status(403).json({
+                    error: 'Você precisa completar a Missão do Marketplace para comprar itens.',
+                    badgeNecessaria: BADGE_MARKET
+                });
+            }
+
             const listing = await MarketListing.findById(listingId).session(session);
             if (!listing || listing.status !== 'ACTIVE') throw new Error("Anúncio indisponível.");
             if (listing.seller.toString() === buyerId) throw new Error("Você não pode comprar seu item.");
 
-            const buyer = await User.findById(buyerId).session(session);
             const seller = await User.findById(listing.seller).session(session);
 
             if (buyer.saldoPc < listing.price) throw new Error("Saldo insuficiente.");

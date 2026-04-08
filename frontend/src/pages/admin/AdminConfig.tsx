@@ -49,7 +49,7 @@ export function AdminConfig() {
             });
             return data;
         },
-        onSuccess: (_data: any) => {
+        onSuccess: () => {
             toast.success('Sistema atualizado com sucesso!');
 
             // ✅ RELATÓRIO 1.4: Invalida admin + public para refletir em todo sistema

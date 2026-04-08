@@ -26,15 +26,15 @@ export function LandingPage() {
 
     const [isLoaded, setIsLoaded] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [isTouch, setIsTouch] = useState(false);
+    const [isTouch] = useState(() => 
+        window.matchMedia('(hover: none)').matches
+    );
     
     // Scroll Progress Global
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
 
     useEffect(() => {
-        setIsTouch(window.matchMedia('(hover: none)').matches);
-        
         const timer = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) {

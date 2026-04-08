@@ -339,7 +339,7 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
     // Prazos Inteligentes
     useEffect(() => {
         const now = new Date();
-        let future = new Date();
+        const future = new Date();
         if (form.type === 'DIARIA') future.setHours(now.getHours() + 24);
         else if (form.type === 'SEMANAL') future.setDate(now.getDate() + 7);
         else if (form.type === 'MENSAL') future.setMonth(now.getMonth() + 1);

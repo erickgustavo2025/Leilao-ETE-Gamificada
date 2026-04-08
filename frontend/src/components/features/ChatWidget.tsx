@@ -1,6 +1,6 @@
 // ARQUIVO: frontend/src/components/features/ChatWidget.tsx
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Users, Gavel, Minimize2, Store, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,27 +41,41 @@ export function ChatWidget() {
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleOpenProfile = (senderId: string) => {
-        if (!senderId) return; // guarda contra undefined
-        setProfileStudentId(senderId);
-        setIsProfileOpen(true);
-    };
+    const scrollToBottom = useCallback(() => {
+        setTimeout(() => {
+            if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+        }, 100);
+    }, []);
+
+    const handleSwitchRoom = useCallback((room: string) => {
+        if (activeRoom === room) return;
+        socket.emit('leave_chat_room', activeRoom);
+        setActiveRoom(room);
+        setMessages([]);
+        if (user) socket.emit('join_chat_room', { room, user });
+    }, [activeRoom, socket, user]);
 
     useEffect(() => {
+        let roomToSet = 'global';
         if (location.pathname.includes('/leilao')) {
-            handleSwitchRoom('auction');
+            roomToSet = 'auction';
         } else if (location.pathname.includes('/market')) {
-            if (location.state?.tradeId) {
-                handleSwitchRoom(`trade_${location.state.tradeId}`);
-                if (!isOpen) setIsOpen(true);
-            } else {
-                handleSwitchRoom('market');
-            }
-        } else {
-            handleSwitchRoom('global');
+            roomToSet = location.state?.tradeId ? `trade_${location.state.tradeId}` : 'market';
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location]);
+
+        if (activeRoom !== roomToSet) {
+            // ✅ Usa microtask para evitar "cascading renders" avisado pelo linter
+            queueMicrotask(() => {
+                handleSwitchRoom(roomToSet);
+                // Se for uma negociação privada, abre o chat automaticamente
+                if (roomToSet.startsWith('trade_')) {
+                    setIsOpen(true);
+                }
+            });
+        }
+    }, [location, handleSwitchRoom, activeRoom]);
 
     useEffect(() => {
         if (!user) return;
@@ -96,14 +110,12 @@ export function ChatWidget() {
             socket.off('receive_message', onMessage);
             socket.off('chat_history', onHistory);
         };
-    }, [user, isOpen, socket, activeRoom]);
+    }, [user, isOpen, socket, activeRoom, location.pathname, scrollToBottom]);
 
-    const handleSwitchRoom = (room: string) => {
-        if (activeRoom === room) return;
-        socket.emit('leave_chat_room', activeRoom);
-        setActiveRoom(room);
-        setMessages([]);
-        if (user) socket.emit('join_chat_room', { room, user });
+    const handleOpenProfile = (senderId: string) => {
+        if (!senderId) return; // guarda contra undefined
+        setProfileStudentId(senderId);
+        setIsProfileOpen(true);
     };
 
     const sendMessage = (e?: React.FormEvent) => {
@@ -123,13 +135,7 @@ export function ChatWidget() {
         setMessage('');
     };
 
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            if (scrollRef.current) {
-                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-            }
-        }, 100);
-    };
+
 
     const getRoomConfig = () => {
         if (activeRoom === 'global') return { label: 'GLOBAL', icon: Users, color: 'text-blue-400' };

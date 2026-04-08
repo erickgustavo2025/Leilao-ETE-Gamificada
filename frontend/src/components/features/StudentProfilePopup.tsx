@@ -6,6 +6,7 @@ import { api } from '../../api/axios-config';
 import { getImageUrl } from '../../utils/imageHelper';
 import { calculateRank } from '../../utils/rankHelper';
 import { useAuth } from '../../contexts/AuthContext';
+import { openTradeEvent, openTransferEvent } from '../../utils/events';
 
 export interface StudentProfileData {
   _id: string;
@@ -32,31 +33,59 @@ export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  // Track props to reset state during render (avoids cascading renders in useEffect)
+  const [prevId, setPrevId] = useState(studentId);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevPrefetched, setPrevPrefetched] = useState(prefetchedData);
+
+  if (studentId !== prevId || isOpen !== prevIsOpen || prefetchedData !== prevPrefetched) {
+    const isOpening = isOpen && !prevIsOpen;
+    const isIdChanging = studentId !== prevId;
+    const isPrefetchedChanging = prefetchedData !== prevPrefetched;
+
+    setPrevId(studentId);
+    setPrevIsOpen(isOpen);
+    setPrevPrefetched(prefetchedData);
+
     if (!isOpen) {
+      // Clear state on close
       setData(null);
       setError(false);
       setLoading(false);
-      return;
+    } else if (isOpening || isIdChanging || isPrefetchedChanging) {
+      if (prefetchedData) {
+        setData(prefetchedData);
+        setLoading(false);
+        setError(false);
+      } else if (studentId) {
+        // Start loading for new student or fresh open
+        setData(null);
+        setError(false);
+        setLoading(true);
+      }
     }
+  }
 
-    if (prefetchedData) {
-      setData(prefetchedData);
-      setLoading(false);
-      setError(false);
-      return;
-    }
+  useEffect(() => {
+    // Only fetch if we are open, don't have prefetched data, and have a studentId
+    if (!isOpen || prefetchedData || !studentId) return;
 
-    if (!studentId) return;
-
-    setLoading(true);
-    setError(false);
-    setData(null);
+    let active = true;
 
     api.get(`/public/profile/${studentId}`)
-      .then(res => setData(res.data))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then(res => {
+        if (active) setData(res.data);
+      })
+      .catch(() => {
+        if (active) setError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [isOpen, studentId, prefetchedData]);
 
   useEffect(() => {
@@ -171,7 +200,7 @@ export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData
                         <button
                           onClick={() => {
                             onClose();
-                            window.dispatchEvent(new CustomEvent('openTransferModal', { detail: { matricula: data.matricula } }));
+                            openTransferEvent(data.matricula || '');
                           }}
                           className="flex items-center justify-center gap-2 p-2 bg-green-600/20 border border-green-500/50 rounded-lg hover:bg-green-600/40 transition-all group"
                         >
@@ -185,7 +214,7 @@ export function StudentProfilePopup({ isOpen, onClose, studentId, prefetchedData
                         <button
                           onClick={() => {
                             onClose();
-                            window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { targetUser: data } }));
+                            openTradeEvent({ targetUser: data });
                           }}
                           className="flex items-center justify-center gap-2 p-2 bg-blue-600/20 border border-blue-500/50 rounded-lg hover:bg-blue-600/40 transition-all group"
                         >

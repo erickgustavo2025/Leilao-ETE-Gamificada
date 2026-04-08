@@ -45,7 +45,7 @@ export function AdminRegulations() {
         try {
             const res = await api.get('/admin/regulations');
             setRegulations(res.data);
-        } catch (error) {
+        } catch {
             toast.error("Erro ao carregar regulamentos.");
         } finally {
             setLoading(false);
@@ -67,7 +67,7 @@ export function AdminRegulations() {
             }
             setIsEditing(false);
             loadRegulations();
-        } catch (error) {
+        } catch {
             toast.error("Erro ao salvar regulamento.");
         }
     };
@@ -78,7 +78,7 @@ export function AdminRegulations() {
             await api.delete(`/admin/regulations/${id}`);
             toast.success("Removido com sucesso.");
             loadRegulations();
-        } catch (error) {
+        } catch {
             toast.error("Erro ao excluir.");
         }
     };

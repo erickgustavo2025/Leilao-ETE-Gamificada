@@ -4,7 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { AnimatePresence } from 'framer-motion';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthProvider';
+import { useAuth } from './contexts/AuthContext';
 import { LuckyBlockMenu } from './components/layout/LuckyBlockMenu';
 import { ChatWidget } from './components/features/ChatWidget';
 import { AIWidget } from './components/features/AIWidget';
@@ -37,6 +38,7 @@ const Mochila = lazy(() => import('./pages/dashboard/Mochila').then(m => ({ defa
 const Loja = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m.Loja })));
 const Leilao = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
 const GilInveste = lazy(() => import('./pages/dashboard/investimentos/GilInveste').then(m => ({ default: m.GilInveste })));
+const LojaNotas = lazy(() => import('./pages/dashboard/LojaNotas').then(m => ({ default: m.LojaNotas })));
 
 const QuestBoard = lazy(() => import('./pages/dashboard/QuestBoard').then(m => ({ default: m.QuestBoard })));
 const Regulations = lazy(() => import('./pages/dashboard/Regulations').then(m => ({ default: m.Regulations })));
@@ -85,6 +87,8 @@ const AdminApprovals = lazy(() => import('./pages/admin/AdminApprovals'));
 const AdminStartupApprovals = lazy(() => import('./pages/admin/AdminStartupApprovals').then(m => ({ default: m.AdminStartupApprovals })));
 const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ default: m.AdminHouse })));
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminEconomy = lazy(() => import('./pages/admin/AdminEconomy').then(m => ({ default: m.AdminEconomy })));
+const AdminEconomyConfig = lazy(() => import('./pages/admin/AdminEconomyConfig').then(m => ({ default: m.AdminEconomyConfig })));
 const AdminRegulations = lazy(() => import('./pages/admin/AdminRegulations').then(m => ({ default: m.AdminRegulations })));
 
 // ─────────────────────────────────────────────────────────────
@@ -460,6 +464,7 @@ function AppContent() {
             <Route path="/loja" element={<PrivateRoute><Loja /></PrivateRoute>} />
             <Route path="/leilao" element={<PrivateRoute><Leilao /></PrivateRoute>} />
             <Route path="/gil-investe" element={<PrivateRoute><GilInveste /></PrivateRoute>} />
+            <Route path="/loja-notas" element={<PrivateRoute><LojaNotas /></PrivateRoute>} />
             <Route path="/market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
 
             <Route path="/missoes" element={<PrivateRoute><QuestBoard /></PrivateRoute>} />
@@ -509,6 +514,8 @@ function AppContent() {
             <Route path="/admin/startups" element={<PrivateRoute roles={['admin']}><AdminStartupApprovals /></PrivateRoute>} />
             <Route path="/admin/house" element={<PrivateRoute roles={['admin']}><AdminHouse /></PrivateRoute>} />
             <Route path="/admin/analytics" element={<PrivateRoute roles={['admin']}><AdminAnalytics /></PrivateRoute>} />
+            <Route path="/admin/economy" element={<PrivateRoute roles={['admin']}><AdminEconomy /></PrivateRoute>} />
+            <Route path="/admin/economy/config" element={<PrivateRoute roles={['admin']}><AdminEconomyConfig /></PrivateRoute>} />
             <Route path="/admin/regulations" element={<PrivateRoute roles={['admin']}><AdminRegulations /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

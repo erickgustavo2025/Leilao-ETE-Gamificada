@@ -344,7 +344,7 @@ const WIKI_DATA: WikiSection[] = [
         title: 'Eventos Especiais',
         icon: Star,
         desc: 'Gincanas e desafios sazonais com recompensas únicas.',
-        detail: 'O Admin pode criar eventos especiais que ficam disponíveis por tempo limitado:\n\ \n• Leilões temáticos: lotes especiais liberados apenas durante o evento.\n• Roletas especiais: com tabelas de prêmios diferentes do normal.\n• Itens de Evento: vendidos na loja com raridade EVENTO — raros e colecionáveis.\n• Pontuações duplas: o Admin pode ativar períodos onde os pontos dados valem em dobro.\n\nFique de olho nos avisos do sistema — os melhores prêmios aparecem em eventos.',
+        detail: 'O Admin pode criar eventos especiais que ficam disponíveis por tempo limitado:\n \n• Leilões temáticos: lotes especiais liberados apenas durante o evento.\n• Roletas especiais: com tabelas de prêmios diferentes do normal.\n• Itens de Evento: vendidos na loja com raridade EVENTO — raros e colecionáveis.\n• Pontuações duplas: o Admin pode ativar períodos onde os pontos dados valem em dobro.\n\nFique de olho nos avisos do sistema — os melhores prêmios aparecem em eventos.',
         badge: 'SAZONAL',
         badgeColor: 'text-green-400 border-green-800/50 bg-green-900/20',
       },

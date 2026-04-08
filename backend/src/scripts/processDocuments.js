@@ -71,7 +71,7 @@ function splitTextIntelligently(text, maxLength = 2000) {
 async function performOCR(buffer, fileName, mimeType = 'application/pdf') {
     console.log(`\n🔍 OCR Vision ativado para: ${fileName}...`);
     try {
-        const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const visionModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
         const result = await visionModel.generateContent([
             { inlineData: { data: buffer.toString('base64'), mimeType } },
             'Transcreva todo o texto deste documento de forma fiel, mantendo a estrutura de parágrafos.'

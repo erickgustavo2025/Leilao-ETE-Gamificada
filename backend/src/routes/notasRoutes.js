@@ -1,14 +1,12 @@
-// backend/src/routes/notasRoutes.js
 const express = require('express');
-const { protect, admin } = require('../middlewares/authMiddleware');
-const { updateNotas, getMyNotas } = require('../controllers/notasController');
+const { protect } = require('../middlewares/authMiddleware');
+const notasController = require('../controllers/notasController');
 
 const router = express.Router();
 
-// Rota para o próprio aluno ver suas notas
-router.get('/me', protect, getMyNotas);
+router.use(protect);
 
-// Rota para o Admin atualizar notas de qualquer aluno
-router.post('/update', protect, admin, updateNotas);
+router.get('/me', notasController.getAvailableDisciplinas);
+router.post('/comprar', notasController.comprarPonto);
 
 module.exports = router;

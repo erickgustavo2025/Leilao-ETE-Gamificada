@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { X, ArrowRightLeft, Search, Plus, Trash2, Scale, Coins, AlertTriangle, CheckCircle, Loader2, User, UserCheck, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -50,11 +50,26 @@ export function TradeModal({ isOpen, onClose, targetUser }: TradeModalProps) {
     const [fairnessRatio, setFairnessRatio] = useState(1);
     const [isFair, setIsFair] = useState(true);
 
+    const loadInventories = useCallback(async () => {
+        setLoading(true);
+        try {
+            const myRes = await api.get('/inventory/my');
+            const targetRes = await api.get(`/inventory/public/${targetUser._id}`);
+            setMyInventory(myRes.data);
+            setTargetInventory(targetRes.data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao carregar inventários.");
+        } finally {
+            setLoading(false);
+        }
+    }, [targetUser._id]);
+
     useEffect(() => {
         if (isOpen) {
             loadInventories();
         }
-    }, [isOpen, targetUser]);
+    }, [isOpen, loadInventories]);
 
     useEffect(() => {
         const myTotal = myOfferItems.reduce((acc, i) => acc + (i.basePrice || 0), 0) + (parseInt(myOfferPc) || 0);
@@ -78,20 +93,7 @@ export function TradeModal({ isOpen, onClose, targetUser }: TradeModalProps) {
         setIsFair(ratio >= 0.80);
     }, [myOfferItems, myOfferPc, targetOfferItems, targetOfferPc]);
 
-    async function loadInventories() {
-        setLoading(true);
-        try {
-            const myRes = await api.get('/inventory/my');
-            const targetRes = await api.get(`/inventory/public/${targetUser._id}`);
-            setMyInventory(myRes.data);
-            setTargetInventory(targetRes.data);
-        } catch (error) {
-            console.error(error);
-            toast.error("Erro ao carregar inventários.");
-        } finally {
-            setLoading(false);
-        }
-    }
+
 
     const handleAddItem = (item: any, side: 'my' | 'target') => {
         // 🔥 BUSCA INTELIGENTE DO PREÇO BASE

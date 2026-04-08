@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import {
   Gift, Landmark, LogOut, Store, ShoppingBag, Backpack,
   Trophy, User, Calendar, Gavel, BookOpen, ArrowRightLeft,
-  MessageSquare, Loader2, Scroll, TrendingUp, Swords
+  MessageSquare, Loader2, Scroll, TrendingUp, Swords, GraduationCap
 } from 'lucide-react';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { PageTransition } from '../../components/layout/PageTransition';
 import { calculateRank, calculateRankProgress } from '../../utils/rankHelper';
 import { DashboardHeader } from './components/DashboardHeader';
 import { ActionSection } from './components/ActionSection';
+import { setTransferMatriculaEvent } from '../../utils/events';
 
 // ⚡ OTIMIZAÇÃO: Lazy Load dos Modais
 const TransferModal = lazy(() => import('../../components/features/TransferModal').then(m => ({ default: m.TransferModal })));
@@ -49,7 +50,7 @@ export function DashboardHome() {
       if (matricula) {
         setModalState(prev => ({ ...prev, transfer: true }));
         requestAnimationFrame(() => {
-          window.dispatchEvent(new CustomEvent('setTransferMatricula', { detail: matricula }));
+          setTransferMatriculaEvent(matricula);
         });
       }
     };
@@ -146,6 +147,7 @@ export function DashboardHome() {
         { label: "CASA DE LEILÕES", icon: Gavel, color: "text-amber-500", desc: "Itens raros", path: "/leilao" },
         { label: "MOCHILA", icon: Backpack, color: "text-yellow-400", desc: "Seu inventário", path: "/mochila" },
         { label: "MERCADO PÚBLICO", icon: Store, color: "text-red-400", desc: "Venda Seus Itens", path: "/market" },
+        { label: "LOJA DE NOTAS", icon: GraduationCap, color: "text-blue-500", desc: "Compre pontos", path: "/loja-notas" },
         { label: "FAZER PIX", icon: ArrowRightLeft, color: "text-green-400", desc: "Transferir PC$", action: () => toggleModal('transfer', true) },
         { label: "TROCAR (TRADE)", icon: ShoppingBag, color: "text-purple-400", desc: "Negociar itens", action: () => toggleModal('userSelect', true) }
       ]

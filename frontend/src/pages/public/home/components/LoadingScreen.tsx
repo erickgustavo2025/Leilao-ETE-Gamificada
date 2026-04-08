@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 // Componente Híbrido: Aceita progresso externo ou simula sozinho
 export function UltraLoadingScreen({ progress: externalProgress }: { progress?: number }) {
     const [localProgress, setLocalProgress] = useState(0);
-    const [text, setText] = useState('INICIALIZANDO');
+
 
     // Usa o progresso externo (se passado) ou o local (simulado)
     const displayProgress = externalProgress !== undefined ? externalProgress : localProgress;
@@ -24,15 +24,14 @@ export function UltraLoadingScreen({ progress: externalProgress }: { progress?: 
             }, 200);
             return () => clearInterval(interval);
         }
-    }, [externalProgress]);
+    }, [externalProgress, setLocalProgress]);
 
-    // Atualiza os textos conforme o progresso
-    useEffect(() => {
-        if(displayProgress > 20) setText('CARREGANDO ASSETS');
-        if(displayProgress > 50) setText('CONECTANDO SERVIDOR');
-        if(displayProgress > 80) setText('PREPARANDO AMBIENTE');
-        if(displayProgress >= 100) setText('BEM-VINDO');
-    }, [displayProgress]);
+    // Determina o texto de status com base no progresso atual
+    let statusText = 'INICIALIZANDO';
+    if (displayProgress > 20) statusText = 'CARREGANDO ASSETS';
+    if (displayProgress > 50) statusText = 'CONECTANDO SERVIDOR';
+    if (displayProgress > 80) statusText = 'PREPARANDO AMBIENTE';
+    if (displayProgress >= 100) statusText = 'BEM-VINDO';
 
     return (
         <div className="fixed inset-0 z-[9999] bg-[#030303] flex flex-col items-center justify-center touch-none px-4">
@@ -48,7 +47,7 @@ export function UltraLoadingScreen({ progress: externalProgress }: { progress?: 
 
             {/* Texto de Status (Responsivo) */}
             <h1 className="font-press text-lg md:text-2xl text-white mb-6 text-center tracking-wider animate-pulse">
-                {text}
+                {statusText}
             </h1>
 
             {/* Barra de Progresso (Responsiva) */}
