@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import {
   Gift, Landmark, LogOut, Store, ShoppingBag, Backpack,
   Trophy, User, Calendar, Gavel, BookOpen, ArrowRightLeft,
-  MessageSquare, Loader2, Scroll, TrendingUp, Swords, GraduationCap
+  MessageSquare, Scroll, TrendingUp, Swords, GraduationCap
 } from 'lucide-react';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { PageTransition } from '../../components/layout/PageTransition';
 import { calculateRank, calculateRankProgress } from '../../utils/rankHelper';
 import { DashboardHeader } from './components/DashboardHeader';
 import { ActionSection } from './components/ActionSection';
+import { SurveyNotice } from './components/SurveyNotice';
 import { setTransferMatriculaEvent } from '../../utils/events';
 
 // ⚡ OTIMIZAÇÃO: Lazy Load dos Modais
@@ -25,8 +26,6 @@ export function DashboardHome() {
   const { user, logout, ranks, refreshUser } = useAuth();
   const navigate = useNavigate();
 
-  // Estado para controlar o carregamento inicial dos dados
-  const [isRefreshing, setIsRefreshing] = useState(true);
 
   // Estados dos Modais
   const [modalState, setModalState] = useState({
@@ -64,37 +63,8 @@ export function DashboardHome() {
   }, [navigate]);
 
   useEffect(() => {
-    let mounted = true;
-
-    // 1. Cria um "Cronômetro de Segurança"
-    // Se o backend estiver dormindo ou a rede travar, em 3 segundos nós forçamos a tela a abrir.
-    const safetyTimer = setTimeout(() => {
-      if (mounted) {
-        console.warn("⚠️ Timeout: Backend demorou demais. Liberando acesso com dados locais.");
-        setIsRefreshing(false);
-      }
-    }, 3000); // 3000ms = 3 segundos
-
-    const loadData = async () => {
-      try {
-        // Tenta buscar os dados novos
-        await refreshUser();
-      } catch (error) {
-        console.error("Erro ao sincronizar (usando cache local):", error);
-      } finally {
-        // 2. Se a resposta chegou antes dos 3s, cancela o cronômetro e abre a tela
-        clearTimeout(safetyTimer);
-        if (mounted) setIsRefreshing(false);
-      }
-    };
-
-    loadData();
-
-    // Limpeza de memória se o usuário sair da tela antes de terminar
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimer);
-    };
+    // Sincroniza em background ao entrar (opcional, já que o login já faz)
+    refreshUser().catch(console.error);
   }, [refreshUser]);
 
   // Cálculos de Rank (Memoizados)
@@ -124,17 +94,7 @@ export function DashboardHome() {
   // Se não tiver user (logout), não renderiza nada
   if (!user) return null;
 
-  // ⏳ TELA DE CARREGAMENTO (Evita glitch de "Iniciante")
-  if (isRefreshing) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 animate-pulse">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-          <p className="font-press text-xs text-blue-400">Sincronizando...</p>
-        </div>
-      </div>
-    );
-  }
+  // ⏳ TELA DE CARREGAMENTO REMOVIDA (Otimismo Total!)
 
   // Definição das Seções
   const SECTIONS = [
@@ -193,6 +153,7 @@ export function DashboardHome() {
             currentRankObj={currentRankObj}
             xpInfo={xpInfo}
           />
+          <SurveyNotice />
         </div>
 
         <div className="md:pl-28 space-y-2 relative z-10">

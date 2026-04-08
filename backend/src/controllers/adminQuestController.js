@@ -112,6 +112,7 @@ const adminQuestController = {
         questId: sub.questId._id,
         questTitle: sub.questId.title,
         submissionContent: sub.submissionContent,
+        attachmentUrl: sub.attachmentUrl,
         submittedAt: sub.submittedAt,
         rewards: {
           pc: sub.questId.rewards?.pc || 0,

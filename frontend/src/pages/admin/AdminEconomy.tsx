@@ -86,8 +86,8 @@ export function AdminEconomy() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Gráfico: Volume por Tipo */}
           <ChartCard title="Volume por Tipo de Operação" icon={BarChart3}>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height={256}>
                 <BarChart data={volumeByType}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="_id" stroke="#64748b" fontSize={10} tickFormatter={(v) => v.replace('INVESTMENT_', '')} />
@@ -104,8 +104,8 @@ export function AdminEconomy() {
 
           {/* Gráfico: Status das Startups */}
           <ChartCard title="Mercado de Startups" icon={PieChart}>
-            <div className="h-64 flex items-center">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 flex items-center w-full">
+              <ResponsiveContainer width="100%" height={256}>
                 <RePieChart>
                   <Pie
                     data={startupStats}

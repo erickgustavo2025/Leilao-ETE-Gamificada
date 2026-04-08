@@ -135,7 +135,7 @@ export const BuySellModal: React.FC<BuySellModalProps> = ({ asset, onClose, user
         </div>
 
         {/* Summary */}
-        <div className="bg-slate-950 border-2 border-slate-800 p-4 mb-6 space-y-2">
+        <div className="bg-slate-950 border-2 border-slate-800 p-4 mb-3 space-y-2">
           <div className="flex justify-between text-xs">
             <span className="text-slate-500 uppercase">Valor dos Ativos</span>
             <span className="text-white font-bold">{formatCurrency(totalValue)}</span>
@@ -154,6 +154,22 @@ export const BuySellModal: React.FC<BuySellModalProps> = ({ asset, onClose, user
               {formatCurrency(finalValue)}
             </span>
           </div>
+        </div>
+
+        {/* 🔮 DICA DO ORÁCULO */}
+        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-3 items-start animate-in fade-in slide-in-from-bottom-2">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Info size={14} className="text-blue-400" />
+            </div>
+            <div>
+                <p className="font-press text-[7px] text-blue-400 uppercase mb-1">Análise do Oráculo</p>
+                <p className="font-mono text-[9px] text-slate-500 leading-tight">
+                    {asset.assetType === 'STARTUP' 
+                        ? "O valor desta Startup é baseado no DESEMPENHO ACADÊMICO dos fundadores. Se as notas caírem, seu investimento desvaloriza!"
+                        : "Lembre-se: todo ativo comprado fica bloqueado por 14 dias (Vesting) contra o reset trimestral. Planeje seu patrimônio!"
+                    }
+                </p>
+            </div>
         </div>
 
         {/* Action Button */}

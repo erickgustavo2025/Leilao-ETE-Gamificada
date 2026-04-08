@@ -9,8 +9,12 @@ import {
   Loader2,
   Wallet,
   Briefcase,
-  ArrowRightLeft
+  ArrowRightLeft,
+  BookOpen,
+  X
 } from 'lucide-react';
+import { MarketEducation } from './components/MarketEducation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../../api/axios-config';
 import { queryKeys } from '../../../utils/queryKeys';
 import { cn } from '../../../utils/cn';
@@ -39,6 +43,7 @@ const GilInveste: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'STOCK' | 'CRYPTO' | 'STARTUP'>('ALL');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isIPOModalOpen, setIsIPOModalOpen] = useState(false);
+  const [isEduModalOpen, setIsEduModalOpen] = useState(false);
 
   const { 
     data: assets, 
@@ -76,10 +81,12 @@ const GilInveste: React.FC = () => {
   );
 
   // Cálculo do Portfólio
+  const userInvestments = user?.investments;
+  
   const portfolioData = useMemo(() => {
-    if (!user?.investments || !assets) return { items: [], totalValue: 0, totalProfit: 0 };
+    if (!userInvestments || !assets) return { items: [], totalValue: 0, totalProfit: 0 };
 
-    const items = user.investments.map(inv => {
+    const items = userInvestments.map(inv => {
       const currentAsset = assets.find(a => a.symbol === inv.symbol);
       const currentPrice = currentAsset?.regularMarketPrice || inv.averagePrice;
       const currentValue = currentPrice * inv.quantity;
@@ -102,7 +109,7 @@ const GilInveste: React.FC = () => {
     const totalProfit = totalValue - totalCost;
 
     return { items, totalValue, totalProfit };
-  }, [user?.investments, assets]);
+  }, [userInvestments, assets]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-slate-300 font-sans p-4 md:p-8 pb-24 pt-24 md:pt-32">
@@ -146,6 +153,18 @@ const GilInveste: React.FC = () => {
         </div>
         <div className="absolute -bottom-4 left-0 w-full h-[1px] bg-gradient-to-r from-emerald-500/50 via-slate-800 to-transparent" />
       </header>
+
+      {/* 📖 BLOCO DE CONHECIMENTO (ESTACIONÁRIO NO TOPO DIREITO) */}
+      <button 
+        onClick={() => setIsEduModalOpen(true)}
+        className="absolute top-4 right-4 z-[100] w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-slate-900/90 border-2 border-emerald-500/50 rounded-xl cursor-pointer outline-none drop-shadow-[0_10px_15px_rgba(0,0,0,0.5)] active:scale-95 transition-all hover:scale-105 group backdrop-blur-sm"
+        title="Escola de Investidores"
+      >
+        <div className="flex flex-col items-center gap-0.5">
+          <BookOpen size={20} className="text-emerald-400 group-hover:rotate-12 transition-transform" />
+          <span className="font-press text-[5px] text-emerald-500 hidden md:block">MANUAL</span>
+        </div>
+      </button>
 
       {/* Minha Carteira (Portfolio) */}
       {user?.investments && user.investments.length > 0 && (
@@ -319,13 +338,41 @@ const GilInveste: React.FC = () => {
         <CreateStartupModal onClose={() => setIsIPOModalOpen(false)} />
       )}
 
+      {/* Modal de Educação Financeira (Oráculo) */}
+      <AnimatePresence>
+        {isEduModalOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-4xl bg-slate-900 border-2 border-emerald-500/30 p-8 relative max-h-[90vh] overflow-y-auto custom-scrollbar shadow-[0_0_50px_rgba(16,185,129,0.1)] rounded-[2rem]"
+            >
+              <button 
+                onClick={() => setIsEduModalOpen(false)}
+                className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+
+              <MarketEducation />
+
+              <div className="mt-8 flex justify-center">
+                <button 
+                  onClick={() => setIsEduModalOpen(false)}
+                  className="px-10 py-4 bg-emerald-600 text-white font-press text-[10px] rounded-2xl hover:bg-emerald-500 transition-all shadow-lg"
+                >
+                  ENTENDI, ORÁCULO!
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Footer Info */}
       <footer className="mt-12 pt-6 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-          <div className="flex items-center gap-1">
-          
-           
-          </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-blue-500" />
             <span>Gil Investe</span>

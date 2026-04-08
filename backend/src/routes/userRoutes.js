@@ -12,6 +12,7 @@ router.get('/classes', protect, userController.getClasses);
 router.get('/students', protect, userController.getStudentsByClass);
 router.get('/find/:matricula', protect, userController.findByMatricula);
 router.post('/vip-code', protect, userController.redeemVipCode);
+router.patch('/accept-privacy', protect, userController.acceptPrivacy);
 
 // --- NOTIFICAÇÕES ---
 router.get('/notifications', protect, notifController.getMyNotifications);

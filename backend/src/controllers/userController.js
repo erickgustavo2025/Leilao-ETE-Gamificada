@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Admin = require('../models/Admin');
 const SystemConfig = require('../models/SystemConfig');
 const Log = require('../models/Log');
 const skillService = require('../services/skillService');
@@ -422,22 +423,38 @@ module.exports = {
     // 9. ATUALIZAR PERFIL
     async updateStudentProfile(req, res) {
         try {
-            const { userId, nome, turma } = req.body;
-            const id = userId || req.body.id;
+            const { nome, turma } = req.body;
+            const id = req.body.userId || req.body.id || req.params.id;
 
-            const user = await User.findByIdAndUpdate(id, { nome, turma }, { new: true });
+            if (!id) return res.status(400).json({ error: 'ID do usuário não fornecido.' });
+
+            // 🛡️ PROTEÇÃO DE HIERARQUIA: Não permite alterar Admin/Dev por aqui
+            const targetUser = await User.findById(id);
+            if (!targetUser) return res.status(404).json({ error: 'Usuário não encontrado.' });
+            
+            if (['admin', 'dev'].includes(targetUser.role) && req.user.role !== 'dev') {
+                return res.status(403).json({ error: 'Acesso Negado: Não é possível alterar perfis da Staff por esta rota.' });
+            }
+
+            // Sanitização e Destinação Estrita
+            const updateData = {};
+            if (nome) updateData.nome = nome.trim().toUpperCase();
+            if (turma) updateData.turma = turma.trim().toUpperCase();
+
+            const user = await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
 
             if (Log) {
                 await Log.create({
                     user: req.user._id,
                     target: user._id,
                     action: 'UPDATE_PROFILE',
-                    details: `Perfil editado: ${nome} - ${turma}`,
+                    details: `Perfil editado: ${user.nome} - ${user.turma}`,
                     ip: req.ip
                 });
             }
-            res.json({ message: 'Perfil atualizado', user });
+            res.json({ message: 'Perfil atualizado com segurança', user });
         } catch (error) {
+            console.error('Erro no updateStudentProfile:', error);
             res.status(500).json({ error: 'Erro ao atualizar perfil' });
         }
     },
@@ -690,15 +707,45 @@ module.exports = {
                 await newUser.save();
             }
 
+            // ✅ SEGURANÇA: Remove campos sensíveis antes de retornar
+            const userResponse = newUser.toObject();
+            delete userResponse.senha;
+            delete userResponse.dataNascimento;
+
             res.status(201).json({
                 message: 'Usuário criado com sucesso!',
-                user: newUser,
-                initialPassword: rawPassword
+                user: userResponse,
+                initialPassword: rawPassword // Retorna apenas uma vez para o Admin anotar
             });
 
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Erro ao criar usuário' });
+        }
+    },
+    async acceptPrivacy(req, res) {
+        try {
+            // Detecta se o usuário é Admin/Dev ou Aluno
+            const isStaff = ['admin', 'dev'].includes(req.user.role);
+            const Model = isStaff ? Admin : User;
+
+            const user = await Model.findById(req.user.id);
+            if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+            user.privacyAccepted = true;
+            user.privacyAcceptedAt = new Date();
+            user.privacyVersion = '1.0';
+            
+            await user.save();
+
+            res.json({ 
+                success: true, 
+                message: `Política de Privacidade aceita com sucesso para ${isStaff ? 'Staff' : 'Aluno'}!`,
+                privacyAccepted: true 
+            });
+        } catch (error) {
+            console.error("Erro ao aceitar privacidade:", error);
+            res.status(500).json({ error: "Erro interno ao registrar aceite." });
         }
     },
 

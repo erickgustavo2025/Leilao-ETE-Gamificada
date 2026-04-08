@@ -3,13 +3,12 @@ const axios = require("axios");
 const User = require("../models/User");
 const AIInteraction = require("../models/AIInteraction");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY_1 || process.env.GEMINI_API_KEY);
+const { embedContent, getAvailableKey, markKeyAsQuoted } = require("../utils/geminiKeyManager");
 const ChatSession = require("../models/ChatSession");
 const DocumentEmbedding = require("../models/DocumentEmbedding");
 const { SYSTEM_PROMPT_BASE, PAGE_CONTEXTS } = require("../config/aiSystemPrompt");
 
-// Embeddings exclusivos no Gemini-001 (Estável)
-const { embedContent } = require("../utils/geminiKeyManager");
+
 
 // ── HELPER: Produto Escalar ──────────────────────────────────────────
 const dotProduct = (a, b) => a.reduce((sum, val, i) => sum + val * b[i], 0);
@@ -24,39 +23,49 @@ const detectMode = (pergunta, path) => {
     return "SUPORTE";
 };
 
-async function callGemini(messages, systemPrompt) {
-    const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        // ✅ CORREÇÃO: systemInstruction exige objeto com parts[], não string crua
-        systemInstruction: {
-            parts: [{ text: systemPrompt }]
+async function callGemini(messages, systemPrompt, modelName = "gemini-flash-lite-latest") {
+    const keyData = getAvailableKey();
+    if (!keyData) throw new Error("429"); 
+
+    try {
+        const genAI = new GoogleGenerativeAI(keyData.key);
+        const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+        });
+
+        const chat = model.startChat({
+            history: messages.slice(0, -1).map(m => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }],
+            }))
+        });
+
+        const lastMessage = messages[messages.length - 1].content;
+        const result = await chat.sendMessage(lastMessage);
+        return result.response.text();
+    } catch (err) {
+        const errMsg = err?.message || "";
+        if (err?.status === 429 || err?.response?.status === 429 || errMsg.includes("429")) {
+            markKeyAsQuoted(keyData.index);
+            throw new Error("429"); 
         }
-    });
-
-    const chat = model.startChat({
-        history: messages.slice(0, -1).map(m => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-        }))
-        // ❌ Removido: systemInstruction daqui, agora vai no getGenerativeModel
-    });
-
-    const lastMessage = messages[messages.length - 1].content;
-    const result = await chat.sendMessage(lastMessage);
-    return result.response.text();
+        if (errMsg.includes("503") || errMsg.includes("Service Unavailable")) {
+            throw new Error("503");
+        }
+        throw err;
+    }
 }
 
 // ── RESERVA: OPENROUTER (entra só se o Gemini falhar) ────────────────
 async function callOpenRouter(messages, systemPrompt) {
-    // Apenas 1 tentativa aqui — se o Gemini já falhou, não faz sentido
-    // ficar esperando mais 30s no OpenRouter também.
     const response = await axios.post(
         "https://openrouter.ai/api/v1/chat/completions",
         {
-            model: process.env.OPENROUTER_MODEL || "qwen/qwen-turbo",
+            model: process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
             messages: [{ role: "system", content: systemPrompt }, ...messages],
             max_tokens: 1024,
-            temperature: 0.7,
+            temperature: 0.5,
         },
         {
             headers: { "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}` },
@@ -73,18 +82,15 @@ exports.processAIRequest = async (req, res) => {
         const userId = req.user.id;
         const { v4: uuidv4 } = require('uuid');
 
-        // FIX: era < 3, bloqueava "oi" (2 chars) silenciosamente no frontend
         if (!pergunta || pergunta.trim().length < 1) {
             return res.status(400).json({ error: "Pergunta vazia." });
         }
 
-        // 1. Dados do aluno
         const user = await User.findById(userId).select(
             "nome turma saldoPc maxPcAchieved cargos notas investments"
         );
         if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
 
-        // 2. Recuperar sessão e histórico
         let session = null;
         let historyMessages = [];
 
@@ -102,31 +108,9 @@ exports.processAIRequest = async (req, res) => {
             session = await ChatSession.create({ userId, messages: [], paginaOrigem });
         }
 
-        // 3. Modo e RAG
         const modo = detectMode(pergunta, paginaOrigem || "");
         let contextRAG = "";
-
-        if (modo === "TUTOR" || modo === "CONSULTOR") {
-            try {
-                const queryVector = await embedContent(pergunta);
-                const docs = await DocumentEmbedding.find({
-                    categoria: modo === "TUTOR" ? { $regex: /ENEM/ } : "FINANCEIRO"
-                }).select("chunkText embedding").limit(50);
-
-                const scored = docs
-                    .map(d => ({ text: d.chunkText, score: dotProduct(queryVector, d.embedding) }))
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 3);
-
-                if (scored.length > 0) {
-                    contextRAG = `\n\nCONHECIMENTO RELEVANTE:\n"""\n${scored.map(s => s.text).join("\n\n")}\n"""`;
-                }
-            } catch (embErr) {
-                console.error("⚠️ RAG falhou, respondendo sem contexto:", embErr.message);
-            }
-        }
-
-        // 4. Monta System Prompt
+        
         const pageCtx = PAGE_CONTEXTS[paginaOrigem] || "";
         const dadosAluno = `Nome: ${user.nome} | Turma: ${user.turma} | Saldo: ${user.saldoPc} PC$ | Rank: ${user.maxPcAchieved} PC$ máx`;
         const systemPrompt = SYSTEM_PROMPT_BASE
@@ -134,26 +118,46 @@ exports.processAIRequest = async (req, res) => {
             .replace("{DADOS_ALUNO}", dadosAluno)
             + contextRAG;
 
-        // 5. Monta mensagens com histórico
         const messagesPayload = [
             ...historyMessages,
             { role: "user", content: pergunta }
         ];
 
-        // 6. GEMINI PRIMEIRO — OpenRouter só se Gemini falhar
         let resposta;
         let modoUsado = "GEMINI";
+        let loopSucesso = false;
+
+        // --- HIERARQUIA DE FALLBACK ---
+        // 1. TENTA LITE (Maior cota)
         try {
-            resposta = await callGemini(messagesPayload, systemPrompt);
-        } catch (geminiErr) {
-            console.error("⚠️ [AI] Gemini falhou, acionando OpenRouter como reserva:", geminiErr.message);
-            modoUsado = "OPENROUTER";
+            console.log("⚡ Tentando Nível 1: Gemini Lite...");
+            resposta = await callGemini(messagesPayload, systemPrompt, "gemini-flash-lite-latest");
+            loopSucesso = true;
+        } catch (err) {
+            console.warn(`⚠️ Nível 1 falhou (${err.message}). Pulando para Nível 2...`);
+            
+            // 2. TENTA GEMINI 2.5 (Modelo Alternativo VIP)
             try {
-                resposta = await callOpenRouter(messagesPayload, systemPrompt);
-            } catch (openRouterErr) {
-                console.error("❌ [AI] OpenRouter também falhou:", openRouterErr.message);
-                throw new Error("Sistemas de IA indisponíveis no momento.");
+                console.log("⚡ Tentando Nível 2: Gemini 2.5...");
+                resposta = await callGemini(messagesPayload, systemPrompt, "gemini-2.5-flash");
+                loopSucesso = true;
+            } catch (err2) {
+                console.warn(`⚠️ Nível 2 falhou (${err2.message}). Acionando RECURSO FINAL...`);
+                
+                // 3. OPENROUTER (Nvidia Nemotron)
+                try {
+                    console.log("⚡ Acionando Nível 3: OpenRouter (Nvidia)...");
+                    modoUsado = "OPENROUTER";
+                    resposta = await callOpenRouter(messagesPayload, systemPrompt);
+                    loopSucesso = true;
+                } catch (errOR) {
+                    console.error("❌ Todos os níveis de IA falharam:", errOR.message);
+                }
             }
+        }
+
+        if (!loopSucesso) {
+            throw new Error("Sistemas de IA indisponíveis no momento. Tente novamente em breve.");
         }
 
         // 7. Salva na sessão

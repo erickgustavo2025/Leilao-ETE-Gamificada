@@ -26,7 +26,7 @@ module.exports = {
             const podeUsarMarket = (user.cargos || []).includes(BADGE_MARKET);
             if (!podeUsarMarket && req.user.role !== 'admin') {
                 return res.status(403).json({
-                    error: 'Você precisa completar a Missão do Marketplace para anunciar itens.',
+                    error: 'Acesso Negado: Você precisa conquistar a Badge de Marketplace para anunciar itens.',
                     badgeNecessaria: BADGE_MARKET
                 });
             }
@@ -150,7 +150,7 @@ module.exports = {
             const podeUsarMarket = (buyer.cargos || []).includes(BADGE_MARKET);
             if (!podeUsarMarket && req.user.role !== 'admin') {
                 return res.status(403).json({
-                    error: 'Você precisa completar a Missão do Marketplace para comprar itens.',
+                    error: 'Acesso Negado: Você precisa conquistar a Badge de Marketplace para comprar itens.',
                     badgeNecessaria: BADGE_MARKET
                 });
             }
@@ -166,18 +166,31 @@ module.exports = {
             const tax = Math.floor(listing.price * GOBLIN_TAX_RATE);
             const sellerReceive = listing.price - tax;
 
-            // 🔥 AQUI ESTAVA O LIMITE ANUAL: FOI REMOVIDO! 
-            // O comércio não tem limite, ele só adiciona o dinheiro na conta do vendedor.
-            
-            buyer.saldoPc -= listing.price;
-            seller.saldoPc += sellerReceive;
-            
-            // Nós podemos (opcionalmente) registrar o lucro no 'receivedThisYear' pra fins estatísticos,
-            // mas NÃO usamos isso pra bloquear a compra, porque é comércio.
-            if (!seller.financialLimits) seller.financialLimits = { receivedThisYear: 0, lastResetYear: new Date().getFullYear() };
-            seller.financialLimits.receivedThisYear += sellerReceive;
+            // 3. ✅ OPERAÇÕES ATÔMICAS (Blindadas contra Race Conditions)
+            // Débito do Comprador com trava de saldo
+            const buyerDebit = await User.updateOne(
+                { _id: buyerId, saldoPc: { $gte: listing.price } },
+                { $inc: { saldoPc: -listing.price } },
+                { session }
+            );
 
-            // Entrega o item (Verifica se é House Item para mandar para o Beco Diagonal)
+            if (buyerDebit.matchedCount === 0) {
+                throw new Error("Saldo insuficiente ou erro no débito.");
+            }
+
+            // Crédito do Vendedor
+            await User.updateOne(
+                { _id: listing.seller },
+                { 
+                    $inc: { 
+                        saldoPc: sellerReceive,
+                        'financialLimits.receivedThisYear': sellerReceive 
+                    } 
+                },
+                { session }
+            );
+
+            // 4. Entrega do Item
             let realItem = await StoreItem.findById(listing.itemData.itemId).session(session) || await Item.findById(listing.itemData.itemId).session(session);
             let finalExpiresAt = listing.itemData.expiresAt;
 
@@ -189,33 +202,32 @@ module.exports = {
             if (listing.itemData.isHouseItem) {
                 const buyerClassroom = await Classroom.findOne({ serie: buyer.turma }).session(session);
                 if (buyerClassroom) {
-                    if (!buyerClassroom.roomInventory) buyerClassroom.roomInventory = [];
-                    
                     const newRoomSlot = {
                         itemId: listing.itemData.itemId,
                         name: listing.itemData.name || realItem?.nome,
-                        image: listing.itemData.imagem || realItem?.imagem, // INGLÊS
-                        description: listing.itemData.descricao || realItem?.descricao, // INGLÊS
+                        image: listing.itemData.imagem || realItem?.imagem,
+                        description: listing.itemData.descricao || realItem?.descricao,
                         category: listing.itemData.category || 'CONSUMIVEL',
                         rarity: listing.itemData.raridade || realItem?.raridade || 'Comum',
-                        quantity: 1, // INGLÊS
-                        acquiredBy: buyerId, // INGLÊS
-                        acquiredAt: new Date(), // INGLÊS
+                        quantity: 1,
+                        acquiredBy: buyerId,
+                        acquiredAt: new Date(),
                         origin: 'MARKETPLACE'
                     };
-
                     if (finalExpiresAt) newRoomSlot.expiresAt = finalExpiresAt;
 
-                    buyerClassroom.roomInventory.push(newRoomSlot);
-                    await buyerClassroom.save({ session });
+                    await Classroom.updateOne(
+                        { _id: buyerClassroom._id },
+                        { $push: { roomInventory: newRoomSlot } },
+                        { session }
+                    );
                 }
             } else {
-                // Vai pra mochila pessoal normal
                 const newPersonalSlot = {
                     itemId: listing.itemData.itemId,
                     name: listing.itemData.name || realItem?.nome,
-                    descricao: listing.itemData.descricao || realItem?.descricao, // PORTUGUÊS
-                    imagem: listing.itemData.imagem || realItem?.imagem, // PORTUGUÊS
+                    descricao: listing.itemData.descricao || realItem?.descricao,
+                    imagem: listing.itemData.imagem || realItem?.imagem,
                     raridade: listing.itemData.raridade || realItem?.raridade || 'Comum',
                     basePrice: listing.itemData.basePrice || realItem?.preco || 0,
                     category: listing.itemData.category || 'CONSUMIVEL',
@@ -223,10 +235,13 @@ module.exports = {
                     origin: 'marketplace',
                     acquiredAt: new Date()
                 };
-
                 if (finalExpiresAt) newPersonalSlot.expiresAt = finalExpiresAt;
 
-                buyer.inventory.push(newPersonalSlot);
+                await User.updateOne(
+                    { _id: buyerId },
+                    { $push: { inventory: newPersonalSlot } },
+                    { session }
+                );
             }
 
             listing.status = 'SOLD';
@@ -234,8 +249,6 @@ module.exports = {
             listing.soldAt = new Date();
             listing.taxPaid = tax;
 
-            await buyer.save({ session });
-            await seller.save({ session });
             await listing.save({ session });
 
             await Log.create([{

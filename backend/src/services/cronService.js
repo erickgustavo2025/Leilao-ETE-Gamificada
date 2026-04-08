@@ -68,26 +68,32 @@ const updatePriceCache = async () => {
         const stockSymbols = STOCKS.map(s => `${s}.SA`);
         try {
             const results = await yahooFinance.quote(stockSymbols);
-            for (const quote of results) {
+            const stockOps = results.map(quote => {
                 const symbol = quote.symbol.replace('.SA', '');
-                await PriceCache.findOneAndUpdate(
-                    { symbol },
-                    {
-                        symbol,
-                        shortName: symbol,
-                        longName: quote.longName || symbol,
-                        currency: 'BRL',
-                        assetType: 'STOCK', // 👇 FIX 2: Mantendo o assetType correto para o React!
-                        regularMarketPrice: quote.regularMarketPrice,
-                        regularMarketChangePercent: quote.regularMarketChangePercent,
-                        regularMarketTime: new Date(),
-                        logourl: `https://icons.brapi.dev/logos/${symbol}.png`, // 👇 FIX 3: Logos blindadas!
-                        updatedAt: new Date()
-                    },
-                    { upsert: true }
-                );
+                return {
+                    updateOne: {
+                        filter: { symbol },
+                        update: {
+                            symbol,
+                            shortName: symbol,
+                            longName: quote.longName || symbol,
+                            currency: 'BRL',
+                            assetType: 'STOCK',
+                            regularMarketPrice: quote.regularMarketPrice,
+                            regularMarketChangePercent: quote.regularMarketChangePercent,
+                            regularMarketTime: new Date(),
+                            logourl: `https://icons.brapi.dev/logos/${symbol}.png`,
+                            updatedAt: new Date()
+                        },
+                        upsert: true
+                    }
+                };
+            });
+
+            if (stockOps.length > 0) {
+                await PriceCache.bulkWrite(stockOps, { ordered: false });
             }
-            console.log(`✅ [CRON-GIL] ${results.length} Ações atualizadas via Yahoo Finance.`);
+            console.log(`✅ [CRON-GIL] ${results.length} Ações atualizadas via Yahoo Finance (Bulk).`);
         } catch (err) {
             console.error('❌ [CRON-GIL] Erro no Yahoo Finance:', err.message);
         }
@@ -96,33 +102,38 @@ const updatePriceCache = async () => {
         try {
             const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
             const tickers = response.data;
-            let cryptoCount = 0;
+            const cryptoOps = [];
 
             for (const crypto of CRYPTOS) {
                 const pair = `${crypto}USDT`;
                 const ticker = tickers.find(t => t.symbol === pair);
 
                 if (ticker) {
-                    await PriceCache.findOneAndUpdate(
-                        { symbol: crypto },
-                        {
-                            symbol: crypto,
-                            shortName: crypto,
-                            longName: crypto,
-                            currency: 'BRL',
-                            assetType: 'CRYPTO', // 👇 FIX 2: Mantendo o assetType correto!
-                            regularMarketPrice: parseFloat(ticker.lastPrice),
-                            regularMarketChangePercent: parseFloat(ticker.priceChangePercent),
-                            regularMarketTime: new Date(),
-                            logourl: `https://cryptologos.cc/logos/${crypto.toLowerCase()}-${crypto.toLowerCase()}-logo.png?v=024`,
-                            updatedAt: new Date()
-                        },
-                        { upsert: true }
-                    );
-                    cryptoCount++;
+                    cryptoOps.push({
+                        updateOne: {
+                            filter: { symbol: crypto },
+                            update: {
+                                symbol: crypto,
+                                shortName: crypto,
+                                longName: crypto,
+                                currency: 'BRL',
+                                assetType: 'CRYPTO',
+                                regularMarketPrice: parseFloat(ticker.lastPrice),
+                                regularMarketChangePercent: parseFloat(ticker.priceChangePercent),
+                                regularMarketTime: new Date(),
+                                logourl: `https://cryptologos.cc/logos/${crypto.toLowerCase()}-${crypto.toLowerCase()}-logo.png?v=024`,
+                                updatedAt: new Date()
+                            },
+                            upsert: true
+                        }
+                    });
                 }
             }
-            console.log(`✅ [CRON-GIL] ${cryptoCount} Criptos atualizadas via Binance.`);
+
+            if (cryptoOps.length > 0) {
+                await PriceCache.bulkWrite(cryptoOps, { ordered: false });
+            }
+            console.log(`✅ [CRON-GIL] ${cryptoOps.length} Criptos atualizadas via Binance (Bulk).`);
         } catch (err) {
             console.error('❌ [CRON-GIL] Erro na Binance:', err.message);
         }

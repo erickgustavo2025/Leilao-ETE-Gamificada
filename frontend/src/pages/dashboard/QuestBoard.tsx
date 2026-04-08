@@ -151,13 +151,14 @@ function ValidationModal({
 }: {
     title: string;
     onClose: () => void;
-    onSubmit: (code: string, submissionContent?: string) => void;
+    onSubmit: (code: string, submissionContent?: string, file?: File) => void;
     validationType: 'code' | 'manual';
     isLoading: boolean;
 }) {
     const [code, setCode] = useState('');
     const [show, setShow] = useState(false);
     const [submissionContent, setSubmissionContent] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     return (
         <motion.div
@@ -231,26 +232,45 @@ function ValidationModal({
                     ) : (
                         <div className="space-y-3">
                             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                                <p className="font-vt323 text-xl text-blue-300">Envio Manual</p>
-                                <p className="font-poppins text-xs text-slate-400 mt-1">
-                                    Esta missão requer aprovação do professor. Descreva seu projeto ou cole o link.
+                                <p className="font-vt323 text-xl text-blue-300">Envio de Evidência</p>
+                                <p className="font-poppins text-[10px] text-slate-400 mt-1">
+                                    Descreva seu trabalho e anexe um arquivo (PDF, Imagem ou DOC) de até 5MB.
                                 </p>
                             </div>
-                            <label className="font-press text-[9px] text-slate-500 uppercase block">
-                                LINK DO PROJETO, DRIVE OU COMENTÁRIO
-                            </label>
+                            
                             <textarea
-                                placeholder="Cole aqui o link do seu projeto ou uma descrição..."
+                                placeholder="Descreva o que você fez ou cole um link extra aqui..."
                                 value={submissionContent}
                                 onChange={e => setSubmissionContent(e.target.value)}
                                 maxLength={2000}
                                 className="w-full bg-black/60 border border-blue-500/40 rounded-xl p-4 text-white font-poppins text-sm focus:border-blue-400 outline-none placeholder:text-slate-700 resize-none h-24"
                             />
-                            <div className="text-right text-xs text-slate-500">
-                                {submissionContent.length}/2000
+
+                            <div className="relative">
+                                <label className="flex items-center gap-2 p-3 rounded-xl border border-dashed border-slate-700 hover:border-blue-500/50 bg-white/5 cursor-pointer transition-colors">
+                                    <Package size={16} className="text-slate-500" />
+                                    <span className="font-vt323 text-lg text-slate-400 truncate">
+                                        {selectedFile ? selectedFile.name : 'Selecionar Arquivo (Opcional)'}
+                                    </span>
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+                                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                    />
+                                </label>
+                                {selectedFile && (
+                                    <button 
+                                        onClick={() => setSelectedFile(null)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-red-400 hover:text-red-300"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                             </div>
+
                             <button
-                                onClick={() => onSubmit('MANUAL', submissionContent)}
+                                onClick={() => onSubmit('MANUAL', submissionContent, selectedFile || undefined)}
                                 disabled={isLoading || !submissionContent.trim()}
                                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-press text-[10px] flex items-center justify-center gap-2 transition-all"
                             >
@@ -569,29 +589,36 @@ export function QuestBoard() {
         }
     }
 
-    async function handleValidate(code: string, submissionContent?: string) {
+    async function handleValidate(code: string, submissionContent?: string, file?: File) {
         setIsSubmitting(true);
         try {
             if (submissionContent !== undefined) {
-                // Submissão manual
-                await api.post('/quests/request-validation', { questId: validationTarget?.questId, submissionContent });
+                // Submissão manual (Evidência) - Usa FormData para suportar arquivo
+                const formData = new FormData();
+                formData.append('questId', validationTarget?.questId || '');
+                formData.append('submissionContent', submissionContent);
+                if (file) {
+                    formData.append('file', file);
+                }
+
+                await api.post('/quests/request-validation', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             } else {
                 // Validação por código
-                await api.post('/quests/validate', { questId: validationTarget?.questId, secretCode: code });
+                await api.post('/quests/validate', { 
+                    questId: validationTarget?.questId, 
+                    secretCode: code 
+                });
             }
 
-            toast.success(submissionContent !== undefined ? 'Submissão enviada ao professor!' : 'Código validado! Recompensas adicionadas.');
+            toast.success(submissionContent !== undefined ? 'Evidência enviada com sucesso!' : 'Missão validada!');
             setValidationTarget(null);
-
-            // Atualiza as missões secundárias na tela (React Query)
             queryClient.invalidateQueries({ queryKey: ['quests', 'secondary'] });
-
-            // 🚀 A MÁGICA ACONTECE AQUI:
-            // Isso vai no backend, pega o seu novo PC$/Badges e atualiza a tela instantaneamente!
             await refreshUser();
 
         } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Código inválido.');
+            toast.error(err?.response?.data?.error || 'Erro ao validar missão.');
         } finally {
             setIsSubmitting(false);
         }

@@ -48,6 +48,7 @@ const InvestmentSchema = new mongoose.Schema({
     quantity: { type: Number, required: true, min: 0 },
     averagePrice: { type: Number, required: true, min: 0 },
     assetType: { type: String, enum: ['STOCK', 'CRYPTO'], required: true },
+    lockedUntil: { type: Date }, // Trava de venda (Vesting)
     updatedAt: { type: Date, default: Date.now }
 });
 
@@ -77,6 +78,11 @@ const userSchema = new mongoose.Schema({
     isFirstAccess: { type: Boolean, default: true },
     isBlocked: { type: Boolean, default: false },
     isVip: { type: Boolean, default: false },
+
+    // --- PRIVACIDADE (ECA DIGITAL 2025) ---
+    privacyAccepted: { type: Boolean, default: false },
+    privacyAcceptedAt: { type: Date },
+    privacyVersion: { type: String, default: '1.0' },
 
     resetPasswordToken: String,
     resetPasswordExpires: Date,

@@ -48,6 +48,9 @@ export interface User {
     avatar?: string;
     cargos?: string[];
     isBlocked?: boolean;
+    privacyAccepted?: boolean;
+    privacyAcceptedAt?: string;
+    privacyVersion?: string;
     inventory: InventoryItem[];
     activeBuffs: ActiveBuff[];
     investments: UserInvestment[];

@@ -27,6 +27,7 @@ interface PendingApproval {
     questId: string;
     questTitle: string;
     submissionContent: string;
+    attachmentUrl?: string; // NOVO
     submittedAt: string;
     rewards: {
         pc: number;
@@ -114,24 +115,38 @@ export default function AdminApprovals() {
                                                 </span>
                                             </div>
                                             <p className="font-vt323 text-blue-400 text-xl mb-2">{item.questTitle}</p>
-                                            {item.submissionContent && (
-                                                <div className="mb-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                                    <p className="text-xs text-slate-400 mb-1">SUBMISSÃO DO ALUNO:</p>
-                                                    {isValidUrl(item.submissionContent) ? (
-                                                        <a
-                                                            href={item.submissionContent}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1.5 break-all"
-                                                        >
-                                                            <ExternalLink size={14} />
-                                                            {item.submissionContent}
-                                                        </a>
-                                                    ) : (
-                                                        <p className="text-slate-300 text-sm">{item.submissionContent}</p>
+                                                <div className="mb-3 flex flex-wrap gap-2">
+                                                    <div className="flex-1 min-w-[200px] p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                                        <p className="text-xs text-slate-400 mb-1 uppercase font-press text-[7px]">Texto da Submissão:</p>
+                                                        {isValidUrl(item.submissionContent) ? (
+                                                            <a
+                                                                href={item.submissionContent}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1.5 break-all"
+                                                            >
+                                                                <ExternalLink size={14} />
+                                                                {item.submissionContent}
+                                                            </a>
+                                                        ) : (
+                                                            <p className="text-slate-300 text-sm">{item.submissionContent}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {item.attachmentUrl && (
+                                                        <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg flex flex-col justify-center">
+                                                            <p className="text-[7px] text-blue-400 mb-1 uppercase font-press">Anexo:</p>
+                                                            <a
+                                                                href={`${api.defaults.baseURL?.replace('/api', '')}${item.attachmentUrl}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-press text-[8px] flex items-center gap-2 transition-all"
+                                                            >
+                                                                <Package size={12} /> VER ARQUIVO
+                                                            </a>
+                                                        </div>
                                                     )}
                                                 </div>
-                                            )}
                                             <div className="flex flex-wrap items-center gap-4">
                                                 <div className="flex items-center gap-1.5 text-slate-500 text-xs">
                                                     <Clock size={14} />

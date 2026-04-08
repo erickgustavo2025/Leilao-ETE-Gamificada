@@ -10,6 +10,7 @@ FASE5_ORACULO.md
 start.sh
 stop.sh
 restart.sh
+.agents
 
 
 # Dependências

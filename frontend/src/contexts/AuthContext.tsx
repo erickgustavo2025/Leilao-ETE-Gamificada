@@ -13,6 +13,7 @@ export interface AuthContextData {
     logout: () => void;
     refreshUser: () => Promise<void>;
     updateUser: (userData: User) => void;
+    completeLogin: (userData: User, token: string) => Promise<void>;
     impersonate: (token: string, targetUser: User) => void;
     exitImpersonate: () => Promise<string>;
 }

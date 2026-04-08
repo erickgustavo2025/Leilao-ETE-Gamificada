@@ -25,6 +25,16 @@ const AdminSchema = new mongoose.Schema({
         type: String,
         enum: ['admin', 'dev'],
         default: 'admin'
+    },
+    privacyAccepted: {
+        type: Boolean,
+        default: false
+    },
+    privacyAcceptedAt: {
+        type: Date
+    },
+    privacyVersion: {
+        type: String
     }
 }, {
     timestamps: true,

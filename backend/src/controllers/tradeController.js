@@ -76,7 +76,7 @@ module.exports = {
         } catch (error) { res.status(500).json({ error: "Erro." }); }
     },
 
-    // 3. ACEITAR TROCA (REFEITO DO ZERO)
+    // 3. ACEITAR TROCA (ATÔMICA)
     async acceptTrade(req, res) {
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -97,99 +97,100 @@ module.exports = {
                 throw new Error("O destinatário não tem permissão para fazer trades ainda.");
             }
 
-            // Validação de Saldos (PC$)
-            if (initiator.saldoPc < (trade.offerInitiator.pc || 0)) throw new Error("O iniciador não tem saldo suficiente.");
-            if (target.saldoPc < (trade.offerTarget.pc || 0)) throw new Error("Você não tem saldo suficiente.");
-
-            // FUNÇÃO MESTRA: Remover de um lado e Adicionar no outro
+            // FUNÇÃO MESTRA: Remover de um lado e Adicionar no outro ATÔMICAMENTE
             const processItems = async (giver, receiver, itemsToGive) => {
                 for (const item of itemsToGive) {
-
-                    // 1. TENTA REMOVER DO GIVER
                     let itemRemoved = false;
 
-                    // Tenta na mochila pessoal
-                    const personalIdx = giver.inventory.findIndex(i => i._id.toString() === item.inventoryId);
-                    if (personalIdx !== -1) {
-                        if (giver.inventory[personalIdx].quantity > 1) {
-                            giver.inventory[personalIdx].quantity -= 1;
-                        } else {
-                            giver.inventory.splice(personalIdx, 1);
-                        }
+                    // 1. TENTA REMOVER DO GIVER (Pessoal atômico)
+                    let pullPersonal = await User.updateOne(
+                        { _id: giver._id, 'inventory._id': item.inventoryId, 'inventory.quantity': 1 },
+                        { $pull: { inventory: { _id: item.inventoryId } } },
+                        { session }
+                    );
+                    if (pullPersonal.matchedCount > 0) {
                         itemRemoved = true;
+                    } else {
+                        let decPersonal = await User.updateOne(
+                            { _id: giver._id, 'inventory._id': item.inventoryId, 'inventory.quantity': { $gt: 1 } },
+                            { $inc: { 'inventory.$.quantity': -1 } },
+                            { session }
+                        );
+                        if (decPersonal.matchedCount > 0) itemRemoved = true;
                     }
-                    // Tenta no Beco Diagonal (Sala)
-                    else {
+
+                    // 2. TENTA REMOVER DO BECO DIAGONAL ATÔMICO
+                    if (!itemRemoved) {
                         const giverClassroom = await Classroom.findOne({ serie: giver.turma }).session(session);
-                        if (giverClassroom && giverClassroom.roomInventory) {
-                            const roomIdx = giverClassroom.roomInventory.findIndex(i =>
-                                i._id.toString() === item.inventoryId &&
-                                (i.acquiredBy?.toString() === giver._id.toString() || i.adquiridoPor?.toString() === giver._id.toString())
+                        if (giverClassroom) {
+                            let pullRoom = await Classroom.updateOne(
+                                {
+                                    _id: giverClassroom._id,
+                                    'roomInventory._id': item.inventoryId,
+                                    $or: [{ 'roomInventory.quantidade': 1 }, { 'roomInventory.quantity': 1 }],
+                                    $or: [{ 'roomInventory.acquiredBy': giver._id }, { 'roomInventory.adquiridoPor': giver._id }]
+                                },
+                                { $pull: { roomInventory: { _id: item.inventoryId } } },
+                                { session }
                             );
-                            if (roomIdx !== -1) {
-                                if (giverClassroom.roomInventory[roomIdx].quantidade > 1) {
-                                    giverClassroom.roomInventory[roomIdx].quantidade -= 1;
-                                } else {
-                                    giverClassroom.roomInventory.splice(roomIdx, 1);
-                                }
-                                await giverClassroom.save({ session });
+                            if (pullRoom.matchedCount > 0) {
                                 itemRemoved = true;
+                            } else {
+                                let decRoom = await Classroom.updateOne(
+                                    {
+                                        _id: giverClassroom._id,
+                                        'roomInventory._id': item.inventoryId,
+                                        $or: [{ 'roomInventory.quantidade': { $gt: 1 } }, { 'roomInventory.quantity': { $gt: 1 } }],
+                                        $or: [{ 'roomInventory.acquiredBy': giver._id }, { 'roomInventory.adquiridoPor': giver._id }]
+                                    },
+                                    { $inc: { 'roomInventory.$.quantidade': -1, 'roomInventory.$.quantity': -1 } },
+                                    { session }
+                                );
+                                if (decRoom.matchedCount > 0) itemRemoved = true;
                             }
                         }
                     }
 
                     if (!itemRemoved) throw new Error(`${giver.nome} não possui mais o item ${item.name}. (A troca foi cancelada)`);
 
-                 // 2. ADICIONA NO RECEIVER
+                    // 3. ADICIONA NO RECEIVER
+                    let realItem = await StoreItem.findById(item.itemId).session(session) || await Item.findById(item.itemId).session(session);
+                    let finalExpiresAt = item.expiresAt;
+                    if (!finalExpiresAt && realItem && realItem.validadeDias) {
+                        finalExpiresAt = new Date();
+                        finalExpiresAt.setDate(finalExpiresAt.getDate() + realItem.validadeDias);
+                    }
+
                     if (item.isHouseItem) {
-                        // Vai para o Beco Diagonal do Recebedor!
                         const receiverClassroom = await Classroom.findOne({ serie: receiver.turma }).session(session);
                         if (receiverClassroom) {
-                            if (!receiverClassroom.roomInventory) receiverClassroom.roomInventory = [];
-
-                            // Vamos buscar a validade real direto do banco pra não depender do Frontend!
-                            let realItem = await StoreItem.findById(item.itemId).session(session) || await Item.findById(item.itemId).session(session);
-                            let finalExpiresAt = item.expiresAt;
-                            
-                            // Se o Frontend engoliu a data, a gente recalcula pelo BD!
-                            if (!finalExpiresAt && realItem && realItem.validadeDias) {
-                                finalExpiresAt = new Date();
-                                finalExpiresAt.setDate(finalExpiresAt.getDate() + realItem.validadeDias);
-                            }
-
-                            // 🔥 CRIA UM OBJETO LIMPO COM NOMES EXATOS DO SCHEMA DA SALA (INGLÊS)
                             const newRoomSlot = {
                                 itemId: item.itemId,
                                 name: item.name || realItem?.nome || 'Item da Casa',
                                 image: item.image || realItem?.imagem || '',
-                                description: item.descricao || realItem?.descricao || 'Sem descrição', // Em INGLÊS pro Schema!
+                                description: item.descricao || realItem?.descricao || 'Sem descrição',
                                 rarity: item.rarity || realItem?.raridade || 'Comum',
                                 quantity: 1,
+                                quantidade: 1,
                                 category: item.category || 'CONSUMIVEL',
                                 acquiredBy: receiver._id,
+                                adquiridoPor: receiver._id,
                                 origin: 'TRADE',
                                 acquiredAt: new Date()
                             };
-
                             if (finalExpiresAt) newRoomSlot.expiresAt = finalExpiresAt;
 
-                            receiverClassroom.roomInventory.push(newRoomSlot);
-                            await receiverClassroom.save({ session });
+                            await Classroom.updateOne(
+                                { _id: receiverClassroom._id },
+                                { $push: { roomInventory: newRoomSlot } },
+                                { session }
+                            );
                         }
                     } else {
-                        // Vai para a Mochila Pessoal do Recebedor!
-                        let realItem = await StoreItem.findById(item.itemId).session(session) || await Item.findById(item.itemId).session(session);
-                        let finalExpiresAt = item.expiresAt;
-                        
-                        if (!finalExpiresAt && realItem && realItem.validadeDias) {
-                            finalExpiresAt = new Date();
-                            finalExpiresAt.setDate(finalExpiresAt.getDate() + realItem.validadeDias);
-                        }
-
                         const newPersonalSlot = {
                             itemId: item.itemId,
                             name: item.name || realItem?.nome,
-                            descricao: item.descricao || realItem?.descricao, // Em PORTUGUÊS pro Schema Pessoal!
+                            descricao: item.descricao || realItem?.descricao,
                             imagem: item.image || realItem?.imagem,
                             raridade: item.rarity || realItem?.raridade || 'Comum',
                             basePrice: item.basePrice || realItem?.preco || 0,
@@ -198,31 +199,45 @@ module.exports = {
                             origin: 'trade',
                             acquiredAt: new Date()
                         };
-
                         if (finalExpiresAt) newPersonalSlot.expiresAt = finalExpiresAt;
 
-                        receiver.inventory.push(newPersonalSlot);
+                        await User.updateOne(
+                            { _id: receiver._id },
+                            { $push: { inventory: newPersonalSlot } },
+                            { session }
+                        );
                     }
                 }
             };
 
             // Processa as transferências de itens
-            await processItems(initiator, target, trade.offerInitiator.items);
-            await processItems(target, initiator, trade.offerTarget.items);
+            await processItems(initiator, target, trade.offerInitiator.items || []);
+            await processItems(target, initiator, trade.offerTarget.items || []);
 
-            // Processa Finanças
-            const pcToInitiator = trade.offerTarget.pc || 0;
-            const pcToTarget = trade.offerInitiator.pc || 0;
+            // Processa Finanças Atômicas
+            if ((trade.offerInitiator.pc || 0) > 0) {
+                const initDebit = await User.updateOne(
+                    { _id: trade.initiator, saldoPc: { $gte: trade.offerInitiator.pc } },
+                    { $inc: { saldoPc: -trade.offerInitiator.pc } },
+                    { session }
+                );
+                if (initDebit.matchedCount === 0) throw new Error("Aviso: O iniciador não possui mais o PC$ oferecido.");
+                
+                await User.updateOne({ _id: trade.target }, { $inc: { saldoPc: trade.offerInitiator.pc } }, { session });
+            }
 
-            initiator.saldoPc = initiator.saldoPc - pcToTarget + pcToInitiator;
-            target.saldoPc = target.saldoPc - pcToInitiator + pcToTarget;
+            if ((trade.offerTarget.pc || 0) > 0) {
+                const trgDebit = await User.updateOne(
+                    { _id: trade.target, saldoPc: { $gte: trade.offerTarget.pc } },
+                    { $inc: { saldoPc: -trade.offerTarget.pc } },
+                    { session }
+                );
+                if (trgDebit.matchedCount === 0) throw new Error("Aviso: Você não possui mais o PC$ oferecido.");
+                
+                await User.updateOne({ _id: trade.initiator }, { $inc: { saldoPc: trade.offerTarget.pc } }, { session });
+            }
 
             trade.status = 'COMPLETED';
-            initiator.markModified('inventory');
-            target.markModified('inventory');
-
-            await initiator.save({ session });
-            await target.save({ session });
             await trade.save({ session });
 
             await session.commitTransaction();

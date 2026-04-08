@@ -81,17 +81,19 @@ const BADGE_OPTIONS: { value: string; label: string; group: string }[] = [
     // Badges de Funcionalidade — desbloqueiam features do sistema
     { value: 'PODE_TRANSFERIR',       label: '💸 Pode Transferir (PIX Escolar)',      group: 'FUNCIONALIDADE' },
     { value: 'PODE_FAZER_TRADE',      label: '🔄 Pode Fazer Trade (Mercado P2P)',     group: 'FUNCIONALIDADE' },
+    { value: 'PODE_COMPRAR_VENDER',   label: '🛍️ Marketplace (Compra e Venda)',       group: 'FUNCIONALIDADE' },
     { value: 'PODE_PEDIR_EMPRESTIMO', label: '🏦 Pode Pedir Empréstimo (ETE Bank)',   group: 'FUNCIONALIDADE' },
+    { value: 'PODE_COMPRAR_NOTAS',    label: '📝 Pode Comprar Notas (M. Notas)',      group: 'FUNCIONALIDADE' },
     // Badges de Rank — desbloqueiam skills de rank
-    { value: 'bronze',     label: '🥉 Guardião de Bronze',      group: 'RANK' },
-    { value: 'prata',      label: '🥈 Cavaleiro de Prata',      group: 'RANK' },
-    { value: 'ouro',       label: '🥇 Campeão de Ouro',         group: 'RANK' },
-    { value: 'diamante',   label: '💎 Mestre Diamante',         group: 'RANK' },
-    { value: 'epico',      label: '👑 Herói Épico',             group: 'RANK' },
-    { value: 'lendario',   label: '🌟 Lendário da ETE',         group: 'RANK' },
-    { value: 'supremo',    label: '🔥 Supremo Imortal',         group: 'RANK' },
-    { value: 'mitologico', label: '🔱 Entidade Mitológica',     group: 'RANK' },
-    { value: 'soberano',   label: '⚡ Soberano Absoluto',       group: 'RANK' },
+    { value: 'BRONZE',     label: '🥉 Guardião de Bronze',      group: 'RANK' },
+    { value: 'PRATA',      label: '🥈 Cavaleiro de Prata',      group: 'RANK' },
+    { value: 'OURO',       label: '🥇 Campeão de Ouro',         group: 'RANK' },
+    { value: 'DIAMANTE',   label: '💎 Mestre Diamante',         group: 'RANK' },
+    { value: 'EPICO',      label: '👑 Herói Épico',             group: 'RANK' },
+    { value: 'LENDARIO',   label: '🌟 Lendário da ETE',         group: 'RANK' },
+    { value: 'SUPREMO',    label: '🔥 Supremo Imortal',         group: 'RANK' },
+    { value: 'MITOLOGICO', label: '🔱 Entidade Mitológica',     group: 'RANK' },
+    { value: 'SOBERANO',   label: '⚡ Soberano Absoluto',       group: 'RANK' },
 ];
 
 // ─────────────────────────────────────────────────────────────────

@@ -58,6 +58,12 @@ const GilEmpresaSchema = new mongoose.Schema({
     logo: { 
         type: String, 
         default: null 
+    },
+    minHoldWeeks: {
+        type: Number,
+        default: 2, // Padrão 2 semanas
+        min: 2,
+        max: 12 // Máximo 3 meses (1 trimestre)
     }
 }, { timestamps: true });
 

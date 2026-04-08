@@ -45,14 +45,12 @@ const notasController = {
         }
     },
 
-    // Comprar ponto em uma disciplina
     async comprarPonto(req, res) {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
             const { disciplinaId, tipo } = req.body; // tipo: 'n1' ou 'n2'
             
-            // 1. Validações Iniciais (Leitura fora do update para mensagens de erro amigáveis)
             const user = await User.findById(req.user.id).session(session);
             const disciplina = await Disciplina.findById(disciplinaId).session(session);
 
@@ -64,46 +62,41 @@ const notasController = {
                 throw new Error('Você não possui a badge PODE_COMPRAR_NOTAS.');
             }
 
-            // 2. Validação de Limite (2 pontos por tipo por disciplina)
+            const preco = tipo === 'n1' ? disciplina.precoN1 : disciplina.precoN2;
+
+            if (user.saldoPc < preco) {
+                throw new Error(`Saldo insuficiente. Você precisa de ${preco} PC$.`);
+            }
+
+            // Inicializar notas se não existir
+            if (!user.notas) {
+                user.notas = { n1: [], n2: [], redacoes: [], simulados: [], comprasPorDisciplina: {} };
+            }
+            if (!user.notas.comprasPorDisciplina) {
+                user.notas.comprasPorDisciplina = new Map();
+            }
+
             const compraKey = `${disciplinaId}_${tipo}`;
-            const totalComprado = user.notas?.comprasPorDisciplina?.get(compraKey) || 0;
+            const totalComprado = user.notas.comprasPorDisciplina.get(compraKey) || 0;
+
             if (totalComprado >= 2) {
                 throw new Error(`Limite atingido! Você só pode comprar no máximo 2 pontos de ${tipo.toUpperCase()} por matéria.`);
             }
 
-            const preco = tipo === 'n1' ? disciplina.precoN1 : disciplina.precoN2;
+            // Aplicar as mudanças (Segurança garantida pela Session/WriteConflict do MongoDB)
+            user.saldoPc -= preco;
+            
+            // Adicionar +1 no limite da disciplina
+            user.notas.comprasPorDisciplina.set(compraKey, totalComprado + 1);
 
-            // 3. ✅ ATÔMICO: Verificação de saldo e débito em uma única operação para evitar Race Condition
-            // Usamos $inc para saldo e para o contador de compras, e $push para o array de notas
-            const updateResult = await User.updateOne(
-                { 
-                    _id: req.user.id, 
-                    saldoPc: { $gte: preco },
-                    // Re-verificamos o limite no critério de busca para segurança total contra race conditions
-                    [`notas.comprasPorDisciplina.${compraKey}`]: { $lt: 2 } 
-                },
-                { 
-                    $inc: { 
-                        saldoPc: -preco,
-                        [`notas.comprasPorDisciplina.${compraKey}`]: 1 
-                    },
-                    $push: { [`notas.${tipo}`]: 1 }
-                },
-                { session }
-            );
+            // Adicionar +1 como "nota" no array principal para histórico caso necessário
+            user.notas[tipo].push(1);
 
-            // Se o matchedCount for 0, ou o saldo era insuficiente ou o limite foi atingido entre a leitura e o update
-            if (updateResult.matchedCount === 0) {
-                // Verificamos o motivo real para dar o erro correto
-                const userCheck = await User.findById(req.user.id).session(session);
-                if (userCheck.saldoPc < preco) throw new Error(`Saldo insuficiente. Você precisa de ${preco} PC$.`);
-                if ((userCheck.notas?.comprasPorDisciplina?.get(compraKey) || 0) >= 2) {
-                    throw new Error(`Limite atingido! Alguém (ou você em outra aba) já comprou os pontos permitidos.`);
-                }
-                throw new Error('Não foi possível processar a compra. Tente novamente.');
-            }
+            // Atualiza maxPcAchieved indiretamente e outros hooks se aplicável (o saldo diminuiu, não max)
+            
+            await user.save({ session });
 
-            // 4. Registrar Transação
+            // Registrar Transação
             await Transaction.create([{
                 remetente: user._id,
                 destinatario: user._id,
@@ -118,18 +111,16 @@ const notasController = {
             }], { session });
 
             await session.commitTransaction();
-            
-            // Buscamos o usuário atualizado para retornar o saldo correto
-            const updatedUser = await User.findById(req.user.id);
 
             res.json({ 
                 message: `Sucesso! 1 ponto de ${tipo.toUpperCase()} adicionado em ${disciplina.nome}.`, 
-                saldo: updatedUser.saldoPc,
-                comprasRestantes: 2 - (updatedUser.notas?.comprasPorDisciplina?.get(compraKey) || 0)
+                saldo: user.saldoPc,
+                comprasRestantes: 2 - (totalComprado + 1)
             });
 
         } catch (error) {
             await session.abortTransaction();
+            // Retornar 400 em logica limpa, se for WriteConflict também bloqueia
             res.status(400).json({ error: error.message });
         } finally {
             session.endSession();

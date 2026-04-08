@@ -1,7 +1,7 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Coins, Trophy, ShoppingBag, Gavel, Landmark, Gift, Shield,
+  Coins, Trophy, ShoppingBag, Gavel, Landmark, Gift, Shield, Award,
   User, Search, ChevronDown, BookOpen, Compass,
   Star, Zap, RefreshCw, Key, Flame, Ghost, Lock, AlertTriangle,
   Ticket, Sparkles, Crown, Package, TrendingUp, Users, Scroll,
@@ -209,7 +209,45 @@ const WIKI_DATA: WikiSection[] = [
   },
 
   // ——————————————————————————————
-  // 4. MOCHILA & INVENTÁRIO
+  // 4. SISTEMA DE BADGES
+  // ——————————————————————————————
+  {
+    id: 'badges',
+    title: 'GUIA DE BADGES',
+    subtitle: 'Sua progressão e conquistas',
+    color: 'text-cyan-400',
+    borderColor: 'border-cyan-500/30',
+    bg: 'bg-cyan-900/10',
+    iconBg: 'bg-cyan-900/30',
+    icon: Award,
+    items: [
+      {
+        title: 'Patentes de Ranking',
+        icon: Award,
+        desc: 'Sua patente reflete o maior patrimônio já alcançado.',
+        detail: 'As Patentes são o coração do seu prestígio na ETE Gil Rodrigues:\n\n🥉 Bronze (1.000 PC$)\n🥈 Prata (1.500 PC$)\n🥇 Ouro (2.000 PC$)\n💎 Diamante (2.500 PC$)\n👑 Épico (3.000 PC$)\n🌟 Lendário (5.000 PC$)\n🔥 Supremo (10.000 PC$)\n🔱 Mitológico (20.000 PC$)\n⚡ Soberano (50.000 PC$)\n\n• Meritocracia: Elas são liberadas automaticamente conforme você atinge o saldo total exigido (Max PC Achieved).\n• Segurança: Gastar seu dinheiro não faz você perder a patente — uma vez conquistada, ela é sua para sempre.\n• Benefícios: Patentes altas dão acesso a itens exclusivos na Loja e Lotes Nobres no Leilão.',
+        badge: 'PROGRESSÃO',
+        badgeColor: 'text-cyan-400 border-cyan-800/50 bg-cyan-900/20',
+      },
+      {
+        title: 'Badges de Função',
+        icon: Zap,
+        desc: 'Desbloqueie ferramentas essenciais do site via Missões.',
+        detail: 'Diferente das Patentes, as Badges de Função são conquistadas completando Missões Específicas:\n\n💸 Pix Escolar: Permite transferir PC$ para colegas.\n🔄 Trade Direto: Permite trocar itens com outros alunos.\n🛍️ Marketplace: Permite anunciar e comprar itens no P2P.\n📝 M. Notas: Permite a compra de benefícios acadêmicos (benefício restrito).\n\n• Missões: Verifique o Quadro de Missões para saber o que fazer.\n• Bloqueio: Algumas funções são travadas para evitar trapaças — complete a missão para ser livre.',
+        badge: 'MISSÕES',
+        badgeColor: 'text-yellow-400 border-yellow-800/50 bg-yellow-900/20',
+      },
+      {
+        title: 'Cargos Especiais',
+        icon: Crown,
+        desc: 'Conquistas externas e responsabilidades na escola.',
+        detail: 'Cargos são dados manualmente pelo Admin para alunos com funções na vida real da escola:\n\n🤓 Monitor de Disciplina / Escola\n🫡 Representante de Turma\n🎼 Integrante da Banda\n📚 Monitor de Biblioteca\n\nEstes cargos aparecem no seu perfil com visual único e mostram que você é um líder na comunidade. Alguns podem dar bônus de PC$ ou regalias no sistema.',
+      },
+    ]
+  },
+
+  // ——————————————————————————————
+  // 5. MOCHILA & INVENTÁRIO
   // ——————————————————————————————
   {
     id: 'mochila',
@@ -305,7 +343,7 @@ const WIKI_DATA: WikiSection[] = [
   },
 
   // ——————————————————————————————
-  // 5. COMPETIÇÃO & GLÓRIA
+  // 6. COMPETIÇÃO & GLÓRIA
   // ——————————————————————————————
   {
     id: 'competicao',
@@ -352,7 +390,7 @@ const WIKI_DATA: WikiSection[] = [
   },
 
   // ——————————————————————————————
-  // 6. PERFIL & CARGOS
+  // 7. PERFIL & CARGOS
   // ——————————————————————————————
   {
     id: 'perfil',
@@ -401,7 +439,7 @@ const WIKI_DATA: WikiSection[] = [
   },
 
   // ——————————————————————————————
-  // 7. ADMINISTRAÇÃO & REGRAS
+  // 8. ADMINISTRAÇÃO & REGRAS
   // ——————————————————————————————
   {
     id: 'regras',

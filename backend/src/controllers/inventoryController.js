@@ -132,6 +132,15 @@ module.exports = {
             // Consumo normal
             if (slot.category === 'RANK_SKILL') {
                 if (slot.usesLeft <= 0) throw new Error("Sem cargas.");
+                
+                // 🛡️ TRAVA DE RIQUEZA (Wealth Check) - Fase 3
+                if (slot.skillCode) {
+                    const requiredRank = require('../config/gameRules').getRequiredRankForSkill(slot.skillCode);
+                    if (requiredRank && user.maxPcAchieved < requiredRank.min) {
+                        throw new Error(`🚫 Você possui a Badge, mas sua força financeira não é digna desta habilidade! Alcance a meta histórica de ${requiredRank.min.toLocaleString()} PC$ (${requiredRank.name}) para destrancá-la.`);
+                    }
+                }
+
                 slot.usesLeft -= 1;
                 slot.lastUsedAt = new Date();
             } else {

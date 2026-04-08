@@ -66,11 +66,11 @@ exports.executeAuctionClosure = async (itemId) => {
                             await classroom.save({ session });
                             message = `Item de Sala entregue para a turma ${winner.turma}`;
                         } else {
-                            winner.saldoPc += item.maiorLance.valor;
+                            await User.updateOne({ _id: winner._id }, { $inc: { saldoPc: item.maiorLance.valor } }, { session });
                             message = `Erro: Sala não encontrada. Valor estornado.`;
                         }
                     } else {
-                        winner.saldoPc += item.maiorLance.valor;
+                        await User.updateOne({ _id: winner._id }, { $inc: { saldoPc: item.maiorLance.valor } }, { session });
                         message = `Aluno sem turma. Valor estornado.`;
                     }
                 } 
@@ -226,31 +226,49 @@ exports.placeBid = async (req, res) => {
             throw new Error(`Saldo insuficiente. Necessário: ${realCost} PC$ (com desconto).`);
         }
 
+        // ✅ OPERAÇÕES ATÔMICAS (Blindagem contra Double Spend)
         if (item.maiorLance && item.maiorLance.user) {
-            const prevWinner = await User.findById(item.maiorLance.user).session(session);
-            if (prevWinner) {
-                prevWinner.saldoPc += item.maiorLance.valor; 
-                await prevWinner.save({ session });
-            }
+            await User.updateOne(
+                { _id: item.maiorLance.user },
+                { $inc: { saldoPc: item.maiorLance.valor } },
+                { session }
+            );
         }
 
-        user.saldoPc -= realCost;
+        const debitResult = await User.updateOne(
+            { _id: userId, saldoPc: { $gte: realCost } },
+            { $inc: { saldoPc: -realCost } },
+            { session }
+        );
+
+        if (debitResult.matchedCount === 0) {
+            throw new Error(`Saldo insuficiente. Necessário: ${realCost} PC$ (com desconto).`);
+        }
 
         if (slotIndex > -1) {
             const slot = user.inventory[slotIndex];
             if (slot.category === 'RANK_SKILL') {
-                slot.usesLeft -= 1;
+                await User.updateOne(
+                    { _id: userId, 'inventory._id': slot._id },
+                    { $inc: { 'inventory.$.usesLeft': -1 } },
+                    { session }
+                );
             } else {
                 if (slot.quantity > 1) {
-                    slot.quantity -= 1;
+                    await User.updateOne(
+                        { _id: userId, 'inventory._id': slot._id },
+                        { $inc: { 'inventory.$.quantity': -1 } },
+                        { session }
+                    );
                 } else {
-                    user.inventory.splice(slotIndex, 1);
+                    await User.updateOne(
+                        { _id: userId },
+                        { $pull: { inventory: { _id: slot._id } } },
+                        { session }
+                    );
                 }
             }
-            user.markModified('inventory');
         }
-
-        await user.save({ session });
 
         item.maiorLance = {
             user: userId,

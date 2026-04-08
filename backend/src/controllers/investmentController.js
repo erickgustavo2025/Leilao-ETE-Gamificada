@@ -97,6 +97,7 @@ exports.buyAsset = async (req, res) => {
                     },
                     $set: { 
                         'investments.$.averagePrice': Number(newAvgPrice.toFixed(4)),
+                        'investments.$.lockedUntil': new Date(Date.now() + (assetType === 'STARTUP' ? (startup.minHoldWeeks || 2) : 2) * 7 * 24 * 60 * 60 * 1000),
                         'investments.$.updatedAt': new Date() 
                     }
                 },
@@ -116,6 +117,7 @@ exports.buyAsset = async (req, res) => {
                             quantity,
                             averagePrice: assetPrice,
                             assetType: assetType,
+                            lockedUntil: new Date(Date.now() + (assetType === 'STARTUP' ? (startup.minHoldWeeks || 2) : 2) * 7 * 24 * 60 * 60 * 1000),
                             updatedAt: new Date()
                         }
                     }
@@ -207,6 +209,14 @@ exports.sellAsset = async (req, res) => {
 
             assetPrice = startup.valorPorAcao;
             assetType = 'STARTUP';
+        }
+
+        // 🛡️ TRAVA DE INVESTIMENTO (BLOQUEIO TEMPORÁRIO CONTRA RESET)
+        const userForCheck = await User.findById(userId).session(session);
+        const inv = userForCheck.investments.find(i => i.symbol === assetSymbol);
+        if (inv && inv.lockedUntil && new Date() < inv.lockedUntil) {
+            const dataLib = inv.lockedUntil.toLocaleDateString('pt-BR');
+            throw new Error(`Este ativo está bloqueado para venda até ${dataLib}. Mantenha seu investimento por mais tempo!`);
         }
 
         const totalGain = assetPrice * quantity;

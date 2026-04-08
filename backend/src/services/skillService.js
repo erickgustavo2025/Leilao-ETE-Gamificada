@@ -2,14 +2,24 @@ const { RANKS, RANK_SKILLS } = require('../config/gameRules');
 const SKILLS_CATALOG = require('../config/skills');
 const GameSkill = require('../models/GameSkill');
 
+// Cache simples em memória para evitar DB hits constantes no /me
+let cachedSkills = null;
+let lastSkillsFetch = 0;
+const SKILLS_CACHE_TIME = 1000 * 60 * 5; // 5 minutos
+
 module.exports = {
     async syncRankSkills(user) {
         if (!user.maxPcAchieved) return false;
 
-        // 1. Busca skills do banco (Fonte da verdade das imagens)
-        const allDbSkills = await GameSkill.find({});
+        // 1. Busca skills do banco com cache de 5 minutos
+        const now = Date.now();
+        if (!cachedSkills || (now - lastSkillsFetch) > SKILLS_CACHE_TIME) {
+            cachedSkills = await GameSkill.find({}).lean();
+            lastSkillsFetch = now;
+        }
+
         const dbSkillMapByName = {};
-        allDbSkills.forEach(s => dbSkillMapByName[s.name] = s);
+        cachedSkills.forEach(s => dbSkillMapByName[s.name] = s);
 
         // 2. Ranks do usuário
         const userRanks = RANKS.filter(r => user.maxPcAchieved >= r.min);

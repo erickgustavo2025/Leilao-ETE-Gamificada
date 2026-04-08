@@ -185,11 +185,15 @@ const questController = {
           .json({ error: "Esta missão exige um código secreto para ser validada." });
       }
 
+      // Captura o anexo se existir
+      const attachmentUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
       // Tenta criar a submissão. O índice único no QuestSubmissionSchema vai impedir duplicatas PENDING.
       const newSubmission = await QuestSubmission.create({
         studentId: userId,
         questId: questId,
         submissionContent: submissionContent || "",
+        attachmentUrl: attachmentUrl,
         status: "PENDING",
       });
 

@@ -13,7 +13,7 @@ export interface Asset {
   regularMarketChangePercent: number;
   regularMarketTime: string;
   logourl: string;
-  assetType: 'STOCK' | 'CRYPTO';
+  assetType: 'STOCK' | 'CRYPTO' | 'STARTUP';
 }
 
 interface AssetCardProps {
@@ -25,13 +25,6 @@ interface AssetCardProps {
 export const AssetCard: React.FC<AssetCardProps> = ({ asset, isMobile, onClick }) => {
   const [imageError, setImageError] = useState(false);
   const isPositive = asset.regularMarketChange >= 0;
-
-  // Fallback para logo baseado no tipo
-  const FallbackIcon = () => (
-    <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 font-bold text-xs">
-      {asset.symbol.substring(0, 2)}
-    </div>
-  );
 
   return (
     <div 
@@ -59,13 +52,16 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, isMobile, onClick }
                 onError={() => setImageError(true)}
               />
             ) : (
-              <FallbackIcon />
+              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 font-bold text-xs uppercase">
+                {asset.symbol.substring(0, 2)}
+              </div>
             )}
             <div className={cn(
               "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border border-black flex items-center justify-center text-[8px] font-bold",
-              asset.assetType === 'STOCK' ? "bg-blue-500 text-white" : "bg-yellow-500 text-black"
+              asset.assetType === 'STOCK' ? "bg-blue-500 text-white" : 
+              asset.assetType === 'STARTUP' ? "bg-purple-500 text-white" : "bg-yellow-500 text-black"
             )}>
-              {asset.assetType === 'STOCK' ? 'A' : 'C'}
+              {asset.assetType === 'STOCK' ? 'A' : asset.assetType === 'STARTUP' ? 'S' : 'C'}
             </div>
           </div>
           <div>
@@ -102,7 +98,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, isMobile, onClick }
         <div className="flex items-center justify-between text-[9px] text-slate-500 uppercase">
           <div className="flex items-center gap-1">
             <Clock size={10} />
-            <span>{new Date(asset.regularMarketTime).toLocaleTimeString()}</span>
+            <span>{asset.regularMarketTime ? new Date(asset.regularMarketTime).toLocaleTimeString() : '--:--'}</span>
           </div>
           <div className="flex items-center gap-1">
             <Info size={10} />

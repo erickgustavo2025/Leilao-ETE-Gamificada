@@ -32,6 +32,10 @@ const QuestSubmissionSchema = new mongoose.Schema({
     type: Date,
     default: null, // 🕒 Auditoria: Quando a missão foi processada
   },
+  attachmentUrl: {
+    type: String,
+    default: null, // 📎 Opcional: Link para a evidência (PDF, Imagem, etc)
+  },
   submittedAt: {
     type: Date,
     default: Date.now,

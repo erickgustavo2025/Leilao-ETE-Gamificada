@@ -1,5 +1,4 @@
 // backend/src/utils/geminiKeyManager.js
-
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Lê todas as chaves do .env: GEMINI_KEY_1, GEMINI_KEY_2, GEMINI_KEY_3...
@@ -15,60 +14,64 @@ if (keys.length === 0) {
   else throw new Error("Nenhuma chave Gemini encontrada no .env");
 }
 
-// Estado de cooldown por chave (não reinicia com o servidor, mas serve pra sessão)
-const cooldowns = new Array(keys.length).fill(0); // timestamp até quando está bloqueada
+// Estado de cooldown por chave
+const cooldowns = new Array(keys.length).fill(0);
 let currentIndex = 0;
 
 function getNextAvailableIndex() {
   const now = Date.now();
-  // Tenta cada chave começando pela atual, procura a primeira disponível
   for (let i = 0; i < keys.length; i++) {
     const idx = (currentIndex + i) % keys.length;
     if (cooldowns[idx] <= now) {
-      currentIndex = (idx + 1) % keys.length; // avança para próxima chamada
+      currentIndex = (idx + 1) % keys.length;
       return idx;
     }
   }
-  return null; // Todas em cooldown
+  return null;
 }
 
 /**
- * Gera embedding com rotação automática de chave e retry em 429.
- * @param {string} text - Texto a embeddar
- * @returns {Promise<number[]>} - Vetor de embedding
+ * Retorna a próxima chave disponível e seu índice.
+ */
+function getAvailableKey() {
+  const index = getNextAvailableIndex();
+  return index !== null ? { key: keys[index], index } : null;
+}
+
+/**
+ * Marca uma chave como esgotada (429).
+ */
+function markKeyAsQuoted(index) {
+  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos de descanso
+  if (index >= 0 && index < cooldowns.length) {
+    const keySuffix = keys[index].slice(-4);
+    console.warn(`🚨 [Gemini] Chave ${index + 1} (...${keySuffix}) em rate limit. Cooldown de 5 min.`);
+    cooldowns[index] = Date.now() + COOLDOWN_MS;
+  }
+}
+
+/**
+ * Gera embedding com rotação automática.
  */
 async function embedContent(text) {
-  const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora de cooldown quando bate RPD
-
   for (let attempt = 0; attempt < keys.length; attempt++) {
-    const idx = getNextAvailableIndex();
-
-    if (idx === null) {
-      throw new Error("Todas as chaves Gemini estão em cooldown. Tente mais tarde.");
-    }
+    const keyData = getAvailableKey();
+    if (!keyData) throw new Error("Todas as chaves Gemini em cooldown.");
 
     try {
-      const genAI = new GoogleGenerativeAI(keys[idx]);
+      const genAI = new GoogleGenerativeAI(keyData.key);
       const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
       const result = await model.embedContent(text);
       return result.embedding.values;
-
     } catch (err) {
-      const status = err?.status || err?.response?.status;
-
-      if (status === 429 || status === 503) {
-        // Coloca a chave em cooldown e tenta a próxima
-        console.warn(`⚠️ [Gemini] Chave ${idx + 1} em rate limit. Cooldown de 1h. Tentando próxima...`);
-        cooldowns[idx] = Date.now() + COOLDOWN_MS;
-        // Continua o loop para tentar a próxima chave
-      } else {
-        // Erro diferente (auth inválida, rede) — não tenta outra chave
-        throw err;
+      if (err?.status === 429 || err?.response?.status === 429) {
+        markKeyAsQuoted(keyData.index);
+        continue;
       }
+      throw err;
     }
   }
-
-  throw new Error("Todas as chaves Gemini falharam com rate limit.");
+  throw new Error("Todas as chaves falharam ao gerar embedding.");
 }
 
-module.exports = { embedContent };
+module.exports = { embedContent, getAvailableKey, markKeyAsQuoted };

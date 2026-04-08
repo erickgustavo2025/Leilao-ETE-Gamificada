@@ -3,10 +3,29 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2, Edit2, Save, X, Shield, User, AlertTriangle } from 'lucide-react';
 import { api } from '../../api/axios-config';
 import { toast } from 'sonner';
+import { cn } from '../../utils/cn';
 import { PixelCard } from '../../components/ui/PixelCard';
 import { PixelButton } from '../../components/ui/PixelButton';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 
+
+const SKILL_OPTIONS = [
+    { id: 'AJUDA_DIVINA', name: '🙌 Ajuda Divina' },
+    { id: 'REDUCAO_DANO', name: '🛡️ Redução de Dano' },
+    { id: 'AUREA_SABER', name: '✨ Áurea do Saber' },
+    { id: 'INVISIBILIDADE_1', name: '👻 Invisibilidade' },
+    { id: 'CONVERTER_PC', name: '📝 Converter PC em Nota' },
+    { id: 'AJUDA_SUPREMA', name: '🔥 Ajuda Suprema' },
+    { id: 'RESSUSCITAR', name: '💖 Ressuscitar' },
+    { id: 'ARREMATADOR', name: '🔨 Arrematador de Leilões' },
+];
+
+const BENEFIT_OPTIONS = [
+    { id: 'MARKETPLACE', name: '🛒 Acesso ao Mercado P2P' },
+    { id: 'ETE_BANK', name: '🏦 Empréstimos Bancários' },
+    { id: 'STARTUP_INVEST', name: '📈 Investimento em Startups' },
+    { id: 'ROULETTE', name: '🎡 Roleta de Prêmios' },
+];
 
 interface Regulation {
     _id?: string;
@@ -36,6 +55,17 @@ export function AdminRegulations() {
         usageLimits: { maxDailySkills: null, preventConsecutiveSameSkill: false },
         isActive: true
     });
+
+    const toggleSelection = (field: 'blockedSkills' | 'blockedBenefits', id: string) => {
+        const current = [...currentReg[field]];
+        const index = current.indexOf(id);
+        if (index > -1) {
+            current.splice(index, 1);
+        } else {
+            current.push(id);
+        }
+        setCurrentReg({ ...currentReg, [field]: current });
+    };
 
     useEffect(() => {
         loadRegulations();
@@ -157,47 +187,73 @@ export function AdminRegulations() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                             <div className="space-y-4">
                                 <h3 className="text-xs font-press text-red-400 flex items-center gap-2">
-                                    <AlertTriangle size={14} /> RESTRIÇÕES
+                                    <AlertTriangle size={14} /> BLOQUEAR SKILLS
                                 </h3>
-                                <div>
-                                    <label className="block text-[10px] font-press text-slate-500 mb-2">SKILLS BLOQUEADAS (IDs separados por vírgula)</label>
-                                    <input 
-                                        type="text"
-                                        value={currentReg.blockedSkills.join(', ')}
-                                        onChange={e => setCurrentReg({...currentReg, blockedSkills: e.target.value.split(',').map(s => s.trim())})}
-                                        className="w-full bg-black border border-slate-700 p-2 text-white font-mono text-sm rounded"
-                                    />
+                                <div className="flex flex-wrap gap-2">
+                                    {SKILL_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => toggleSelection('blockedSkills', opt.id)}
+                                            className={cn(
+                                                'px-3 py-1.5 rounded-full border text-[9px] font-press transition-all',
+                                                currentReg.blockedSkills.includes(opt.id)
+                                                    ? 'bg-red-500 border-red-400 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                                                    : 'bg-black border-slate-800 text-slate-500 hover:border-slate-600'
+                                            )}
+                                        >
+                                            {opt.name}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
+
                             <div className="space-y-4">
-                                <h3 className="text-xs font-press text-yellow-400 flex items-center gap-2">
-                                    <Shield size={14} /> LIMITES DE USO
+                                <h3 className="text-xs font-press text-orange-400 flex items-center gap-2">
+                                    <Shield size={14} /> BLOQUEAR BENEFÍCIOS
                                 </h3>
-                                <div className="flex items-center gap-4">
+                                <div className="flex flex-wrap gap-2">
+                                    {BENEFIT_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => toggleSelection('blockedBenefits', opt.id)}
+                                            className={cn(
+                                                'px-3 py-1.5 rounded-full border text-[9px] font-press transition-all',
+                                                currentReg.blockedBenefits.includes(opt.id)
+                                                    ? 'bg-orange-500 border-orange-400 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]'
+                                                    : 'bg-black border-slate-800 text-slate-500 hover:border-slate-600'
+                                            )}
+                                        >
+                                            {opt.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                <div className="pt-4 border-t border-white/5">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input 
                                             type="checkbox"
+                                            className="w-4 h-4 rounded border-slate-700 bg-black text-blue-600"
                                             checked={currentReg.usageLimits.preventConsecutiveSameSkill}
                                             onChange={e => setCurrentReg({
                                                 ...currentReg, 
                                                 usageLimits: { ...currentReg.usageLimits, preventConsecutiveSameSkill: e.target.checked }
                                             })}
                                         />
-                                        <span className="text-[10px] font-press text-slate-400">EVITAR USO CONSECUTIVO</span>
+                                        <span className="text-[9px] font-press text-slate-400">EVITAR USO CONSECUTIVO DA MESMA SKILL</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3">
+                        <div className="flex justify-end gap-3 pt-6 border-t border-white/5">
                             <PixelButton onClick={() => setIsEditing(false)} className="bg-slate-800 border-slate-700 text-slate-400">
                                 <X size={16} className="mr-2" /> CANCELAR
                             </PixelButton>
                             <PixelButton onClick={handleSave} className="bg-blue-600 border-blue-400">
-                                <Save size={16} className="mr-2" /> SALVAR REGRA
+                                <Save size={16} className="mr-2" /> SALVAR REGULAMENTO
                             </PixelButton>
                         </div>
                     </PixelCard>

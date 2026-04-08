@@ -3,8 +3,8 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, Lock, Unlock, Pencil, Trash2, UserCog, Shield, X,
-  Crown, Zap, BookOpen, Music, Users as UsersIcon, Dumbbell, ChevronDown, Eye, Loader2
+  Search, Lock, Unlock, Pencil, Trash2, UserCog, X,
+  ChevronDown, Eye, Loader2, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,16 +17,44 @@ import { cn } from '../../utils/cn';
 import { PageTransition } from '../../components/layout/PageTransition';
 import { queryKeys } from '../../utils/queryKeys';
 
-const SPECIAL_ROLES = [
-  { id: 'estudante_honorario', label: 'Estudante Honorário', icon: Crown, color: 'text-yellow-500' },
-  { id: 'monitor_disciplina', label: 'Monitor de Disciplina', icon: Shield, color: 'text-blue-500' },
-  { id: 'monitor_escola', label: 'Monitor da Escola', icon: Zap, color: 'text-purple-500' },
-  { id: 'armada_dumbledore', label: 'Armada de Dumbledore', icon: Shield, color: 'text-red-500' },
-  { id: 'monitor_biblioteca', label: 'Monitor da Biblioteca', icon: BookOpen, color: 'text-green-500' },
-  { id: 'monitor_quadra', label: 'Monitor da Quadra', icon: Dumbbell, color: 'text-orange-500' },
-  { id: 'banda', label: 'Integrante da Banda', icon: Music, color: 'text-pink-500' },
-  { id: 'representante', label: 'Representante de Sala', icon: UsersIcon, color: 'text-cyan-500' },
-  { id: 'colaborador', label: 'Colaborador', icon: Crown, color: 'text-indigo-500' },
+// ─────────────────────────────────────────────────────────────────
+// CATÁLOGO UNIFICADO DE BADGES / CARGOS
+// ─────────────────────────────────────────────────────────────────
+const BADGE_CATALOG = [
+  // 🏆 GRUPO 1: PATENTES DE RANKING
+  { id: 'BRONZE',     label: '🥉 Guardião de Bronze',      group: 'RANK', color: 'text-amber-600' },
+  { id: 'PRATA',      label: '🥈 Cavaleiro de Prata',      group: 'RANK', color: 'text-slate-300' },
+  { id: 'OURO',       label: '🥇 Campeão de Ouro',         group: 'RANK', color: 'text-yellow-500' },
+  { id: 'DIAMANTE',   label: '💎 Mestre Diamante',         group: 'RANK', color: 'text-cyan-400' },
+  { id: 'EPICO',      label: '👑 Herói Épico',             group: 'RANK', color: 'text-purple-500' },
+  { id: 'LENDARIO',   label: '🌟 Lendário da ETE',         group: 'RANK', color: 'text-fuchsia-400' },
+  { id: 'SUPREMO',    label: '🔥 Supremo Imortal',         group: 'RANK', color: 'text-rose-500' },
+  { id: 'MITOLOGICO', label: '🔱 Entidade Mitológica',     group: 'RANK', color: 'text-indigo-400' },
+  { id: 'SOBERANO',   label: '⚡ Soberano Absoluto',       group: 'RANK', color: 'text-yellow-400' },
+
+  // ⚡ GRUPO 2: FUNCIONALIDADES DO SITE
+  { id: 'PODE_TRANSFERIR',       label: '💸 Pix Escolar (Transferir)',      group: 'FUNC', color: 'text-green-400' },
+  { id: 'PODE_FAZER_TRADE',      label: '🔄 Trade Direto (Trocas)',         group: 'FUNC', color: 'text-blue-400' },
+  { id: 'PODE_COMPRAR_VENDER',   label: '🛍️ Marketplace (P2P)',           group: 'FUNC', color: 'text-orange-400' },
+  { id: 'PODE_PEDIR_EMPRESTIMO', label: '🏦 Empréstimos (ETE Bank)',      group: 'FUNC', color: 'text-teal-400' },
+  { id: 'PODE_COMPRAR_NOTAS',    label: '📝 Compra de Notas',               group: 'FUNC', color: 'text-red-400' },
+
+  // 🎭 GRUPO 3: CARGOS ESCOLARES / COSMÉTICOS
+  { id: 'monitor_disciplina', label: 'Monitor de Disciplina', group: 'ROLE', color: 'text-blue-500' },
+  { id: 'monitor_escola', label: 'Monitor da Escola', group: 'ROLE', color: 'text-purple-500' },
+  { id: 'armada_dumbledore', label: 'Armada de Dumbledore', group: 'ROLE', color: 'text-red-500' },
+  { id: 'monitor_biblioteca', label: 'Monitor da Biblioteca', group: 'ROLE', color: 'text-green-500' },
+  { id: 'monitor_quadra', label: 'Monitor da Quadra', group: 'ROLE', color: 'text-orange-500' },
+  { id: 'banda', label: 'Integrante da Banda', group: 'ROLE', color: 'text-pink-500' },
+  { id: 'representante', label: 'Representante de Sala', group: 'ROLE', color: 'text-cyan-500' },
+  { id: 'estudante_honorario', label: 'Estudante Honorário', group: 'ROLE', color: 'text-yellow-500' },
+  { id: 'colaborador', label: 'Colaborador (Site)', group: 'ROLE', color: 'text-indigo-500' },
+];
+
+const CATEGORIES = [
+  { id: 'RANK', label: '🏆 PATENTES DE RANKING', color: 'text-yellow-500' },
+  { id: 'FUNC', label: '⚡ FUNCIONALIDADES', color: 'text-cyan-400' },
+  { id: 'ROLE', label: '🎭 CARGOS E COSMÉTICOS', color: 'text-purple-400' },
 ];
 
 interface User {
@@ -357,9 +385,8 @@ export function AdminUsers() {
                             {user.cargosEspeciais && user.cargosEspeciais.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5">
                                 {user.cargosEspeciais.map(roleId => {
-                                  const role = SPECIAL_ROLES.find(r => r.id === roleId);
+                                  const role = BADGE_CATALOG.find(r => r.id === roleId);
                                   if (!role) return null;
-                                  const Icon = role.icon;
                                   return (
                                     <span
                                       key={roleId}
@@ -369,7 +396,7 @@ export function AdminUsers() {
                                         'bg-slate-950 border-slate-800'
                                       )}
                                     >
-                                      <Icon size={9} /> {role.label}
+                                      {role.label}
                                     </span>
                                   );
                                 })}
@@ -588,30 +615,42 @@ export function AdminUsers() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                    {SPECIAL_ROLES.map(role => {
-                      const Icon = role.icon;
-                      const isActive = selectedUserRoles.cargosEspeciais?.includes(role.id);
-                      return (
-                        <button
-                          key={role.id}
-                          type="button"
-                          onClick={() => handleToggleRole(role.id)}
-                          className={cn(
-                            'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left active:scale-[0.98]',
-                            isActive ? 'bg-purple-900/30 border-purple-500' : 'bg-slate-950 border-slate-700 hover:border-slate-500'
-                          )}
-                        >
-                          <Icon className={cn(role.color, 'flex-shrink-0')} size={22} />
-                          <p className={cn('font-press text-[10px] md:text-xs flex-1 min-w-0', isActive ? 'text-white' : 'text-slate-400')}>
-                            {role.label}
-                          </p>
-                          <div className={cn('w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0', isActive ? 'bg-purple-600 border-purple-400' : 'border-slate-600')}>
-                            {isActive && <div className="w-2 h-2 bg-white rounded-sm" />}
-                          </div>
-                        </button>
-                      );
-                    })}
+                  <div className="space-y-6 mb-6">
+                    {CATEGORIES.map(cat => (
+                      <div key={cat.id} className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <div className="h-[1px] flex-1 bg-slate-800" />
+                          <span className={cn('font-press text-[9px] uppercase tracking-wider', cat.color)}>
+                            {cat.label}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-slate-800" />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {BADGE_CATALOG.filter(b => b.group === cat.id).map(role => {
+                            const isActive = selectedUserRoles.cargosEspeciais?.includes(role.id);
+                            return (
+                              <button
+                                key={role.id}
+                                type="button"
+                                onClick={() => handleToggleRole(role.id)}
+                                className={cn(
+                                  'flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left active:scale-[0.98]',
+                                  isActive ? 'bg-purple-900/30 border-purple-500' : 'bg-slate-950 border-slate-700 hover:border-slate-500'
+                                )}
+                              >
+                                <p className={cn('font-press text-[9px] md:text-[10px] flex-1 min-w-0 leading-tight', isActive ? 'text-white' : 'text-slate-400')}>
+                                  {role.label}
+                                </p>
+                                <div className={cn('w-4 h-4 rounded border flex items-center justify-center flex-shrink-0', isActive ? 'bg-purple-600 border-purple-400' : 'border-slate-600')}>
+                                  {isActive && <Check size={10} className="text-white" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   <PixelButton onClick={handleSaveRoles} className="w-full bg-purple-600 hover:bg-purple-500" isLoading={updateRolesMutation.isPending}>

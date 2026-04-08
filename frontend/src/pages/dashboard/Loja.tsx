@@ -201,16 +201,16 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
 
             <button
               className={cn(
-                "w-full py-2 rounded font-press text-[9px] flex items-center justify-center gap-2 transition-all",
+                "w-full py-2 rounded font-press text-[9px] flex items-center justify-center gap-2 transition-all relative overflow-hidden",
                 !canAfford || !hasStock || !hasBadge
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                   : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-sm"
               )}
               disabled={!canAfford || !hasStock || !hasBadge}
-              title={!hasBadge ? `Exige badge: ${item.cargoExclusivo}` : undefined}
+              title={!hasBadge ? `Exige patente: ${item.cargoExclusivo}` : undefined}
             >
               {!hasStock ? "SEM ESTOQUE" : !hasBadge ? (
-                <><Lock className="w-3 h-3" /> BLOQUEADO</>
+                <><Lock className="w-3 h-3" /> PATENTE INSV.</>
               ) : !canAfford ? "FALTA GRANA" : buyingId === item._id ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
@@ -219,6 +219,17 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
             </button>
           </div>
         </div>
+        
+        {/* OVERLAY DE BLOQUEIO POR BADGE */}
+        {!hasBadge && (
+            <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center border-2 border-red-900/50 rounded-xl" onClick={(e) => e.stopPropagation()}>
+               <div className="w-12 h-12 bg-red-950/80 rounded-full flex items-center justify-center mb-2 border border-red-500/30">
+                  <Lock className="w-6 h-6 text-red-500" />
+               </div>
+               <span className="font-press text-[10px] text-red-400">PATENTE BLOQUEADA</span>
+               <span className="font-mono text-[9px] text-red-300/70 mt-1 uppercase text-center px-2">Exige: {item.cargoExclusivo}</span>
+            </div>
+        )}
       </div>
     </motion.div>
   );

@@ -4,7 +4,7 @@ import type { HTMLMotionProps } from 'framer-motion';
 import {
   User, Shield, Mail, Lock, Camera, Loader2, Crown,
   Check, X, TrendingUp, Target, Award, Zap, LogOut,
-  Eye, EyeOff, LockKeyhole, Key, Unlock
+  Eye, EyeOff, LockKeyhole, Key
 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,9 +41,30 @@ const ROLE_TRANSLATOR: Record<string, { label: string; icon: string; style: stri
   'banda': { label: 'Integrante da Banda', icon: '🎼', style: 'border-rose-500 text-rose-400 bg-rose-900/20', glow: 'shadow-rose-500/20' },
   'representante': { label: 'Representante', icon: '🫡', style: 'border-slate-400 text-slate-300 bg-slate-800/50', glow: 'shadow-slate-500/20' },
   'colaborador': { label: 'Colaborador', icon: '🎮', style: 'border-cyan-500 text-cyan-400 bg-cyan-900/20', glow: 'shadow-cyan-500/20' },
-  'estudante_honorario': { label: 'Estudante Honorário', icon: '😎', style: 'border-yellow-500 text-yellow-400 bg-yellow-900/20', glow: 'shadow-yellow-500/20' },
-  'rank_epico_supremo': { label: 'Épico Supremo', icon: '🔥', style: 'border-red-500 text-red-400 bg-red-900/20', glow: 'shadow-red-500/20' }
+  'estudante_honorario': { label: 'Estudante Honorário', icon: '😎', style: 'border-yellow-500 text-yellow-400 bg-yellow-900/20', glow: 'shadow-yellow-500/20' }
 };
+
+// ========================
+// CATÁLOGO DE BADGES (NOVO)
+// ========================
+const RANKS_CATALOG = [
+  { id: 'BRONZE', name: "Bronze", icon: "🥉", min: 1000, color: "text-orange-700" },
+  { id: 'PRATA', name: "Prata", icon: "🥈", min: 1500, color: "text-slate-400" },
+  { id: 'OURO', name: "Ouro", icon: "🥇", min: 2000, color: "text-yellow-400" },
+  { id: 'DIAMANTE', name: "Diamante", icon: "💎", min: 2500, color: "text-cyan-400" },
+  { id: 'EPICO', name: "Épico", icon: "👑", min: 3000, color: "text-purple-500" },
+  { id: 'LENDARIO', name: "Lendário", icon: "🌟", min: 5000, color: "text-fuchsia-500" },
+  { id: 'SUPREMO', name: "Supremo", icon: "🔥", min: 10000, color: "text-red-500" },
+  { id: 'MITOLOGICO', name: "Mitológico", icon: "🔱", min: 20000, color: "text-rose-900" },
+  { id: 'SOBERANO', name: "Soberano", icon: "⚡", min: 50000, color: "text-yellow-200" }
+];
+
+const FUNCTIONS_CATALOG = [
+  { id: 'PODE_TRANSFERIR', label: 'Pix Escolar', icon: '💸', desc: 'Enviar PC$ via PIX' },
+  { id: 'PODE_FAZER_TRADE', label: 'Trade Direto', icon: '🔄', desc: 'Trocar itens com alunos' },
+  { id: 'PODE_COMPRAR_VENDER', label: 'Marketplace', icon: '🛍️', desc: 'Compra e venda P2P' },
+  { id: 'PODE_COMPRAR_NOTAS', label: 'Compra de Notas', icon: '📝', desc: 'Mercado de Notas' }
+];
 
 // ========================
 // COMPONENTE: Stat Card
@@ -224,21 +245,13 @@ export function Profile() {
 
   const rankIndex = ranks.findIndex((r: any) => r.name === currentRank?.name);
   const userLevel = rankIndex !== -1 ? rankIndex + 1 : 1;
-  const rankSkills = (user?.inventory || []).filter(
-    (i: any) => i.category === 'RANK_SKILL'
-  );
-
-  const rankBadgeKey = currentRank?.name?.toLowerCase();
-  const hasRankBadge = rankBadgeKey
-    ? (user?.cargos || []).some((c: string) => c.toLowerCase() === rankBadgeKey)
-    : false;
 
   const userRoles = (user?.cargos || []).filter((role: string) => ROLE_TRANSLATOR[role]);
 
   const stats = [
     { icon: TrendingUp, label: "Máximo PC", value: user?.maxPcAchieved?.toLocaleString() || 0, color: "text-green-400" },
     { icon: Target, label: "Nível", value: userLevel, color: "text-blue-400" },
-    { icon: Award, label: "Conquistas", value: userRoles.length, color: "text-yellow-400" },
+    { icon: Award, label: "Badges", value: (user?.cargos?.length || 0), color: "text-yellow-400" },
     { icon: Zap, label: "Skills", value: user?.inventory?.filter((i: any) => i.category === 'RANK_SKILL').length || 0, color: "text-purple-400" },
   ];
 
@@ -356,99 +369,119 @@ export function Profile() {
           ))}
         </div>
 
-        {/* Cargos e Conquistas */}
-        {userRoles.length > 0 && (
-          <div className="mb-8">
-            <h3 className="font-press text-xs text-slate-500 uppercase ml-1 mb-3">Conquistas & Cargos</h3>
-            <div className="flex flex-wrap gap-3">
-              {userRoles.map((role: string) => {
-                const config = ROLE_TRANSLATOR[role];
-                return (
-                  <div key={role} className={cn("px-4 py-2 rounded-xl border flex items-center gap-3 bg-slate-900", config.style, config.glow)}>
-                    <span className="text-2xl">{config.icon}</span>
-                    <div>
-                      <p className="font-vt323 text-xl leading-none">{config.label}</p>
-                      <p className="font-mono text-[9px] opacity-70">ATIVO</p>
-                    </div>
-                  </div>
-                );
-              })}
+        {/* ── SEÇÃO DE BADGES & PATENTES (REMAKE) ── */}
+        <div className="space-y-8 mb-12">
+          {/* 1. Patentes de Ranking */}
+          <div>
+            <div className="flex items-center gap-3 mb-4 ml-1">
+              <Award className="text-yellow-500" size={18} />
+              <h3 className="font-press text-xs text-slate-300 uppercase">Patentes de Ranking</h3>
             </div>
-          </div>
-        )}
-
-        {/* ── Benefícios de Rank (Passivos) ── */}
-        {rankSkills.length > 0 && (
-          <div className="mb-8">
-            <h3 className="font-press text-xs text-slate-500 uppercase ml-1 mb-3 flex items-center gap-2">
-              <Zap size={12} className="text-purple-400" />
-              Poderes de Rank
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {rankSkills.map((skill: any, idx: number) => {
-                const unlocked = hasRankBadge;
+            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
+              {RANKS_CATALOG.map((rank) => {
+                const isUnlocked = (user?.cargos || []).includes(rank.id);
                 return (
                   <div
-                    key={skill._id || idx}
+                    key={rank.id}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border transition-all",
-                      unlocked
-                        ? "bg-purple-900/20 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.1)]"
-                        : "bg-slate-900/40 border-slate-800/60 opacity-50 grayscale"
+                      "relative group flex flex-col items-center p-3 rounded-xl border transition-all duration-300",
+                      isUnlocked 
+                        ? "bg-slate-900/80 border-slate-700 shadow-lg shadow-black/40" 
+                        : "bg-black/40 border-slate-800/40 opacity-40 grayscale"
                     )}
                   >
-                    {/* Ícone do item */}
-                    <div className={cn(
-                      "w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border text-2xl",
-                      unlocked ? "border-purple-500/40 bg-purple-900/30" : "border-slate-700 bg-slate-800"
-                    )}>
-                      {skill.image
-                        ? <img src={skill.image} alt={skill.name} className="w-8 h-8 object-contain" />
-                        : "⚡"
-                      }
-                    </div>
-
-                    {/* Texto */}
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        "font-vt323 text-lg leading-none truncate",
-                        unlocked ? "text-purple-200" : "text-slate-500"
-                      )}>
-                        {skill.name || "Habilidade de Rank"}
-                      </p>
-                      <p className="font-mono text-[9px] text-slate-500 mt-0.5 truncate">
-                        {skill.descricao || "Benefício passivo do seu rank"}
-                      </p>
-                    </div>
-
-                    {/* Cadeado / Check */}
-                    <div className="shrink-0">
-                      {unlocked ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <Unlock size={16} className="text-purple-400" />
-                          <span className="font-mono text-[8px] text-purple-400">ATIVO</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-1">
-                          <LockKeyhole size={16} className="text-slate-600" />
-                          <span className="font-mono text-[8px] text-slate-600">BLOQ.</span>
-                        </div>
-                      )}
+                    <span className={cn("text-2xl mb-1", !isUnlocked && "blur-[1px]")}>{rank.icon}</span>
+                    <p className={cn("font-mono text-[8px] uppercase font-bold text-center", isUnlocked ? "text-slate-200" : "text-slate-600")}>
+                      {rank.name}
+                    </p>
+                    {!isUnlocked && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                         <LockKeyhole size={14} className="text-slate-500" />
+                      </div>
+                    )}
+                    {/* Tooltip de XP */}
+                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black border border-slate-800 rounded text-[8px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                      {isUnlocked ? "CONQUISTADO ✅" : `MISSÃO + ${rank.min} PC$`}
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            {/* Aviso contextual se não tiver a badge */}
-            {!hasRankBadge && rankSkills.length > 0 && (
-              <p className="font-mono text-[9px] text-slate-600 mt-3 ml-1 flex items-center gap-2">
-                <LockKeyhole size={10} />
-                Conquiste a badge <span className="text-slate-400 uppercase">{currentRank?.name}</span> para desbloquear estes poderes.
-              </p>
-            )}
           </div>
-        )}
+
+          {/* 2. Funções do Sistema */}
+          <div>
+            <div className="flex items-center gap-3 mb-4 ml-1">
+              <Zap className="text-cyan-400" size={18} />
+              <h3 className="font-press text-xs text-slate-300 uppercase">Funções do Sistema</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {FUNCTIONS_CATALOG.map((func) => {
+                const isUnlocked = (user?.cargos || []).includes(func.id);
+                return (
+                  <div
+                    key={func.id}
+                    className={cn(
+                      "relative group flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
+                      isUnlocked 
+                        ? "bg-slate-900 border-cyan-500/30 shadow-[0_0_15px_rgba(34,211,238,0.05)]" 
+                        : "bg-black/40 border-slate-800/40 opacity-40 grayscale"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-black/40 border",
+                      isUnlocked ? "border-cyan-500/40" : "border-slate-800"
+                    )}>
+                      {func.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("font-vt323 text-lg leading-none", isUnlocked ? "text-cyan-500" : "text-slate-500")}>
+                        {func.label}
+                      </p>
+                      <p className="font-mono text-[9px] text-slate-600 mt-1 truncate uppercase tracking-tighter">
+                        {isUnlocked ? "HABILITADO" : "BLOQUEADO"}
+                      </p>
+                    </div>
+                    {!isUnlocked && (
+                      <div className="absolute top-2 right-2">
+                         <LockKeyhole size={12} className="text-slate-700" />
+                      </div>
+                    )}
+                    {/* Tooltip */}
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black border border-slate-800 rounded text-[9px] font-mono text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                      {func.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Cargos e Conquistas Especiais */}
+          {userRoles.length > 0 && (
+            <div>
+              <div className="flex items-center gap-3 mb-4 ml-1">
+                <Crown className="text-purple-500" size={18} />
+                <h3 className="font-press text-xs text-slate-300 uppercase">Cargos Especiais</h3>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {userRoles.map((role: string) => {
+                  const config = ROLE_TRANSLATOR[role];
+                  return (
+                    <div key={role} className={cn("px-4 py-2 rounded-xl border flex items-center gap-3 bg-slate-900 shadow-xl shadow-black/40", config.style, config.glow)}>
+                      <span className="text-2xl">{config.icon}</span>
+                      <div>
+                        <p className="font-vt323 text-xl leading-none">{config.label}</p>
+                        <p className="font-mono text-[9px] opacity-70">ATIVO</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
 
         {/* Área VIP */}
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">

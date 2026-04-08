@@ -28,4 +28,14 @@ const RANK_SKILLS = {
 
 const VALID_RARITIES = RANKS.map(r => r.id).concat(['EVENTO', 'SKILL']);
 
-module.exports = { RANKS, RANK_SKILLS, VALID_RARITIES };
+// Helper para descobrir o rank exigido para uma skill
+const getRequiredRankForSkill = (skillCode) => {
+    for (const [rankId, skills] of Object.entries(RANK_SKILLS)) {
+        if (skills.includes(skillCode)) {
+            return RANKS.find(r => r.id === rankId);
+        }
+    }
+    return null;
+};
+
+module.exports = { RANKS, RANK_SKILLS, VALID_RARITIES, getRequiredRankForSkill };

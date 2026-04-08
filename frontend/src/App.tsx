@@ -9,6 +9,7 @@ import { useAuth } from './contexts/AuthContext';
 import { LuckyBlockMenu } from './components/layout/LuckyBlockMenu';
 import { ChatWidget } from './components/features/ChatWidget';
 import { AIWidget } from './components/features/AIWidget';
+import { PrivacyModal } from './components/features/PrivacyModal';
 import { Toaster, toast } from 'sonner';
 import { Loader2, Eye, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { api } from './api/axios-config';
@@ -18,7 +19,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      staleTime: 1000 * 30, // 30 segundos
       retry: 1,
     },
   },
@@ -31,6 +34,7 @@ const FirstAccess = lazy(() => import('./pages/public/FirstAccess').then(m => ({
 const Maintenance = lazy(() => import('./pages/public/Maintenance').then(m => ({ default: m.Maintenance })));
 const ForgotPassword = lazy(() => import('./pages/public/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
 const ResetPassword = lazy(() => import('./pages/public/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const PoliticaPrivacidade = lazy(() => import('./pages/public/PoliticaPrivacidade'));
 
 const DashboardHome = lazy(() => import('./pages/dashboard/DashboardHome').then(m => ({ default: m.DashboardHome })));
 const Ranking = lazy(() => import('./pages/dashboard/Ranking').then(m => ({ default: m.Ranking })));
@@ -39,6 +43,7 @@ const Loja = lazy(() => import('./pages/dashboard/Loja').then(m => ({ default: m
 const Leilao = lazy(() => import('./pages/dashboard/Leilao').then(m => ({ default: m.Leilao })));
 const GilInveste = lazy(() => import('./pages/dashboard/investimentos/GilInveste').then(m => ({ default: m.GilInveste })));
 const LojaNotas = lazy(() => import('./pages/dashboard/LojaNotas').then(m => ({ default: m.LojaNotas })));
+const ResearchSurvey = lazy(() => import('./pages/dashboard/ResearchSurvey').then(m => ({ default: m.ResearchSurvey })));
 
 const QuestBoard = lazy(() => import('./pages/dashboard/QuestBoard').then(m => ({ default: m.QuestBoard })));
 const Regulations = lazy(() => import('./pages/dashboard/Regulations').then(m => ({ default: m.Regulations })));
@@ -89,7 +94,9 @@ const AdminHouse = lazy(() => import('./pages/admin/AdminHouse').then(m => ({ de
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
 const AdminEconomy = lazy(() => import('./pages/admin/AdminEconomy').then(m => ({ default: m.AdminEconomy })));
 const AdminEconomyConfig = lazy(() => import('./pages/admin/AdminEconomyConfig').then(m => ({ default: m.AdminEconomyConfig })));
+const AdminDisciplinas = lazy(() => import('./pages/admin/AdminDisciplinas').then(m => ({ default: m.AdminDisciplinas })));
 const AdminRegulations = lazy(() => import('./pages/admin/AdminRegulations').then(m => ({ default: m.AdminRegulations })));
+const AdminSurveys = lazy(() => import('./pages/admin/AdminSurveys').then(m => ({ default: m.AdminSurveys })));
 
 // ─────────────────────────────────────────────────────────────
 // Tipos auxiliares
@@ -109,7 +116,7 @@ interface UserData {
 }
 
 // ─────────────────────────────────────────────────────────────
-const PUBLIC_PATHS = ['/', '/login', '/first-access', '/forgot-password', '/reset-password', '/maintenance'];
+const PUBLIC_PATHS = ['/', '/login', '/first-access', '/forgot-password', '/reset-password', '/maintenance', '/politica-privacidade'];
 
 const isPublicPath = (path: string) =>
   PUBLIC_PATHS.includes(path) || path.startsWith('/login/') || path.startsWith('/armada/login');
@@ -362,6 +369,14 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signed, user, loading, isImpersonating } = useAuth();
+  
+  const showPrivacyModal = !!(
+    signed && 
+    user && 
+    !user.privacyAccepted && 
+    !isImpersonating && 
+    !isPublicPath(location.pathname)
+  );
 
   const { data: config } = useQuery<PublicConfig>({
     queryKey: queryKeys.public.config,
@@ -442,6 +457,8 @@ function AppContent() {
       <ImpersonateBanner />
       {isImpersonating && <div className="h-8" />}
 
+      <PrivacyModal isOpen={showPrivacyModal} />
+
       {shouldShowMenu && <LuckyBlockMenu />}
       {shouldShowMenu && <ChatWidget />}
 
@@ -457,6 +474,7 @@ function AppContent() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/maintenance" element={<Maintenance />} />
+            <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
 
             <Route path="/dashboard" element={<PrivateRoute><DashboardHome /></PrivateRoute>} />
             <Route path="/ranking" element={<PrivateRoute><Ranking /></PrivateRoute>} />
@@ -466,6 +484,7 @@ function AppContent() {
             <Route path="/gil-investe" element={<PrivateRoute><GilInveste /></PrivateRoute>} />
             <Route path="/loja-notas" element={<PrivateRoute><LojaNotas /></PrivateRoute>} />
             <Route path="/market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
+            <Route path="/dashboard/pesquisa" element={<PrivateRoute><ResearchSurvey /></PrivateRoute>} />
 
             <Route path="/missoes" element={<PrivateRoute><QuestBoard /></PrivateRoute>} />
             <Route path="/regulamentos" element={<PrivateRoute><Regulations /></PrivateRoute>} />
@@ -516,7 +535,9 @@ function AppContent() {
             <Route path="/admin/analytics" element={<PrivateRoute roles={['admin']}><AdminAnalytics /></PrivateRoute>} />
             <Route path="/admin/economy" element={<PrivateRoute roles={['admin']}><AdminEconomy /></PrivateRoute>} />
             <Route path="/admin/economy/config" element={<PrivateRoute roles={['admin']}><AdminEconomyConfig /></PrivateRoute>} />
+            <Route path="/admin/disciplinas" element={<PrivateRoute roles={['admin']}><AdminDisciplinas /></PrivateRoute>} />
             <Route path="/admin/regulations" element={<PrivateRoute roles={['admin']}><AdminRegulations /></PrivateRoute>} />
+            <Route path="/admin/surveys" element={<PrivateRoute roles={['admin']}><AdminSurveys /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

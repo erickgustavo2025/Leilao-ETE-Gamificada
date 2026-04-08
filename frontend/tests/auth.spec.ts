@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsStudent, loginAsAdmin, BASE_URL } from './helpers/auth';
+import { loginAsStudent,  BASE_URL } from './helpers/auth';
 
 // ════════════════════════════════════════════════════════════════════
 // SUITE 1 — AUTENTICAÇÃO

@@ -365,7 +365,7 @@ export function AIWidget() {
                                     </button>
                                 </div>
                                 <p className="text-[8px] text-slate-700 font-mono mt-2 text-center uppercase tracking-tighter">
-                                    Powered by Gemini • OpenRouter Backup
+                                    INTELIGÊNCIA ARTIFICIAL DA ETE GIL RODRIGUES
                                 </p>
                             </div>
                         </div>

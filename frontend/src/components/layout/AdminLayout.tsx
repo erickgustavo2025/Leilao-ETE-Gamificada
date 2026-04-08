@@ -2,8 +2,8 @@ import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Settings, Gift, QrCode, ShieldCheck, Grid,
-  Coins, Users, Scroll, LogOut, Menu, X, Gavel,
-  Image as ImageIcon, Trophy, Sword, Rocket, Microscope, BookOpen
+  Coins, Users, Scroll, LogOut, Menu, X, Gavel, ClipboardList,
+  Image as ImageIcon, Trophy, Sword, Rocket, Microscope, BookOpen, TrendingUp, BookMarked, Sliders
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
@@ -35,7 +35,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: Settings, label: 'CONFIGURAÇÕES', path: '/admin/config' },
     { label: 'GALERIA', path: '/admin/images', icon: ImageIcon, color: 'text-cyan-400' },
     { label: 'ANALYTICS', path: '/admin/analytics', icon: Microscope, color: 'text-purple-400' },
-    { label: 'ECONOMIA', path: '/admin/economy', icon: TrendingUp, color: 'text-emerald-400' },
+    { label: 'ECONOMIA (DADOS)', path: '/admin/economy', icon: TrendingUp, color: 'text-emerald-400' },
+    { label: 'ECONOMIA (CONFIG)', path: '/admin/economy/config', icon: Sliders, color: 'text-orange-400' },
+    { label: 'PESQUISAS (DATA)', path: '/admin/surveys', icon: ClipboardList, color: 'text-purple-400' },
+    { label: 'MERCADO DE NOTAS', path: '/admin/disciplinas', icon: BookMarked, color: 'text-indigo-400' },
     { label: 'REGULAMENTOS', path: '/admin/regulations', icon: BookOpen, color: 'text-blue-400' },
     { label: 'AUDITORIA', path: '/admin/logs', icon: Scroll, color: 'text-green-400' },
   ];

@@ -12,6 +12,7 @@ const KEYS = {
   originalToken:    '@ETEGamificada:originalToken',
   originalUser:     '@ETEGamificada:originalUser',
   originalLastPath: '@ETEGamificada:originalLastPath',
+  ranks:            '@ETEGamificada:ranks',
 } as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const res = await api.get('/auth/rules');
             if (res.data?.ranks) {
                 setRanks(res.data.ranks);
+                localStorage.setItem(KEYS.ranks, JSON.stringify(res.data.ranks));
             }
         } catch (e) {
             console.error("Falha ao buscar regras", e);
@@ -83,18 +85,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async function loadStorageData() {
             const storedToken = localStorage.getItem(KEYS.token);
             const storedUser = localStorage.getItem(KEYS.user);
+            const storedRanks = localStorage.getItem(KEYS.ranks);
 
             if (storedToken) {
                 api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+                
+                // --- CARREGAMENTO INSTATÂNEO (OPTIMISTIC) ---
                 if (storedUser) {
-                    setUser(JSON.parse(storedUser));
+                    try {
+                        const parsedUser = JSON.parse(storedUser);
+                        setUser(parsedUser);
+                        
+                        if (storedRanks) {
+                            setRanks(JSON.parse(storedRanks));
+                        }
+                        
+                        // Já libera a tela aqui para quem já tem sessão!
+                        setLoading(false);
+                    } catch (e) {
+                        console.warn("Erro ao ler dados do cachê", e);
+                    }
                 }
+
+                // Sincroniza em background
                 try {
-                    await Promise.all([refreshUser(), fetchRules()]);
+                    const backgroundSync = Promise.all([refreshUser(), fetchRules()]);
+                    if (!storedUser) await backgroundSync;
                 } catch (error) {
-                    console.error("Falha ao atualizar sessão:", error);
+                    console.error("Falha na sincronização de background:", error);
                 }
             }
+            
             setLoading(false);
         }
 
@@ -120,6 +141,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 : error.response?.data?.error || 'Falha ao fazer login.';
             toast.error(errorMsg);
             throw new Error(errorMsg);
+        }
+    }
+
+    async function completeLogin(userData: User, token: string) {
+        // 1. Persistência Imediata
+        localStorage.setItem(KEYS.token, token);
+        localStorage.setItem(KEYS.user, JSON.stringify(userData));
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+        // 2. Atualiza Estado
+        setUser(userData);
+
+        // 3. Sincronização Obrigatória de Regras (O que faltava!)
+        try {
+            await fetchRules();
+        } catch (error) {
+            console.error("Erro ao carregar regras pós-login:", error);
         }
     }
 
@@ -225,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             logout,
             refreshUser,
             updateUser,
+            completeLogin,
             impersonate,
             exitImpersonate,
         }}>

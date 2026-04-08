@@ -14,11 +14,6 @@ module.exports = {
             if (!isAdmin) {
                 filter.ativo = true;
                 filter.estoque = { $gt: 0 };
-                filter.$or = [
-                    { cargoExclusivo: 'Todos' },
-                    { cargoExclusivo: { $exists: false } },
-                    { cargoExclusivo: req.user.role }
-                ];
             }
 
             const items = await StoreItem.find(filter).sort({ preco: 1 });

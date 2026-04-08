@@ -6,7 +6,7 @@ const TransactionSchema = new mongoose.Schema({
     valorBruto: { type: Number, required: true }, // Quanto saiu da conta
     taxa: { type: Number, default: 0 }, // Quanto o sistema comeu
     valorLiquido: { type: Number, required: true }, // Quanto chegou
-    tipo: { type: String, enum: ['TRANSFERENCIA', 'PAGAMENTO', 'SISTEMA', 'INVESTMENT_BUY', 'INVESTMENT_SELL', 'DIVIDENDO', 'COMPRA_LOJA', 'COMPRA_NOTA', 'MARKETPLACE'], default: 'TRANSFERENCIA' },
+    tipo: { type: String, enum: ['TRANSFERENCIA', 'PAGAMENTO', 'SISTEMA', 'INVESTMENT_BUY', 'INVESTMENT_SELL', 'DIVIDENDO', 'COMPRA_LOJA', 'COMPRA_NOTA', 'MARKETPLACE', 'QUEST_REWARD'], default: 'TRANSFERENCIA' },
     assetSymbol: { type: String },
     assetType: { type: String, enum: ['STOCK', 'CRYPTO', 'STARTUP'] },
     quantity: { type: Number },

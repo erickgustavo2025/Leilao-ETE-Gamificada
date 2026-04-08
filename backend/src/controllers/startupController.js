@@ -26,6 +26,7 @@ exports.createStartup = async (req, res) => {
             valuationInicial,
             totalAcoes,
             valorPorAcao: valuationInicial / totalAcoes,
+            minHoldWeeks: req.body.minHoldWeeks || 2,
             status: 'INCUBACAO'
         });
 
@@ -116,20 +117,34 @@ exports.updatePerformance = async (req, res) => {
             return res.status(404).json({ error: 'Startup não encontrada.' });
         }
 
+        // Calcula o impacto no valor da ação
+        // Se a nota subir, o valor sobe proporcionalmente. 
+        // Ex: De 80 pra 90 é um aumento de 12.5% no valor da ação.
+        const oldPerformance = startup.performanceAcademica || 50; // default 50 se for zero
+        const ratio = novaNota / oldPerformance;
+        
+        // Atualiza valor da ação e performance
+        startup.valorPorAcao = Math.max(0.1, startup.valorPorAcao * ratio); // Mínimo de 0.1 PC$ pra não quebrar
+        startup.performanceAcademica = novaNota;
+
         // 👇 FIX: Se a lista de histórico não existir, cria uma vazia primeiro!
         if (!startup.historicoPerformance) {
             startup.historicoPerformance = [];
         }
 
-        startup.performanceAcademica = novaNota;
         startup.historicoPerformance.push({
             nota: novaNota,
-            motivo: motivo || 'Atualização de rotina'
+            motivo: motivo || 'Atualização de desempenho acadêmico (ROI)',
+            priceAtTime: startup.valorPorAcao
         });
 
         await startup.save();
 
-        res.json({ message: 'Performance atualizada com sucesso!', startup });
+        res.json({ 
+            message: 'Performance e Valor de Mercado atualizados!', 
+            startup,
+            newPrice: startup.valorPorAcao 
+        });
     } catch (error) {
         console.error('❌ Erro ao atualizar performance:', error);
         res.status(500).json({ error: 'Erro interno ao atualizar performance.' });

@@ -130,7 +130,10 @@ async register(req, res) {
                         cargos: [admin.role],
                         saldoPc: 999999,
                         inventory: [],
-                        activeBuffs: []
+                        activeBuffs: [],
+                        privacyAccepted: admin.privacyAccepted || false,
+                        privacyAcceptedAt: admin.privacyAcceptedAt,
+                        privacyVersion: admin.privacyVersion
                     }
                 });
             }
@@ -282,6 +285,9 @@ async register(req, res) {
                         isVip: true,
                         inventory: [],
                         activeBuffs: [],
+                        privacyAccepted: admin.privacyAccepted || false,
+                        privacyAcceptedAt: admin.privacyAcceptedAt,
+                        privacyVersion: admin.privacyVersion,
                     });
                 }
                 return res.status(404).json({ message: 'Usuário não encontrado' });

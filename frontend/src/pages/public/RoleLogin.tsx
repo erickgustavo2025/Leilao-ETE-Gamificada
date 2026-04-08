@@ -106,7 +106,7 @@ const roleConfig = {
 // ═══════════════════════════════════════════════════════════════════════════════
 export function RoleLogin() {
   const { role } = useParams<{ role: string }>();
-  const { updateUser } = useAuth();
+  const { completeLogin } = useAuth();
   const navigate = useNavigate();
   const { playSuccess, playError, playClick } = useGameSound();
 
@@ -206,16 +206,16 @@ export function RoleLogin() {
         '/dashboard';
 
       localStorage.setItem('@ETEGamificada:lastPath', targetPath);
-      localStorage.setItem('@ETEGamificada:token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      updateUser(userData as any);
+      
+      // ✅ CONSERTO DA RAIZ: Usa a função centralizada que busca ranks
+      completeLogin(userData as any, token).then(() => {
+        playSuccess();
+        toast.success(`BEM-VINDO(A), ${userData.nome.split(' ')[0]}!`, {
+          style: { borderColor: roleData.color, color: roleData.color },
+        });
 
-      playSuccess();
-      toast.success(`BEM-VINDO(A), ${userData.nome.split(' ')[0]}!`, {
-        style: { borderColor: roleData.color, color: roleData.color },
+        navigate(targetPath);
       });
-
-      navigate(targetPath);
     },
     onError: (err: { response?: { data?: { issues?: { message: string }[]; error?: string; message?: string }; status?: number }; message?: string }) => {
       playError();

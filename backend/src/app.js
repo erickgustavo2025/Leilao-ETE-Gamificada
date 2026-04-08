@@ -4,8 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize'); // 🛡️ NOVO
-
+// Nota: express-mongo-sanitize foi removido pois é incompatível com Express 5 (getter errors).
 // Rotas
 const authRoutes = require('./routes/authRoutes');
 const auctionRoutes = require('./routes/auctionRoutes');
@@ -37,6 +36,7 @@ const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
 const adminEconomyRoutes = require('./routes/adminEconomyRoutes');
 const adminRegulationRoutes = require('./routes/adminRegulationRoutes');
 const publicRegulationRoutes = require('./routes/publicRegulationRoutes');
+const surveyRoutes = require('./routes/surveyRoutes');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -74,14 +74,12 @@ app.use(helmet({
 
 app.use(express.json());
 
-//app.use(mongoSanitize({
- // replaceWith: '_'
-//}));
+// O mongoSanitize causava TypeError com o Express 5. O Mongoose já filtra boa parte via schemas.
 
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'production' ? 20 : 500, // 500 tentativas para testes locais (Playwright)
+    max: process.env.NODE_ENV === 'production' ? 20 : 100, // Reduzido de 500 para 100 (ainda permite Playwright)
     message: { error: "Muitas tentativas de login. Tente novamente em 15 minutos." }
 });
 app.use('/api/auth/login', authLimiter);
@@ -93,8 +91,12 @@ const questValidationLimiter = rateLimit({
 });
 app.use('/api/quests/validate', questValidationLimiter);
 
-// RATE LIMITER GERAL
-const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, message: "Muitas requisições." });
+// RATE LIMITER GERAL (Ajustado para evitar bloqueios em massa na escola)
+const generalLimiter = rateLimit({ 
+    windowMs: 15 * 60 * 1000, 
+    max: 300, // Reduzido de 1000 para 300
+    message: "Muitas requisições vindas deste IP." 
+});
 app.use('/api/', generalLimiter);
 
 // 📂 SERVIR IMAGENS
@@ -140,6 +142,7 @@ app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/economy', adminEconomyRoutes);
 app.use('/api/admin/regulations', adminRegulationRoutes);
 app.use('/api/regulations', publicRegulationRoutes);
+app.use('/api/surveys', surveyRoutes);
 
 // Middleware de erro opaco para segurança
 app.use((err, req, res, next) => {
