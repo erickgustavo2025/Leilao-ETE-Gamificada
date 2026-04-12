@@ -49,8 +49,13 @@ export function ChatWidget() {
         }, 100);
     }, []);
 
-    const handleSwitchRoom = useCallback((room: string) => {
+    const lastPathRef = useRef(location.pathname);
+    const manualSwitchRef = useRef(false);
+
+    const handleSwitchRoom = useCallback((room: string, isManual = false) => {
         if (activeRoom === room) return;
+        if (isManual) manualSwitchRef.current = true;
+        
         socket.emit('leave_chat_room', activeRoom);
         setActiveRoom(room);
         setMessages([]);
@@ -58,6 +63,16 @@ export function ChatWidget() {
     }, [activeRoom, socket, user]);
 
     useEffect(() => {
+        // Se o path mudou, resetamos a trava de escolha manual
+        if (lastPathRef.current !== location.pathname) {
+            manualSwitchRef.current = false;
+            lastPathRef.current = location.pathname;
+        }
+
+        // Se o usuário já escolheu uma sala manualmente (ex: clicou em TURMA), 
+        // paramos a detecção automática para não sobrescrever a escolha dele.
+        if (manualSwitchRef.current) return;
+
         let roomToSet = 'global';
         if (location.pathname.includes('/leilao')) {
             roomToSet = 'auction';
@@ -66,7 +81,6 @@ export function ChatWidget() {
         }
 
         if (activeRoom !== roomToSet) {
-            // ✅ Usa microtask para evitar "cascading renders" avisado pelo linter
             queueMicrotask(() => {
                 handleSwitchRoom(roomToSet);
                 // Se for uma negociação privada, abre o chat automaticamente
@@ -216,34 +230,32 @@ export function ChatWidget() {
                             {!isMinimized && (
                                 <>
                                     <div className="flex bg-slate-950/50 border-b border-slate-800">
+                                        {/* ABA 1: CONTEXTUAL (GLOBAL / LEILÃO / MERCADO / TRADE) */}
                                         <button
-                                            onClick={() => handleSwitchRoom('global')}
-                                            className={cn("flex-1 py-2 text-[10px] font-press flex justify-center gap-1", activeRoom === 'global' ? "bg-blue-900/20 text-blue-400" : "text-slate-500 hover:text-white")}
+                                            onClick={() => {
+                                                const roomToSet = location.pathname.includes('/leilao') ? 'auction' : 
+                                                                location.pathname.includes('/market') ? (location.state?.tradeId ? `trade_${location.state.tradeId}` : 'market') : 
+                                                                'global';
+                                                handleSwitchRoom(roomToSet, true);
+                                            }}
+                                            className={cn(
+                                                "flex-1 py-2 text-[10px] font-press flex justify-center gap-1 transition-all duration-200",
+                                                !activeRoom.startsWith('turma_') ? "bg-blue-900/40 text-blue-300 border-b-2 border-blue-500" : "text-slate-500 hover:text-white"
+                                            )}
                                         >
-                                            <Users size={12} /> GLOBAL
+                                            <RoomIcon size={12} /> {roomConfig.label}
                                         </button>
+
+                                        {/* ABA 2: TURMA (PERSISTENTE) */}
                                         {user?.turma && (
                                             <button
-                                                onClick={() => handleSwitchRoom(`turma_${user.turma}`)}
-                                                className={cn("flex-1 py-2 text-[10px] font-press flex justify-center gap-1", activeRoom.startsWith('turma_') ? "bg-green-900/20 text-green-400" : "text-slate-500 hover:text-white")}
+                                                onClick={() => handleSwitchRoom(`turma_${user.turma}`, true)}
+                                                className={cn(
+                                                    "flex-1 py-2 text-[10px] font-press flex justify-center gap-1 transition-all duration-200",
+                                                    activeRoom.startsWith('turma_') ? "bg-green-900/40 text-green-300 border-b-2 border-green-500" : "text-slate-500 hover:text-white"
+                                                )}
                                             >
                                                 <Users size={12} /> TURMA
-                                            </button>
-                                        )}
-                                        {location.pathname.includes('/leilao') && (
-                                            <button
-                                                onClick={() => handleSwitchRoom('auction')}
-                                                className={cn("flex-1 py-2 text-[10px] font-press flex justify-center gap-1", activeRoom === 'auction' ? "bg-yellow-900/20 text-yellow-400" : "text-slate-500 hover:text-white")}
-                                            >
-                                                <Gavel size={12} /> LEILÃO
-                                            </button>
-                                        )}
-                                        {location.pathname.includes('/market') && !activeRoom.startsWith('trade_') && (
-                                            <button
-                                                onClick={() => handleSwitchRoom('market')}
-                                                className={cn("flex-1 py-2 text-[10px] font-press flex justify-center gap-1", activeRoom === 'market' ? "bg-cyan-900/20 text-cyan-400" : "text-slate-500 hover:text-white")}
-                                            >
-                                                <Store size={12} /> MERCADO
                                             </button>
                                         )}
                                     </div>

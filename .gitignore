@@ -1,13 +1,17 @@
 # --- ETE GAMIFICADA 2K26 - GITIGNORE ---
 
-# Bloquear arquivos de rascunho e documentos pesados
+# Bloquear rascunhos e documentos pesados (Geral)
 *.pdf
 *.md
 !README.md
 !frontend/README.md
 !frontend/src/pages/dashboard/taca-das-casas/README.md
 
-# Bloquear backups e arquivos temporários
+# ✅ EXCEÇÕES: Manter arquivos que abastecem a IA (KNOWLEDGE BASE)
+!backend/documentos/**/*
+!backend/src/config/*.md
+
+# Bloquear backups e arquivos temporários específicos
 backup_contexto*
 CORRECAO_*
 Requisitos*

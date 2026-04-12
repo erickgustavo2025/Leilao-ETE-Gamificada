@@ -1,79 +1,4 @@
-// backend/src/controllers/aiController.js
-const axios = require("axios");
-const User = require("../models/User");
-const AIInteraction = require("../models/AIInteraction");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { embedContent, getAvailableKey, markKeyAsQuoted } = require("../utils/geminiKeyManager");
-const ChatSession = require("../models/ChatSession");
-const DocumentEmbedding = require("../models/DocumentEmbedding");
-const { SYSTEM_PROMPT_BASE, PAGE_CONTEXTS } = require("../config/aiSystemPrompt");
-
-
-
-// ── HELPER: Produto Escalar ──────────────────────────────────────────
-const dotProduct = (a, b) => a.reduce((sum, val, i) => sum + val * b[i], 0);
-
-// ── DETECT MODE ──────────────────────────────────────────────────────
-const detectMode = (pergunta, path) => {
-    const p = pergunta.toLowerCase();
-    if (p.includes("enem") || p.includes("redação") || p.includes("estudar") ||
-        p.includes("matéria") || p.includes("cronograma") || p.includes("prova")) return "TUTOR";
-    if (p.includes("investir") || p.includes("ação") || p.includes("cripto") ||
-        p.includes("carteira") || p.includes("dividendo") || (path && path.includes("/gil-investe"))) return "CONSULTOR";
-    return "SUPORTE";
-};
-
-async function callGemini(messages, systemPrompt, modelName = "gemini-flash-lite-latest") {
-    const keyData = getAvailableKey();
-    if (!keyData) throw new Error("429"); 
-
-    try {
-        const genAI = new GoogleGenerativeAI(keyData.key);
-        const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: { parts: [{ text: systemPrompt }] }
-        });
-
-        const chat = model.startChat({
-            history: messages.slice(0, -1).map(m => ({
-                role: m.role === "assistant" ? "model" : "user",
-                parts: [{ text: m.content }],
-            }))
-        });
-
-        const lastMessage = messages[messages.length - 1].content;
-        const result = await chat.sendMessage(lastMessage);
-        return result.response.text();
-    } catch (err) {
-        const errMsg = err?.message || "";
-        if (err?.status === 429 || err?.response?.status === 429 || errMsg.includes("429")) {
-            markKeyAsQuoted(keyData.index);
-            throw new Error("429"); 
-        }
-        if (errMsg.includes("503") || errMsg.includes("Service Unavailable")) {
-            throw new Error("503");
-        }
-        throw err;
-    }
-}
-
-// ── RESERVA: OPENROUTER (entra só se o Gemini falhar) ────────────────
-async function callOpenRouter(messages, systemPrompt) {
-    const response = await axios.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-            model: process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
-            messages: [{ role: "system", content: systemPrompt }, ...messages],
-            max_tokens: 1024,
-            temperature: 0.5,
-        },
-        {
-            headers: { "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}` },
-            timeout: 15000,
-        }
-    );
-    return response.data.choices[0].message.content;
-}
+const aiRotatorService = require("../services/AIRotatorService");
 
 // ── ROTA: POST /api/ai/ask ───────────────────────────────────────────
 exports.processAIRequest = async (req, res) => {
@@ -118,47 +43,13 @@ exports.processAIRequest = async (req, res) => {
             .replace("{DADOS_ALUNO}", dadosAluno)
             + contextRAG;
 
-        const messagesPayload = [
-            ...historyMessages,
-            { role: "user", content: pergunta }
-        ];
+        // Decidimos se preferimos NVIDIA pela velocidade ou Gemini pela pedagogia
+        const preferNvidia = (modo === "CONSULTOR" || modo === "SUPORTE");
 
-        let resposta;
-        let modoUsado = "GEMINI";
-        let loopSucesso = false;
-
-        // --- HIERARQUIA DE FALLBACK ---
-        // 1. TENTA LITE (Maior cota)
-        try {
-            console.log("⚡ Tentando Nível 1: Gemini Lite...");
-            resposta = await callGemini(messagesPayload, systemPrompt, "gemini-flash-lite-latest");
-            loopSucesso = true;
-        } catch (err) {
-            console.warn(`⚠️ Nível 1 falhou (${err.message}). Pulando para Nível 2...`);
-            
-            // 2. TENTA GEMINI 2.5 (Modelo Alternativo VIP)
-            try {
-                console.log("⚡ Tentando Nível 2: Gemini 2.5...");
-                resposta = await callGemini(messagesPayload, systemPrompt, "gemini-2.5-flash");
-                loopSucesso = true;
-            } catch (err2) {
-                console.warn(`⚠️ Nível 2 falhou (${err2.message}). Acionando RECURSO FINAL...`);
-                
-                // 3. OPENROUTER (Nvidia Nemotron)
-                try {
-                    console.log("⚡ Acionando Nível 3: OpenRouter (Nvidia)...");
-                    modoUsado = "OPENROUTER";
-                    resposta = await callOpenRouter(messagesPayload, systemPrompt);
-                    loopSucesso = true;
-                } catch (errOR) {
-                    console.error("❌ Todos os níveis de IA falharam:", errOR.message);
-                }
-            }
-        }
-
-        if (!loopSucesso) {
-            throw new Error("Sistemas de IA indisponíveis no momento. Tente novamente em breve.");
-        }
+        console.log(`🤖 [Oráculo] Processando modo: ${modo} (${preferNvidia ? "NVIDIA" : "GEMINI"} priority)`);
+        
+        const resposta = await aiRotatorService.ask(pergunta, systemPrompt, preferNvidia);
+        const modoUsado = preferNvidia ? "NVIDIA/GEMINI" : "GEMINI"; // Rotator decide internamente
 
         // 7. Salva na sessão
         const uniqueInteractionId = uuidv4();
