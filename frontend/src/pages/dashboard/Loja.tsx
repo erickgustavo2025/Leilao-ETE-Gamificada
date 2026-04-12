@@ -65,6 +65,30 @@ const getStyle = (rarity: string) => {
   return RANK_STYLES['COMUM'];
 };
 
+// Helper de Meritocracia
+const getAccessBadgeForRank = (rarity: string) => {
+  if (!rarity) return null;
+
+  // Normalização agressiva: Maiúsculas, Sem Acentos, Sem Espaços extras
+  const r = rarity.toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+    .trim();
+
+  // Ordem de precedência: do mais forte para o mais fraco
+  if (r.includes('SOBERANO')) return 'AC_SOBERANO';
+  if (r.includes('MITOLOGICO') || r.includes('MITHOLOGICO')) return 'AC_MITOLOGICO';
+  if (r.includes('SUPREMO')) return 'AC_SUPREMO';
+  if (r.includes('LENDARIO')) return 'AC_LENDARIO';
+  if (r.includes('EPICO')) return 'AC_EPICO';
+  if (r.includes('DIAMANTE')) return 'AC_DIAMANTE';
+  if (r.includes('OURO') || r.includes('GOLD')) return 'AC_OURO';
+  if (r.includes('PRATA') || r.includes('SILVER')) return 'AC_PRATA';
+  if (r.includes('BRONZE')) return 'AC_BRONZE';
+
+  return null;
+};
+
+
 const TABS = ['Todos', 'Bronze', 'Prata', 'Ouro', 'Diamante', 'Épico', 'Épico Lendário', 'Épico Supremo', 'Épico Mitológico', 'Épico Soberano', 'Evento', 'Comum'];
 
 interface StoreItem {
@@ -118,11 +142,19 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
   const canAfford = (user?.saldoPc || 0) >= item.preco;
   const hasStock = item.estoque > 0;
 
-  // 🛡️ VALIDAÇÃO DE BADGE (Fase 3)
-  const hasBadge = !item.cargoExclusivo ||
+  // 🛡️ VALIDAÇÃO DE MÉRITO (Cadeados da Loja)
+  const accessBadgeNeeded = getAccessBadgeForRank(item.raridade);
+  const userBadges = user?.cargos || [];
+  const hasAccessBadge = !accessBadgeNeeded || userBadges.includes(accessBadgeNeeded) || user?.role === 'admin';
+
+  // 🛡️ VALIDAÇÃO DE CARGO FIXO (Legado)
+  const hasExclusiveCargo = !item.cargoExclusivo ||
     item.cargoExclusivo === 'Todos' ||
-    (user?.cargos || []).includes(item.cargoExclusivo) ||
+    userBadges.includes(item.cargoExclusivo) ||
     user?.role === 'admin';
+
+  const isLocked = !hasAccessBadge || !hasExclusiveCargo;
+
 
   const borderColor = style.split(' ')[0];
 
@@ -139,9 +171,11 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
           "relative h-full flex flex-col overflow-hidden rounded-xl transition-all duration-200 border",
           isMobile ? "bg-[#0f0f13]" : "bg-slate-900/60 backdrop-blur-xl",
           borderColor,
-          !isMobile && "hover:-translate-y-1 hover:shadow-xl"
+          !isMobile && "hover:-translate-y-1 hover:shadow-xl",
+          isLocked && "opacity-90" 
         )}
       >
+
         {isBeco && (
           <div className="absolute top-2 left-2 z-20">
             <div className="flex items-center gap-1 bg-purple-600/90 px-1.5 py-0.5 rounded border border-purple-400/30">
@@ -167,9 +201,11 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
             alt={item.nome}
             className={cn(
               "h-24 w-24 object-contain drop-shadow-lg transition-transform duration-300",
-              !hasStock && "grayscale opacity-50",
+              (!hasStock || isLocked) && "grayscale opacity-50",
+              isLocked && "blur-[2px]",
               !isMobile && "group-hover:scale-110"
             )}
+
             onError={(e) => { (e.target as HTMLImageElement).src = '/assets/store.png'; }}
           />
           {!hasStock && (
@@ -202,14 +238,14 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
             <button
               className={cn(
                 "w-full py-2 rounded font-press text-[9px] flex items-center justify-center gap-2 transition-all relative overflow-hidden",
-                !canAfford || !hasStock || !hasBadge
+                !canAfford || !hasStock || !hasExclusiveCargo
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                   : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500 shadow-sm"
               )}
-              disabled={!canAfford || !hasStock || !hasBadge}
-              title={!hasBadge ? `Exige patente: ${item.cargoExclusivo}` : undefined}
+              disabled={!canAfford || !hasStock || !hasExclusiveCargo}
+              title={!hasExclusiveCargo ? `Exige patente: ${item.cargoExclusivo}` : undefined}
             >
-              {!hasStock ? "SEM ESTOQUE" : !hasBadge ? (
+              {!hasStock ? "SEM ESTOQUE" : !hasExclusiveCargo ? (
                 <><Lock className="w-3 h-3" /> PATENTE INSV.</>
               ) : !canAfford ? "FALTA GRANA" : buyingId === item._id ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -220,16 +256,22 @@ const ItemCard = memo(({ item, user, buyingId, isBeco, onClick, index, isMobile 
           </div>
         </div>
         
-        {/* OVERLAY DE BLOQUEIO POR BADGE */}
-        {!hasBadge && (
-            <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center border-2 border-red-900/50 rounded-xl" onClick={(e) => e.stopPropagation()}>
-               <div className="w-12 h-12 bg-red-950/80 rounded-full flex items-center justify-center mb-2 border border-red-500/30">
-                  <Lock className="w-6 h-6 text-red-500" />
+        {/* OVERLAY DE BLOQUEIO POR MÉRITO */}
+        {isLocked && (
+            <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[3px] flex flex-col items-center justify-center border-2 border-slate-800/50 rounded-xl px-4 text-center" onClick={(e) => e.stopPropagation()}>
+               <div className="w-14 h-14 bg-slate-950/90 rounded-full flex items-center justify-center mb-3 border border-slate-500/30 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                  <Lock className="w-7 h-7 text-slate-400" />
                </div>
-               <span className="font-press text-[10px] text-red-400">PATENTE BLOQUEADA</span>
-               <span className="font-mono text-[9px] text-red-300/70 mt-1 uppercase text-center px-2">Exige: {item.cargoExclusivo}</span>
+               <span className="font-press text-[9px] text-white/90 uppercase tracking-tighter">MÉRITO BLOQUEADO</span>
+               <span className="font-mono text-[9px] text-pink-400 mt-2 font-bold uppercase leading-tight">
+                Requer acesso {item.raridade}
+               </span>
+               <p className="text-[7px] text-slate-500 font-press mt-2 leading-relaxed">
+                 COMPLETE A MISSÃO DE RANK PARA LIBERAR
+               </p>
             </div>
         )}
+
       </div>
     </motion.div>
   );

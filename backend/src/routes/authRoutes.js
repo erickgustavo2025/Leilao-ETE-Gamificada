@@ -25,9 +25,9 @@ router.post('/login',
     authController.login
 );
 
-// Recuperação de Senha (Opcional: Adicionar schema se tiver no futuro)
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+// Recuperação de Senha
+router.post('/forgot-password', validate(schemas.auth.forgotPassword), authController.forgotPassword);
+router.post('/reset-password', validate(schemas.auth.resetPassword), authController.resetPassword);
 
 // --- ROTAS PRIVADAS ---
 router.get('/me', protect, authController.getMe);

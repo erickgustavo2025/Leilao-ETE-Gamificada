@@ -3,6 +3,8 @@ const StoreItem = require('../models/StoreItem');
 const User = require('../models/User');
 const Classroom = require('../models/Classroom');
 const Log = require('../models/Log');
+const { getAccessBadgeForRank } = require('../config/gameRules');
+
 
 module.exports = {
     // 🛒 LISTAR ITENS LOJA PADRÃO
@@ -40,11 +42,20 @@ module.exports = {
             if (!item.ativo) throw new Error('Item indisponível.');
             if (item.estoque <= 0) throw new Error('Estoque esgotado.');
 
-            // 🛡️ VALIDAÇÃO DE BADGE (Fase 3)
-            if (item.cargoExclusivo && item.cargoExclusivo !== 'Todos') {
+            // 🛡️ VALIDAÇÃO DE BADGE DE ACESSO (Meritocracia)
+            const accessBadgeNeeded = getAccessBadgeForRank(item.raridade);
+            if (accessBadgeNeeded && req.user.role !== 'admin') {
+                const userBadges = user.cargos || [];
+                if (!userBadges.includes(accessBadgeNeeded)) {
+                    throw new Error(`Este item exige a patente: ${item.raridade}. Complete a missão de acesso primeiro.`);
+                }
+            }
+
+            // 🛡️ VALIDAÇÃO DE CARGO FIXO (Legado/Exclusivos)
+            if (item.cargoExclusivo && item.cargoExclusivo !== 'Todos' && req.user.role !== 'admin') {
                 const userCargos = user.cargos || [];
-                if (!userCargos.includes(item.cargoExclusivo) && req.user.role !== 'admin') {
-                    throw new Error(`Exige badge: ${item.cargoExclusivo}`);
+                if (!userCargos.includes(item.cargoExclusivo)) {
+                    throw new Error(`Item exclusivo para: ${item.cargoExclusivo}`);
                 }
             }
 

@@ -111,7 +111,7 @@ export function AdminUsers() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
-      await api.put(`/users/${id}`, data);
+      await api.put('/users/profile', { id, ...data });
     },
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.admin.users() });
@@ -134,7 +134,7 @@ export function AdminUsers() {
 
   const toggleBlockMutation = useMutation({
     mutationFn: async ({ id, block }: { id: string; block: boolean }) => {
-      await api.put(`/users/${id}/block`, { block });
+      await api.put('/users/block', { userId: id, block });
     },
     onMutate: async ({ id, block }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.admin.users() });

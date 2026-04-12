@@ -4,6 +4,7 @@ const User = require('../models/User');
 const StoreItem = require('../models/StoreItem');
 const Classroom = require('../models/Classroom');
 const Log = require('../models/Log');
+const { normalizeInventoryItem } = require('../utils/itemHelper');
 
 module.exports = {
     // 🎁 CRIAR PRESENTE
@@ -168,37 +169,23 @@ module.exports = {
                     }
 
                     for (let i = 0; i < reward.quantidade; i++) {
-                        if (storeItem.isHouseItem) {
-                            if (classroom) {
-                                classroom.roomInventory.push({
-                                    itemId: storeItem._id,
-                                    name: storeItem.nome,
-                                    description: storeItem.descricao,
-                                    image: storeItem.imagem,
-                                    category: 'PRESENTE',
-                                    origin: 'PRESENTE',
-                                    acquiredBy: user._id,
-                                    quantity: 1,
-                                    acquiredAt: new Date(),
-                                    expiresAt: expiresAt
-                                });
-                                itemsAddedInfo.push(`${storeItem.nome} (Sala)`);
-                            }
-                        } else {
-                            user.inventory.push({
-                                itemId: storeItem._id,
-                                name: storeItem.nome,
-                                descricao: storeItem.descricao || '',
-                                image: storeItem.imagem || '',
-                                raridade: storeItem.raridade,
-                                quantity: 1,
-                                origin: 'gift',
-                                category: 'CONSUMIVEL',
-                                acquiredAt: new Date(),
-                                expiresAt: expiresAt
-                            });
-                            itemsAddedInfo.push(storeItem.nome);
+                    const normalizedItem = normalizeInventoryItem(storeItem, {
+                        origin: 'PRESENTE',
+                        acquiredBy: user._id,
+                        expiresAt: expiresAt,
+                        quantity: 1,
+                        category: storeItem.isHouseItem ? 'PRESENTE' : 'CONSUMIVEL'
+                    });
+
+                    if (storeItem.isHouseItem) {
+                        if (classroom) {
+                            classroom.roomInventory.push(normalizedItem);
+                            itemsAddedInfo.push(`${storeItem.nome} (Sala)`);
                         }
+                    } else {
+                        user.inventory.push(normalizedItem);
+                        itemsAddedInfo.push(storeItem.nome);
+                    }
                     }
                 }
 

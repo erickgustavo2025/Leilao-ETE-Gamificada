@@ -78,13 +78,25 @@ interface FormState {
 // CATÁLOGO DE BADGES DISPONÍVEIS PARA MISSÕES
 // ─────────────────────────────────────────────────────────────────
 const BADGE_OPTIONS: { value: string; label: string; group: string }[] = [
+    // Badges de Acesso — desbloqueiam a vitrine da loja
+    { value: 'AC_BRONZE',     label: '🔓 Acesso: Bronze',      group: 'ACESSO' },
+    { value: 'AC_PRATA',      label: '🔓 Acesso: Prata',       group: 'ACESSO' },
+    { value: 'AC_OURO',       label: '🔓 Acesso: Ouro',        group: 'ACESSO' },
+    { value: 'AC_DIAMANTE',   label: '🔓 Acesso: Diamante',    group: 'ACESSO' },
+    { value: 'AC_EPICO',      label: '🔓 Acesso: Épico',       group: 'ACESSO' },
+    { value: 'AC_LENDARIO',   label: '🔓 Acesso: Lendário',    group: 'ACESSO' },
+    { value: 'AC_SUPREMO',    label: '🔓 Acesso: Supremo',     group: 'ACESSO' },
+    { value: 'AC_MITOLOGICO', label: '🔓 Acesso: Mitológico',  group: 'ACESSO' },
+    { value: 'AC_SOBERANO',   label: '🔓 Acesso: Soberano',    group: 'ACESSO' },
+
     // Badges de Funcionalidade — desbloqueiam features do sistema
     { value: 'PODE_TRANSFERIR',       label: '💸 Pode Transferir (PIX Escolar)',      group: 'FUNCIONALIDADE' },
     { value: 'PODE_FAZER_TRADE',      label: '🔄 Pode Fazer Trade (Mercado P2P)',     group: 'FUNCIONALIDADE' },
     { value: 'PODE_COMPRAR_VENDER',   label: '🛍️ Marketplace (Compra e Venda)',       group: 'FUNCIONALIDADE' },
     { value: 'PODE_PEDIR_EMPRESTIMO', label: '🏦 Pode Pedir Empréstimo (ETE Bank)',   group: 'FUNCIONALIDADE' },
     { value: 'PODE_COMPRAR_NOTAS',    label: '📝 Pode Comprar Notas (M. Notas)',      group: 'FUNCIONALIDADE' },
-    // Badges de Rank — desbloqueiam skills de rank
+    
+    // Badges de Rank — desbloqueiam skills de rank (Exigem Verificação Dupla)
     { value: 'BRONZE',     label: '🥉 Guardião de Bronze',      group: 'RANK' },
     { value: 'PRATA',      label: '🥈 Cavaleiro de Prata',      group: 'RANK' },
     { value: 'OURO',       label: '🥇 Campeão de Ouro',         group: 'RANK' },
@@ -95,6 +107,7 @@ const BADGE_OPTIONS: { value: string; label: string; group: string }[] = [
     { value: 'MITOLOGICO', label: '🔱 Entidade Mitológica',     group: 'RANK' },
     { value: 'SOBERANO',   label: '⚡ Soberano Absoluto',       group: 'RANK' },
 ];
+
 
 // ─────────────────────────────────────────────────────────────────
 // CONFIG VISUAL POR TIPO

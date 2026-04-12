@@ -1,11 +1,10 @@
-const User = require("../models/User");
 const Classroom = require("../models/Classroom");
+const { normalizeInventoryItem } = require("./itemHelper");
 
 async function deliverQuestRewards(user, quest) {
   // 1. Entrega o Dinheiro (PC$)
   if (quest.rewards?.pc > 0) {
     user.saldoPc += quest.rewards.pc;
-    // maxPcAchieved é atualizado no hook pre-save do User.js
   }
 
   // 2. Entrega a Badge (se houver)
@@ -22,19 +21,18 @@ async function deliverQuestRewards(user, quest) {
         expirationDate.setDate(expirationDate.getDate() + item.validityDays);
       }
 
+      // Normaliza o item da Missão
+      const normalizedItem = normalizeInventoryItem(item, {
+        origin: "PREMIO_MISSAO",
+        acquiredBy: user._id,
+        expiresAt: expirationDate,
+        category: item.category || "CONSUMIVEL"
+      });
+
       if (item.sendToClassroom) {
         const turma = await Classroom.findOne({ serie: user.turma });
         if (turma) {
-          turma.roomInventory.push({
-            itemId: item.itemId,
-            name: item.name,
-            category: item.category,
-            quantity: 1,
-            acquiredAt: new Date(),
-            expiresAt: expirationDate,
-            origin: "PREMIO", // ⚠️ REGRA DE OURO: origin DEVE ser 'PREMIO'
-            acquiredBy: user._id,
-          });
+          turma.roomInventory.push(normalizedItem);
           await turma.save();
         }
       } else {
@@ -48,20 +46,11 @@ async function deliverQuestRewards(user, quest) {
           });
         } else {
           user.inventory = user.inventory || [];
-          user.inventory.push({
-            itemId: item.itemId,
-            name: item.name,
-            category: item.category,
-            quantity: 1,
-            acquiredAt: new Date(),
-            expiresAt: expirationDate,
-            origin: "Missão",
-          });
+          user.inventory.push(normalizedItem);
         }
       }
     }
   }
-
 }
 
 module.exports = { deliverQuestRewards };

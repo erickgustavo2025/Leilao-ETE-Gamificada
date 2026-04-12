@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
 const StoreItem = require('../models/StoreItem'); // 🔥 NOVO: Para puxar dados originais
+const { normalizeInventoryItem } = require('../utils/itemHelper');
 
 // ==================================================================================
 // 🔒 HELPER: FECHAR LEILÃO E ENTREGAR ITEM
@@ -39,30 +40,22 @@ exports.executeAuctionClosure = async (itemId) => {
                     expiresAt.setDate(expiresAt.getDate() + diasValidade);
                 }
 
+                const normalizedItem = normalizeInventoryItem(item, {
+                    origin: 'LEILAO',
+                    acquiredBy: winner._id,
+                    expiresAt: expiresAt,
+                    category: item.isHouseItem ? 'LEILAO' : 'CONSUMIVEL'
+                });
+
                 if (item.isHouseItem) {
                     if (winner.turma) {
-                        const turmaRegex = new RegExp(`^${winner.turma.trim()}$`, 'i');
-                        const classroom = await Classroom.findOne({ serie: { $regex: turmaRegex } }).session(session);
+                        const classroom = await Classroom.findOne({ 
+                            serie: { $regex: new RegExp(`^${winner.turma.trim()}$`, 'i') } 
+                        }).session(session);
 
                         if (classroom) {
                             if(!classroom.roomInventory) classroom.roomInventory = [];
-                            classroom.roomInventory.push({
-                                itemId: item._id, 
-                                name: item.titulo,
-                                nome: item.titulo,
-                                description: item.descricao,
-                                descricao: item.descricao,
-                                image: item.imagemUrl,
-                                imagem: item.imagemUrl,
-                                category: 'LEILAO',
-                                origin: 'PREMIO',
-                                acquiredBy: winner._id,
-                                adquiridoPor: winner._id,
-                                quantity: 1,
-                                quantidade: 1,
-                                acquiredAt: new Date(),
-                                expiresAt: expiresAt
-                            });
+                            classroom.roomInventory.push(normalizedItem);
                             await classroom.save({ session });
                             message = `Item de Sala entregue para a turma ${winner.turma}`;
                         } else {
@@ -75,23 +68,11 @@ exports.executeAuctionClosure = async (itemId) => {
                     }
                 } 
                 else {
-                    winner.inventory.push({
-                        itemId: item._id,
-                        name: item.titulo,
-                        descricao: item.descricao,
-                        image: item.imagemUrl,
-                        imagem: item.imagemUrl,
-                        rarity: 'LEILÃO',
-                        raridade: 'LEILÃO',
-                        category: 'CONSUMIVEL', 
-                        quantity: 1,
-                        acquiredAt: new Date(),
-                        expiresAt: expiresAt,
-                        origin: 'LEILAO'
-                    });
+                    winner.inventory.push(normalizedItem);
                     message = `Item entregue para: ${winner.nome}`;
                 }
 
+                winner.markModified('inventory');
                 await winner.save({ session });
 
                 if (Log) {
@@ -201,6 +182,19 @@ exports.placeBid = async (req, res) => {
             
             const slot = user.inventory[slotIndex];
             const nameLower = (slot.name || slot.nome || '').toLowerCase();
+            const originLower = (slot.origin || '').toLowerCase();
+
+            // 🛡️ VERIFICAÇÃO DE MÉRITO (Double Check) para Skills de Rank
+            if (originLower === 'rank') {
+                const reqRank = getRequiredRankForSkill(nameLower.includes('75%') ? 'ARREMATADOR_75' : 'ARREMATADOR');
+                if (reqRank) {
+                    const hasPC = user.maxPcAchieved >= reqRank.min;
+                    const hasBadge = (user.cargos || []).includes(reqRank.id);
+                    if (!hasPC || !hasBadge) {
+                        throw new Error("Sua habilidade de Arrematador de Rank está bloqueada. Você precisa da Badge e do Patrimônio necessário.");
+                    }
+                }
+            }
 
             if (slot.category === 'RANK_SKILL' && slot.usesLeft <= 0) {
                 throw new Error("Sem usos restantes para esta Skill.");
@@ -219,6 +213,7 @@ exports.placeBid = async (req, res) => {
                 throw new Error("Este item não serve para leilão.");
             }
         }
+
 
         const realCost = Math.ceil(bidValue * discountMultiplier);
 

@@ -1,52 +1,56 @@
-.md
-.env
-backend/.env
-frontend/.env
-.sh
-snapShotGen.py
-claude idea.md
-DIRETRIZES_GLOBAIS_ETE.md
-FASE5_ORACULO.md
-start.sh
-stop.sh
-restart.sh
-.agents
+# --- ETE GAMIFICADA 2K26 - GITIGNORE ---
 
+# Bloquear arquivos de rascunho e documentos pesados
+*.pdf
+*.md
+!README.md
+!frontend/README.md
+!frontend/src/pages/dashboard/taca-das-casas/README.md
+
+# Bloquear backups e arquivos temporários
+backup_contexto*
+CORRECAO_*
+Requisitos*
+ULTRA_SAFE*
+passwords.txt
 
 # Dependências
 node_modules/
 npm-debug.log
 yarn-error.log
 
-# Variáveis de Ambiente (CRÍTICO)
+# Ambientes (CRÍTICO)
 .env
 .env.local
 .env.development
 .env.production
+backend/.env
+frontend/.env
 
-# Builds do Frontend (Vite) / Backend
+# Builds
 dist/
 build/
 out/
+.next/
 
-# Arquivos do SO
+# SO
 .DS_Store
 Thumbs.db
 
 # Logs
-logs
+logs/
 *.log
 
-# Editor de Código
+# Editores
 .vscode/
 .idea/
 
-# Arquivos de Testes e Cobertura
+# Testes
 coverage/
-passwords.txt
+.playwright/
+test-results/
 
-# Ignorar arquivos confidenciais de conhecimento e materiais do Assaad
-backend/src/config/*.md
-backend/documentos/enem/*
-!backend/documentos/enem/.gitkeep
-ULTRA_SAFE_FINAL_REPORT_V6.1.md
+# Scripts específicos
+scripts/scratch/
+.agents/
+.gemini/

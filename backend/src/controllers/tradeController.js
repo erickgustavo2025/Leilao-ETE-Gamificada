@@ -7,6 +7,7 @@ const User = require('../models/User');
 const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
 const NotificationController = require('./notificationController');
+const { normalizeInventoryItem } = require('../utils/itemHelper');
 
 const FAIRNESS_THRESHOLD = 0.20;
 
@@ -161,49 +162,29 @@ module.exports = {
                         finalExpiresAt.setDate(finalExpiresAt.getDate() + realItem.validadeDias);
                     }
 
-                    if (item.isHouseItem) {
-                        const receiverClassroom = await Classroom.findOne({ serie: receiver.turma }).session(session);
-                        if (receiverClassroom) {
-                            const newRoomSlot = {
-                                itemId: item.itemId,
-                                name: item.name || realItem?.nome || 'Item da Casa',
-                                image: item.image || realItem?.imagem || '',
-                                description: item.descricao || realItem?.descricao || 'Sem descrição',
-                                rarity: item.rarity || realItem?.raridade || 'Comum',
-                                quantity: 1,
-                                quantidade: 1,
-                                category: item.category || 'CONSUMIVEL',
-                                acquiredBy: receiver._id,
-                                adquiridoPor: receiver._id,
-                                origin: 'TRADE',
-                                acquiredAt: new Date()
-                            };
-                            if (finalExpiresAt) newRoomSlot.expiresAt = finalExpiresAt;
+                    const normalizedItem = normalizeInventoryItem(realItem || item, {
+                        origin: 'TRADE',
+                        acquiredBy: receiver._id,
+                        expiresAt: finalExpiresAt,
+                        quantity: 1,
+                        category: item.category || 'CONSUMIVEL'
+                    });
 
+                    if (item.isHouseItem) {
+                        const receiverClassroom = await Classroom.findOne({ 
+                            serie: { $regex: new RegExp(`^${receiver.turma.trim()}$`, 'i') } 
+                        }).session(session);
+                        if (receiverClassroom) {
                             await Classroom.updateOne(
                                 { _id: receiverClassroom._id },
-                                { $push: { roomInventory: newRoomSlot } },
+                                { $push: { roomInventory: normalizedItem } },
                                 { session }
                             );
                         }
                     } else {
-                        const newPersonalSlot = {
-                            itemId: item.itemId,
-                            name: item.name || realItem?.nome,
-                            descricao: item.descricao || realItem?.descricao,
-                            imagem: item.image || realItem?.imagem,
-                            raridade: item.rarity || realItem?.raridade || 'Comum',
-                            basePrice: item.basePrice || realItem?.preco || 0,
-                            category: item.category || 'CONSUMIVEL',
-                            quantity: 1,
-                            origin: 'trade',
-                            acquiredAt: new Date()
-                        };
-                        if (finalExpiresAt) newPersonalSlot.expiresAt = finalExpiresAt;
-
                         await User.updateOne(
                             { _id: receiver._id },
-                            { $push: { inventory: newPersonalSlot } },
+                            { $push: { inventory: normalizedItem } },
                             { session }
                         );
                     }

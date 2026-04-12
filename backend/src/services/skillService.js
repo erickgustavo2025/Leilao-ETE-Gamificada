@@ -21,8 +21,13 @@ module.exports = {
         const dbSkillMapByName = {};
         cachedSkills.forEach(s => dbSkillMapByName[s.name] = s);
 
-        // 2. Ranks do usuário
-        const userRanks = RANKS.filter(r => user.maxPcAchieved >= r.min);
+        // 2. Ranks do usuário (VERIFICAÇÃO DUPLA: Badge + PC)
+        const userBadges = user.cargos || [];
+        const userRanks = RANKS.filter(r => {
+            const hasPC = user.maxPcAchieved >= r.min;
+            const hasBadge = userBadges.includes(r.id); // r.id é 'BRONZE', 'OURO', etc.
+            return hasPC && hasBadge;
+        });
         
         // 3. Lista de Skills Permitidas
         const allowedSkills = {};
@@ -32,6 +37,7 @@ module.exports = {
                 allowedSkills[code] = rank.name; 
             });
         });
+
 
         let hasChanges = false;
 
@@ -93,7 +99,7 @@ module.exports = {
                         resetPeriod: resetPeriod,
                         quantity: 1,
                         acquiredAt: new Date(),
-                        origin: 'RANK'
+                        origin: 'rank'
                     });
                     hasChanges = true;
                 } else {

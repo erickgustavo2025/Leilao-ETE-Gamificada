@@ -46,6 +46,8 @@ const SystemConfig = require('./models/SystemConfig');
 require('./models/GameSkill');
 require('./models/ChatSession');
 
+const nosqlSanitizer = require('./middlewares/nosqlSanitizer');
+
 const app = express();
 app.set("trust proxy", 1);
 
@@ -73,8 +75,9 @@ app.use(helmet({
 }));
 
 app.use(express.json());
+app.use(nosqlSanitizer); // 🛡️ Blindagem contra injeção NoSQL
 
-// O mongoSanitize causava TypeError com o Express 5. O Mongoose já filtra boa parte via schemas.
+// O Mongoose já filtra boa parte via schemas.
 
 // 🛡️ RATE LIMITERS ESPECÍFICOS (Proteção contra Brute Force)
 const authLimiter = rateLimit({

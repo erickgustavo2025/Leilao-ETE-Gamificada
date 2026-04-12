@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Log = require('../models/Log');
 const { PIX_FEE, getAnnualLimit } = require('../utils/economyRules');
+const { getRequiredRankForSkill, RANKS } = require('../config/gameRules');
+
 
 // 👇 FUNÇÃO DE BUSCA TURBINADA
 const isTaxItem = (item) => {
@@ -56,24 +58,50 @@ module.exports = {
                 let itemIndex = -1;
 
                 if (taxExemptionType === 'SKILL') {
-                    itemIndex = sender.inventory.findIndex(i =>
-                        isTaxItem(i) && i.category === 'RANK_SKILL' && i.usesLeft > 0
-                    );
-                    if (itemIndex === -1) throw new Error("Sem cargas de habilidade disponíveis.");
+                    itemIndex = sender.inventory.findIndex(i => {
+                        if (!isTaxItem(i) || i.category !== 'RANK_SKILL' || i.usesLeft <= 0) return false;
+                        
+                        const origin = (i.origin || '').toLowerCase();
+                        if (origin === 'rank') {
+                            const reqRank = getRequiredRankForSkill('TRANSF_CONHECIMENTO');
+                            if (reqRank) {
+                                const hasPC = sender.maxPcAchieved >= reqRank.min;
+                                const hasBadge = (sender.cargos || []).includes(reqRank.id);
+                                if (!hasPC || !hasBadge) return false; 
+                            }
+                        }
+                        return true;
+                    });
+                    
+                    if (itemIndex === -1) {
+                        throw new Error("Suas habilidades de rank estão bloqueadas ou sem cargas. Você precisa da Badge de Rank e do Patrimônio (MaxPC) necessário para usá-las.");
+                    }
                 } else if (taxExemptionType === 'ITEM') {
                     itemIndex = sender.inventory.findIndex(i =>
                         isTaxItem(i) && i.category !== 'RANK_SKILL' && i.quantity > 0
                     );
-                    if (itemIndex === -1) throw new Error("Item consumível não encontrado.");
+                    if (itemIndex === -1) throw new Error("Item consumível de isenção não encontrado.");
                 } else {
-                    // Fallback
-                    itemIndex = sender.inventory.findIndex(i => isTaxItem(i) && i.category === 'RANK_SKILL' && i.usesLeft > 0);
+                    itemIndex = sender.inventory.findIndex(i => {
+                        if (!isTaxItem(i) || i.category !== 'RANK_SKILL' || i.usesLeft <= 0) return false;
+                        const origin = (i.origin || '').toLowerCase();
+                        if (origin === 'rank') {
+                            const reqRank = getRequiredRankForSkill('TRANSF_CONHECIMENTO');
+                            const hasPC = sender.maxPcAchieved >= (reqRank?.min || 0);
+                            const hasBadge = (sender.cargos || []).includes(reqRank?.id || '');
+                            return hasPC && hasBadge;
+                        }
+                        return true;
+                    });
+
                     if (itemIndex === -1) {
                         itemIndex = sender.inventory.findIndex(i => isTaxItem(i) && i.category !== 'RANK_SKILL' && i.quantity > 0);
                     }
                 }
 
+
                 if (itemIndex === -1) throw new Error(`Você não possui isenção disponível.`);
+
 
                 const item = sender.inventory[itemIndex];
 

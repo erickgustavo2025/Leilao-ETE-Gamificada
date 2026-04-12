@@ -38,4 +38,28 @@ const getRequiredRankForSkill = (skillCode) => {
     return null;
 };
 
-module.exports = { RANKS, RANK_SKILLS, VALID_RARITIES, getRequiredRankForSkill };
+// Helper para traduzir raridade de item em badge de acesso (AC_)
+const getAccessBadgeForRank = (raridade) => {
+    if (!raridade) return null;
+    
+    // Normalização agressiva: Maiúsculas, Sem Acentos, Sem Espaços extras
+    const r = raridade.toUpperCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .trim();
+    
+    // Ordem de precedência: do mais forte para o mais fraco
+    // Assim "Épico Lendário" retorna AC_LENDARIO e não AC_EPICO
+    if (r.includes('SOBERANO')) return 'AC_SOBERANO';
+    if (r.includes('MITOLOGICO') || r.includes('MITHOLOGICO')) return 'AC_MITOLOGICO';
+    if (r.includes('SUPREMO')) return 'AC_SUPREMO';
+    if (r.includes('LENDARIO')) return 'AC_LENDARIO';
+    if (r.includes('EPICO')) return 'AC_EPICO';
+    if (r.includes('DIAMANTE')) return 'AC_DIAMANTE';
+    if (r.includes('OURO') || r.includes('GOLD')) return 'AC_OURO';
+    if (r.includes('PRATA') || r.includes('SILVER')) return 'AC_PRATA';
+    if (r.includes('BRONZE')) return 'AC_BRONZE';
+    
+    return null;
+};
+
+module.exports = { RANKS, RANK_SKILLS, VALID_RARITIES, getRequiredRankForSkill, getAccessBadgeForRank };

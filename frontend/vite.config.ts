@@ -78,6 +78,7 @@ export default defineConfig({
   },
 
   build: {
+    sourcemap: false, // 🛡️ Blindagem: Impede que o código original (src) apareça no F12 em produção
     rollupOptions: {
       output: {
         manualChunks(id) {

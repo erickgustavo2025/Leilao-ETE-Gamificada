@@ -40,6 +40,17 @@ const schemas = {
                 senha: z.string().min(1, "Senha é obrigatória"),
                 novoEmail: z.string().email("Email inválido")
             })
+        }),
+        forgotPassword: z.object({
+            body: z.object({
+                matricula: z.string().min(3, "Matrícula é obrigatória")
+            })
+        }),
+        resetPassword: z.object({
+            body: z.object({
+                token: z.string().min(10, "Token inválido"),
+                novaSenha: z.string().min(6, "A nova senha deve ter no mínimo 6 caracteres")
+            })
         })
     },
 
