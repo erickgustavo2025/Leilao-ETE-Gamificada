@@ -90,26 +90,30 @@ async updateBalance(req, res) {
             }
         }
 
-        // Atualiza saldo
-        user.saldoPc += finalValue;
+        // ── Atualização Atômica Blindada ──
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $inc: { saldoPc: finalValue } },
+            { new: true }
+        );
 
-        // Se for ganho positivo, atualiza o Rank histórico
-        if (finalValue > 0) {
-            user.maxPcAchieved = Math.max(user.maxPcAchieved || 0, user.saldoPc);
+        if (!updatedUser) return res.status(404).json({ message: 'Aluno não encontrado' });
+
+        // Atualiza Rank Histórico (se necessário)
+        if (updatedUser.saldoPc > (updatedUser.maxPcAchieved || 0)) {
+            await User.findByIdAndUpdate(id, { $set: { maxPcAchieved: updatedUser.saldoPc } });
         }
-
-        await user.save();
 
         // Log de Auditoria
         await Log.create({
             user: req.user._id,
-            target: user._id,
+            target: updatedUser._id,
             action: baseValue > 0 ? 'ADMIN_GIVE_POINTS' : 'ADMIN_REMOVE_POINTS',
             details: `${baseValue > 0 ? 'Deu' : 'Removeu'} ${Math.abs(finalValue)} PC$${bonusTag} (Base: ${Math.abs(baseValue)}). Motivo: ${reason || 'N/A'}`,
             ip: req.ip
         });
 
-        res.json({ message: `Saldo atualizado! ${bonusTag}`, novoSaldo: user.saldoPc });
+        res.json({ message: `Saldo atualizado! ${bonusTag}`, novoSaldo: updatedUser.saldoPc });
 
     } catch (error) {
         console.error(error);
@@ -162,12 +166,10 @@ async updateBalance(req, res) {
         }
     },
 
-    // GET: Buscar Configurações
+    // GET: Buscar Configurações (ADMIN - Tudo liberado)
    async getConfig(req, res) {
         try {
-            // Busca a config 'general'. Se não existir, cria uma padrão.
             let config = await SystemConfig.findOne({ key: 'general' });
-            
             if (!config) {
                 config = await SystemConfig.create({
                     key: 'general',
@@ -185,13 +187,34 @@ async updateBalance(req, res) {
         }
     },
 
+    // 🛡️ [C1 - Blindagem] GET: Buscar Configurações Públicas (PÚBLICO - Campos seguros)
+    async getPublicConfig(req, res) {
+        try {
+            const config = await SystemConfig.findOne({ key: 'general' })
+                .select('siteName logoUrl landingMessage maintenanceMode lockdownMode houseCupVisible becoDiagonalOpen modules -_id');
+            
+            if (!config) {
+                return res.status(200).json({ 
+                    siteName: 'ETE GAMIFICADA', 
+                    maintenanceMode: false,
+                    becoDiagonalOpen: true,
+                    modules: { leilao: { active: true }, pontos: { active: true } }
+                });
+            }
+            res.json(config);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Erro ao buscar configurações públicas.' });
+        }
+    },
+
     // ⚙️ ATUALIZAR CONFIGURAÇÕES
    async updateConfig(req, res) {
         try {
-            // Adicione houseCupVisible e becoDiagonalOpen na leitura
+            // Adicione currentTrimester na leitura
             const { 
                 siteName, vipCode, maintenanceMode, landingMessage,
-                houseCupVisible, becoDiagonalOpen // <--- ADICIONE ISTO
+                houseCupVisible, becoDiagonalOpen, currentTrimester // <--- ADICIONADO
             } = req.body;
             
             let config = await SystemConfig.findOne({ key: 'general' });
@@ -202,6 +225,7 @@ async updateBalance(req, res) {
             if (siteName) config.siteName = siteName;
             if (vipCode) config.vipCode = vipCode;
             if (landingMessage) config.landingMessage = landingMessage;
+            if (currentTrimester !== undefined) config.currentTrimester = parseInt(currentTrimester); // <--- SALVANDO
             
             // Atualiza Manutenção
             if (maintenanceMode !== undefined) {
@@ -223,6 +247,15 @@ async updateBalance(req, res) {
             }
 
             await config.save();
+
+            if (Log) {
+                await Log.create({
+                    user: req.user._id,
+                    action: 'ADMIN_ACTION',
+                    details: 'Alterou configurações globais do sistema.',
+                    ip: req.ip
+                });
+            }
 
             res.json({ message: 'Configurações atualizadas!', config });
         } catch (error) {
@@ -277,8 +310,14 @@ async updateBalance(req, res) {
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
                 
-                // LOG DE SEGURANÇA
-                // (Opcional: Adicione um Log.create aqui se quiser registrar quem apagou)
+                if (Log) {
+                    await Log.create({
+                        user: req.user._id,
+                        action: 'ADMIN_ACTION',
+                        details: `Deletou permanentemente a imagem: ${filename}`,
+                        ip: req.ip
+                    });
+                }
                 
                 res.json({ message: "Imagem deletada com sucesso!" });
             } else {

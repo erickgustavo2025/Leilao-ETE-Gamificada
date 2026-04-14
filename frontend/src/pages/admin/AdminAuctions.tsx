@@ -1,11 +1,10 @@
-// frontend/src/pages/admin/AdminAuctions.tsx
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Pencil, Trash2, Image as ImageIcon, Loader2, Gavel, DollarSign, 
-  XCircle, Users, Trophy, Home, User as UserIcon, CalendarClock, 
-  Search, ExternalLink, X 
+import {
+  Pencil, Trash2, Image as ImageIcon, Loader2, Gavel, DollarSign,
+  XCircle, Users, Trophy, Home, User as UserIcon, CalendarClock,
+  Search, ExternalLink, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from '../../components/layout/AdminLayout';
@@ -22,7 +21,7 @@ import { queryKeys } from '../../utils/queryKeys';
 // CONSTANTES
 // ========================
 const RANKS = [
-  "BRONZE", "PRATA", "OURO", "DIAMANTE", "ÉPICO", "ÉPICO LENDÁRIO", 
+  "BRONZE", "PRATA", "OURO", "DIAMANTE", "ÉPICO", "ÉPICO LENDÁRIO",
   "ÉPICO SUPREMO", "ÉPICO MITHOLÓGICO", "ÉPICO SOBERANO"
 ];
 
@@ -54,6 +53,137 @@ interface StoreItem {
   imagem: string;
   validadeDias?: number;
   isHouseItem: boolean;
+}
+
+// ========================
+// SUB-COMPONENTES MEMOIZADOS
+// ========================
+
+function AuctionRow({ item, handleEdit, handleCloseEarly, handleDelete, getImageUrl }: { item: AuctionItem; handleEdit: (item: AuctionItem) => void; handleCloseEarly: (id: string) => void; handleDelete: (id: string) => void; getImageUrl: (url: string) => string }) {
+  if (!item) return null;
+
+  const isActive = item.status === 'ativo' && new Date(item.dataFim) > new Date();
+
+  return (
+    <div className="pb-3">
+      <PixelCard className={cn(
+        "flex flex-col md:flex-row gap-4 p-4 border-l-4 group transition-all",
+        isActive ? "border-l-green-500 bg-slate-900" : "border-l-red-500 bg-slate-900/50 opacity-80"
+      )}>
+        {/* Imagem */}
+        <div className="w-24 h-24 bg-black border border-slate-700 flex-shrink-0 relative overflow-hidden">
+          <img
+            src={getImageUrl(item.imagemUrl)}
+            alt={item.titulo}
+            className="w-full h-full object-contain"
+          />
+          {!isActive && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center font-press text-[8px] text-red-500 uppercase tracking-widest">
+              Encerrado
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-vt323 text-3xl text-white truncate flex items-center gap-2 uppercase tracking-tighter">
+            {item.titulo}
+            {item.isHouseItem && (
+              <span className="text-[8px] bg-purple-600 px-1.5 py-0.5 rounded font-press text-white">SALA</span>
+            )}
+          </h3>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {item.seriesPermitidas?.length > 0 && (
+              <span className="text-[10px] bg-slate-800 border border-slate-600 px-2 py-0.5 rounded font-press text-slate-300 flex items-center gap-1 uppercase tracking-tighter">
+                <Users size={10} /> {item.seriesPermitidas.join('º, ')}º ANO
+              </span>
+            )}
+            {item.rankMinimo && (
+              <span className="text-[10px] bg-purple-900/30 border border-purple-600 px-2 py-0.5 rounded font-press text-purple-300 flex items-center gap-1 uppercase tracking-tighter">
+                <Trophy size={10} /> {item.rankMinimo}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm font-mono text-slate-400 mt-1">
+            <span className="flex items-center gap-1 text-yellow-400">
+              <DollarSign size={14} /> LANCE: {item.maiorLance?.valor || item.lanceMinimo}
+            </span>
+            <span className="flex items-center gap-1 uppercase">
+              <UserIcon size={14} className="mr-1" /> {item.maiorLance?.user?.nome || 'Ninguém'}
+            </span>
+            {item.validadeDias && item.validadeDias > 0 && (
+              <span className="flex items-center gap-1 text-blue-400 text-[10px]">
+                <CalendarClock size={12} /> {item.validadeDias} DIAS
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex flex-row md:flex-col gap-2 justify-center">
+          <button
+            onClick={() => handleEdit(item)}
+            className="p-2 bg-slate-800 text-blue-400 hover:bg-blue-500/20 rounded border border-slate-600 transition-colors"
+            title="Editar"
+          >
+            <Pencil size={18} />
+          </button>
+          {isActive && (
+            <button
+              onClick={() => handleCloseEarly(item._id)}
+              className="p-2 bg-slate-800 text-orange-400 hover:bg-orange-500/20 rounded border border-slate-600 transition-colors"
+              title="Encerrar Manualmente"
+            >
+              <XCircle size={18} />
+            </button>
+          )}
+          <button
+            onClick={() => handleDelete(item._id)}
+            className="p-2 bg-slate-800 text-red-500 hover:bg-red-500/20 rounded border border-slate-600 transition-colors"
+            title="Excluir"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </PixelCard>
+    </div>
+  );
+}
+
+function StoreSearchRow({ item, handleSelect, getImageUrl }: { item: StoreItem; handleSelect: (item: StoreItem) => void; getImageUrl: (img: string) => string }) {
+  if (!item) return null;
+
+  return (
+    <div className="pb-2">
+      <button
+        onClick={() => handleSelect(item)}
+        className="w-full flex items-center gap-4 p-3 rounded border border-slate-800 bg-black/20 hover:bg-slate-800 hover:border-yellow-500 transition-all group text-left"
+      >
+        <div className="w-16 h-16 bg-black rounded flex items-center justify-center border border-slate-700 flex-shrink-0">
+          <img
+            src={getImageUrl(item.imagem)}
+            alt={item.nome}
+            className="w-14 h-14 object-contain"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-vt323 text-2xl text-white group-hover:text-yellow-400 transition-colors truncate">
+            {item.nome}
+          </h4>
+          <p className="text-xs text-slate-500 font-mono truncate">{item.descricao || 'Sem descrição'}</p>
+          <div className="flex gap-2 mt-1">
+            {item.isHouseItem && (
+              <span className="text-[8px] bg-purple-600 px-1.5 py-0.5 rounded font-press text-white">SALA</span>
+            )}
+            {item.validadeDias && item.validadeDias > 0 && (
+              <span className="text-[8px] bg-blue-900 px-1.5 py-0.5 rounded font-press text-blue-300">{item.validadeDias}D</span>
+            )}
+          </div>
+        </div>
+        <ExternalLink size={16} className="text-slate-600 group-hover:text-yellow-500 transition-colors" />
+      </button>
+    </div>
+  );
 }
 
 // ========================
@@ -117,7 +247,7 @@ export function AdminAuctions() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.auctions });
       handleReset();
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { message?: string } } }) => {
       playError();
       toast.error(err.response?.data?.message || "Erro ao criar.");
     }
@@ -136,7 +266,7 @@ export function AdminAuctions() {
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.auctions });
       handleReset();
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { message?: string } } }) => {
       playError();
       toast.error(err.response?.data?.message || "Erro ao atualizar.");
     }
@@ -158,7 +288,7 @@ export function AdminAuctions() {
 
       return { previous };
     },
-    onError: (_err: any, _id: string, context: any) => {
+    onError: (_err: unknown, _id: string, context: { previous?: AuctionItem[] } | undefined) => {
       queryClient.setQueryData(queryKeys.admin.auctions, context?.previous);
       playError();
       toast.error("Erro ao deletar.");
@@ -190,16 +320,16 @@ export function AdminAuctions() {
   // ========================
 
   // 🖼️ Preview de Imagem
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Limpa preview anterior
       if (previewUrl) URL.revokeObjectURL(previewUrl);
-      
+
       // Cria novo preview
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      
+
       // Limpa originalItemId (nova imagem = não usar store)
       setOriginalItemId('');
     }
@@ -218,20 +348,20 @@ export function AdminAuctions() {
 
     // Salvar ID do item original
     setOriginalItemId(item._id);
-    
+
     // Mostrar preview da imagem da store
     setPreviewUrl(getImageUrl(item.imagem));
 
     // Fechar modal
     setShowStoreSearch(false);
     setStoreSearchTerm('');
-    
+
     playClick();
     toast.success(`Item "${item.nome}" carregado da loja!`);
   }, [playClick]);
 
   // 📝 Submit Handler (CORRIGIDO COM SÉRIES JSON)
-  const handleCreate = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreate = useCallback((e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData();
@@ -266,10 +396,10 @@ export function AdminAuctions() {
     formData.append('dataFim', dataFim);
     formData.append('validadeDias', validadeDias);
     formData.append('rankMinimo', rankMinimo);
-    
+
     // ✅ isHouseItem como STRING (backend aceita "true"/"false")
     formData.append('isHouseItem', isHouseItem.toString());
-    
+
     // ✅ seriesPermitidas como JSON STRING
     formData.append('seriesPermitidas', JSON.stringify(seriesPermitidas));
 
@@ -346,14 +476,14 @@ export function AdminAuctions() {
   const handleReset = useCallback(() => {
     const form = document.getElementById('auction-form') as HTMLFormElement;
     if (form) form.reset();
-    
+
     setEditingId('');
     setOriginalItemId('');
-    
+
     // Limpar preview
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [previewUrl]);
 
@@ -406,9 +536,9 @@ export function AdminAuctions() {
                 className="relative cursor-pointer group w-full h-32 bg-black border-2 border-dashed border-slate-700 rounded flex items-center justify-center overflow-hidden hover:border-yellow-500 transition-colors"
               >
                 {previewUrl ? (
-                  <img 
-                    src={previewUrl} 
-                    alt="Preview" 
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
                     className="w-full h-full object-contain"
                   />
                 ) : (
@@ -508,11 +638,11 @@ export function AdminAuctions() {
                   <div className="flex gap-1 mt-1">
                     {['1', '2', '3'].map(ano => (
                       <label key={ano} className="flex-1 relative">
-                        <input 
-                          type="checkbox" 
-                          name={`serie_${ano}`} 
-                          value={ano} 
-                          className="peer sr-only" 
+                        <input
+                          type="checkbox"
+                          name={`serie_${ano}`}
+                          value={ano}
+                          className="peer sr-only"
                         />
                         <div className="py-1.5 text-[10px] font-press border text-center cursor-pointer bg-black border-slate-700 text-slate-500 hover:border-yellow-500 peer-checked:bg-yellow-600 peer-checked:text-black peer-checked:border-yellow-500 transition-all">
                           {ano}º
@@ -573,107 +703,22 @@ export function AdminAuctions() {
           {/* ======================== */}
           {/* LISTAGEM */}
           {/* ======================== */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 min-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700" style={{ maxHeight: 'calc(100vh - 250px)' }}>
             {isLoading ? (
               <div className="text-center py-10 text-slate-500 font-press animate-pulse">CARREGANDO LEILÕES...</div>
             ) : items.length === 0 ? (
               <div className="text-center text-slate-500 font-vt323 text-xl py-10">NENHUM LEILÃO ATIVO NO MOMENTO.</div>
             ) : (
-              <AnimatePresence>
-                {items.map((item, idx) => {
-                  const isActive = item.status === 'ativo' && new Date(item.dataFim) > new Date();
-                  return (
-                    <motion.div
-                      key={item._id}
-                      initial={{ x: -10, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 10, opacity: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                    >
-                      <PixelCard className={cn(
-                        "flex flex-col md:flex-row gap-4 p-4 border-l-4 group transition-all",
-                        isActive ? "border-l-green-500 bg-slate-900" : "border-l-red-500 bg-slate-900/50 opacity-80"
-                      )}>
-                        {/* Imagem */}
-                        <div className="w-24 h-24 bg-black border border-slate-700 flex-shrink-0 relative overflow-hidden">
-                          <img 
-                            src={getImageUrl(item.imagemUrl)} 
-                            alt={item.titulo}
-                            className="w-full h-full object-contain" 
-                          />
-                          {!isActive && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center font-press text-[8px] text-red-500 uppercase tracking-widest">
-                              Encerrado
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-vt323 text-3xl text-white truncate flex items-center gap-2 uppercase tracking-tighter">
-                            {item.titulo}
-                            {item.isHouseItem && (
-                              <span className="text-[8px] bg-purple-600 px-1.5 py-0.5 rounded font-press text-white">SALA</span>
-                            )}
-                          </h3>
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {item.seriesPermitidas?.length > 0 && (
-                              <span className="text-[10px] bg-slate-800 border border-slate-600 px-2 py-0.5 rounded font-press text-slate-300 flex items-center gap-1 uppercase tracking-tighter">
-                                <Users size={10} /> {item.seriesPermitidas.join('º, ')}º ANO
-                              </span>
-                            )}
-                            {item.rankMinimo && (
-                              <span className="text-[10px] bg-purple-900/30 border border-purple-600 px-2 py-0.5 rounded font-press text-purple-300 flex items-center gap-1 uppercase tracking-tighter">
-                                <Trophy size={10} /> {item.rankMinimo}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-4 text-sm font-mono text-slate-400 mt-1">
-                            <span className="flex items-center gap-1 text-yellow-400">
-                              <DollarSign size={14} /> LANCE: {item.maiorLance?.valor || item.lanceMinimo}
-                            </span>
-                            <span className="flex items-center gap-1 uppercase">
-                              <UserIcon size={14} className="mr-1" /> {item.maiorLance?.user?.nome || 'Ninguém'}
-                            </span>
-                            {item.validadeDias && item.validadeDias > 0 && (
-                              <span className="flex items-center gap-1 text-blue-400 text-[10px]">
-                                <CalendarClock size={12} /> {item.validadeDias} DIAS
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Ações */}
-                        <div className="flex flex-row md:flex-col gap-2 justify-center">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="p-2 bg-slate-800 text-blue-400 hover:bg-blue-500/20 rounded border border-slate-600 transition-colors"
-                            title="Editar"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                          {isActive && (
-                            <button
-                              onClick={() => handleCloseEarly(item._id)}
-                              className="p-2 bg-slate-800 text-orange-400 hover:bg-orange-500/20 rounded border border-slate-600 transition-colors"
-                              title="Encerrar Manualmente"
-                            >
-                              <XCircle size={18} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="p-2 bg-slate-800 text-red-500 hover:bg-red-500/20 rounded border border-slate-600 transition-colors"
-                            title="Excluir"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </PixelCard>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+              items.map((item) => (
+                <AuctionRow
+                  key={item._id}
+                  item={item}
+                  handleEdit={handleEdit}
+                  handleCloseEarly={handleCloseEarly}
+                  handleDelete={handleDelete}
+                  getImageUrl={getImageUrl}
+                />
+              ))
             )}
           </div>
         </div>
@@ -721,44 +766,22 @@ export function AdminAuctions() {
                 </div>
 
                 {/* Results */}
-                <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-2">
-                  {filteredStoreItems.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500 font-vt323 text-xl">
-                      NENHUM ITEM ENCONTRADO
-                    </div>
-                  ) : (
-                    filteredStoreItems.map((item) => (
-                      <button
+                {filteredStoreItems.length === 0 ? (
+                  <div className="text-center py-10 text-slate-500 font-vt323 text-xl">
+                    NENHUM ITEM ENCONTRADO
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto custom-scrollbar" style={{ height: '400px' }}>
+                    {filteredStoreItems.map((item) => (
+                      <StoreSearchRow
                         key={item._id}
-                        onClick={() => handleStoreItemSelect(item)}
-                        className="w-full flex items-center gap-4 p-3 rounded border border-slate-800 bg-black/20 hover:bg-slate-800 hover:border-yellow-500 transition-all group text-left"
-                      >
-                        <div className="w-16 h-16 bg-black rounded flex items-center justify-center border border-slate-700 flex-shrink-0">
-                          <img 
-                            src={getImageUrl(item.imagem)} 
-                            alt={item.nome}
-                            className="w-14 h-14 object-contain" 
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-vt323 text-2xl text-white group-hover:text-yellow-400 transition-colors truncate">
-                            {item.nome}
-                          </h4>
-                          <p className="text-xs text-slate-500 font-mono truncate">{item.descricao || 'Sem descrição'}</p>
-                          <div className="flex gap-2 mt-1">
-                            {item.isHouseItem && (
-                              <span className="text-[8px] bg-purple-600 px-1.5 py-0.5 rounded font-press text-white">SALA</span>
-                            )}
-                            {item.validadeDias && item.validadeDias > 0 && (
-                              <span className="text-[8px] bg-blue-900 px-1.5 py-0.5 rounded font-press text-blue-300">{item.validadeDias}D</span>
-                            )}
-                          </div>
-                        </div>
-                        <ExternalLink size={16} className="text-slate-600 group-hover:text-yellow-500 transition-colors" />
-                      </button>
-                    ))
-                  )}
-                </div>
+                        item={item}
+                        handleSelect={handleStoreItemSelect}
+                        getImageUrl={getImageUrl}
+                      />
+                    ))}
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}

@@ -57,8 +57,7 @@ export function TradeModal({ isOpen, onClose, targetUser }: TradeModalProps) {
             const targetRes = await api.get(`/inventory/public/${targetUser._id}`);
             setMyInventory(myRes.data);
             setTargetInventory(targetRes.data);
-        } catch (error) {
-            console.error(error);
+        } catch {
             toast.error("Erro ao carregar inventários.");
         } finally {
             setLoading(false);

@@ -1,10 +1,9 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
     BarChart, Bar, PieChart, Pie, Cell, 
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Microscope, Loader2, AlertCircle, Info } from 'lucide-react';
+import { Loader2, AlertCircle, Info } from 'lucide-react';
 import { api } from '../../../api/axios-config';
 import { cn } from '../../../utils/cn';
 
@@ -121,4 +120,4 @@ export function SurveyAnalyticsSection({ surveyId }: { surveyId: string }) {
     );
 }
 
-const motion = { div: ({ children, className, initial, animate }: any) => <div className={cn(className)}>{children}</div> }; // Simples mockup de motion para compatibilidade
+const motion = { div: ({ children, className }: any) => <div className={cn(className)}>{children}</div> }; // Simples mockup de motion para compatibilidade

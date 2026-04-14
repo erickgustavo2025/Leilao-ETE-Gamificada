@@ -13,31 +13,44 @@ exports.getPublicStats = async (req, res) => {
     try {
         const now = Date.now();
 
-        // Retorna cache se ainda estiver válido
-        if (statsCache && (now - statsCacheTime) < CACHE_TTL_MS) {
-            return res.json(statsCache);
+        // Recalcula tudo em paralelo se o cache expirou
+        if (!statsCache || (now - statsCacheTime) >= CACHE_TTL_MS) {
+            const [playersCount, xpAg, housesCount, auctionsCount] = await Promise.all([
+                User.countDocuments({ role: { $in: ['student', 'monitor'] } }),
+                User.aggregate([{ $group: { _id: null, total: { $sum: '$maxPcAchieved' } } }]),
+                Classroom.countDocuments(),
+                Item.countDocuments({ status: 'ativo' })
+            ]);
+
+            statsCache = {
+                players: playersCount,
+                xp: xpAg.length > 0 ? xpAg[0].total : 0,
+                houses: housesCount,
+                auctions: auctionsCount
+            };
+            statsCacheTime = now;
         }
 
-        // Recalcula tudo em paralelo (Promise.all = 4 queries simultâneas, não sequenciais)
-        const [playersCount, xpAg, housesCount, auctionsCount] = await Promise.all([
-            User.countDocuments({ role: { $in: ['student', 'monitor'] } }),
-            User.aggregate([{ $group: { _id: null, total: { $sum: '$maxPcAchieved' } } }]),
-            Classroom.countDocuments(),
-            Item.countDocuments({ status: 'ativo' })
-        ]);
+        // 🚀 INJEÇÃO LIVE: Pega o online atual e segmenta
+        let onlineCount = 0;
+        let guestCount = 0;
 
-        const result = {
-            players: playersCount,
-            xp: xpAg.length > 0 ? xpAg[0].total : 0,
-            houses: housesCount,
-            auctions: auctionsCount
-        };
+        if (global.io) {
+            const sockets = Array.from(global.io.sockets.sockets.values());
+            sockets.forEach(s => {
+                if (s.user && s.user._id) {
+                    onlineCount++;
+                } else {
+                    guestCount++;
+                }
+            });
+        }
 
-        // Atualiza cache
-        statsCache = result;
-        statsCacheTime = now;
-
-        res.json(result);
+        res.json({
+            ...statsCache,
+            online: onlineCount,
+            guests: guestCount
+        });
     } catch (error) {
         console.error('Erro getPublicStats:', error);
         res.status(500).json({ error: 'Erro ao buscar stats públicos' });

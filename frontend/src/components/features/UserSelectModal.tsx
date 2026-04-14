@@ -34,8 +34,7 @@ export function UserSelectModal({ isOpen, onClose, onUserSelected }: UserSelectM
             } else {
                 toast.error("Aluno não encontrado.");
             }
-        } catch (error) {
-            console.error(error);
+        } catch {
             toast.error("Erro ao buscar aluno. Verifique a matrícula.");
         } finally {
             setLoading(false);

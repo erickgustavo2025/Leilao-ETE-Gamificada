@@ -8,6 +8,7 @@ const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
 const NotificationController = require('./notificationController');
 const { normalizeInventoryItem } = require('../utils/itemHelper');
+const { getAnnualLimit } = require('../utils/economyRules');
 
 const FAIRNESS_THRESHOLD = 0.20;
 
@@ -195,7 +196,7 @@ module.exports = {
             await processItems(initiator, target, trade.offerInitiator.items || []);
             await processItems(target, initiator, trade.offerTarget.items || []);
 
-            // Processa Finanças Atômicas
+            // Processa Finanças Atômicas (COM TRAVA DE LIMITE ANUAL)
             if ((trade.offerInitiator.pc || 0) > 0) {
                 const initDebit = await User.updateOne(
                     { _id: trade.initiator, saldoPc: { $gte: trade.offerInitiator.pc } },
@@ -204,7 +205,25 @@ module.exports = {
                 );
                 if (initDebit.matchedCount === 0) throw new Error("Aviso: O iniciador não possui mais o PC$ oferecido.");
                 
-                await User.updateOne({ _id: trade.target }, { $inc: { saldoPc: trade.offerInitiator.pc } }, { session });
+                // --- NOVA TRAVA PJC 2K26 ---
+                const limitTrg = getAnnualLimit(target.turma);
+                const receivedTarget = (target.financialLimits?.receivedThisYear || 0);
+                const spaceLeftTrg = limitTrg - receivedTarget;
+
+                if (trade.offerInitiator.pc > spaceLeftTrg) {
+                    throw new Error(`Troca bloqueada: O destinatário atingiu o limite anual de recebimento (Restam ${spaceLeftTrg} PC$).`);
+                }
+
+                await User.updateOne(
+                    { _id: trade.target }, 
+                    { 
+                        $inc: { 
+                            saldoPc: trade.offerInitiator.pc,
+                            'financialLimits.receivedThisYear': trade.offerInitiator.pc
+                        } 
+                    }, 
+                    { session }
+                );
             }
 
             if ((trade.offerTarget.pc || 0) > 0) {
@@ -215,7 +234,25 @@ module.exports = {
                 );
                 if (trgDebit.matchedCount === 0) throw new Error("Aviso: Você não possui mais o PC$ oferecido.");
                 
-                await User.updateOne({ _id: trade.initiator }, { $inc: { saldoPc: trade.offerTarget.pc } }, { session });
+                // --- NOVA TRAVA PJC 2K26 ---
+                const limitInit = getAnnualLimit(initiator.turma);
+                const receivedInit = (initiator.financialLimits?.receivedThisYear || 0);
+                const spaceLeftInit = limitInit - receivedInit;
+
+                if (trade.offerTarget.pc > spaceLeftInit) {
+                    throw new Error(`Troca bloqueada: Você atingiu o limite anual de recebimento (Restam ${spaceLeftInit} PC$).`);
+                }
+
+                await User.updateOne(
+                    { _id: trade.initiator }, 
+                    { 
+                        $inc: { 
+                            saldoPc: trade.offerTarget.pc,
+                            'financialLimits.receivedThisYear': trade.offerTarget.pc 
+                        } 
+                    }, 
+                    { session }
+                );
             }
 
             trade.status = 'COMPLETED';

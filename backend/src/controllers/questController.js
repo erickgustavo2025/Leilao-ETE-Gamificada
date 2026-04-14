@@ -63,29 +63,32 @@ const questController = {
           .json({ error: "Você já resgatou as glórias desta missão, aventureiro!" });
       }
 
-      // 🏆 SUCESSO! HORA DO LOOT! (Usando a função unificada)
-      await deliverQuestRewards(user, quest);
+      // 🏆 SUCESSO! HORA DO LOOT ATÔMICO!
+      const updateOps = await deliverQuestRewards(user, quest);
 
-      // 4. Marca a quest como completa para o aluno
+      // Prepara o status da missão
       const qIndex = user.activeQuests.findIndex(
         (aq) => aq.questId.toString() === questId
       );
       if (qIndex !== -1) {
-        user.activeQuests[qIndex].status = "COMPLETED";
-        user.activeQuests[qIndex].progress = 100;
+        updateOps.$set = updateOps.$set || {};
+        updateOps.$set[`activeQuests.${qIndex}.status`] = "COMPLETED";
+        updateOps.$set[`activeQuests.${qIndex}.progress`] = 100;
       } else {
-        user.activeQuests.push({
+        updateOps.$push = updateOps.$push || {};
+        updateOps.$push.activeQuests = {
           questId: quest._id,
           progress: 100,
           status: "COMPLETED",
-        });
+        };
       }
 
-      // 🔥 QUEIMA O CÓDIGO NO BANCO DE DADOS
+      // 4. Executa a grande atualização atômica do Usuário
+      await User.findByIdAndUpdate(user._id, updateOps);
+
+      // 🔥 QUEIMA O CÓDIGO NO BANCO DE DADOS (Objeto da Missão)
       quest.validCodes[codeIndex].isUsed = true;
       quest.validCodes[codeIndex].usedBy = user._id;
-
-      await user.save();
       await quest.save();
 
       if (Log) {

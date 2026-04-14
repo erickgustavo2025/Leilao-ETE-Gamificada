@@ -60,6 +60,15 @@ const adminQuestController = {
         expiresAt: expiresAt || null,
       });
 
+      if (Log) {
+        await Log.create({
+          user: req.user._id,
+          action: "ADMIN_QUEST_CREATE",
+          details: `Criou a missão "${title}" (Tipo: ${type}, Recompensa: ${rewardPc} PC$).`,
+          ip: req.ip,
+        });
+      }
+
       res.status(201).json(newQuest);
     } catch (error) {
       console.error("❌ Erro no createQuest:", error);
@@ -86,8 +95,19 @@ const adminQuestController = {
   // 4. DELETAR MISSÃO (DELETE /api/admin/quests/:id)
   async deleteQuest(req, res) {
     try {
-      const quest = await Quest.findByIdAndDelete(req.params.id);
+      const quest = await Quest.findById(req.params.id);
       if (!quest) return res.status(404).json({ error: "Missão não encontrada." });
+
+      await Quest.findByIdAndDelete(req.params.id);
+
+      if (Log) {
+        await Log.create({
+          user: req.user._id,
+          action: "ADMIN_QUEST_DELETE",
+          details: `Deletou permanentemente a missão "${quest.title}".`,
+          ip: req.ip,
+        });
+      }
 
       res.json({ message: "Missão apagada permanentemente." });
     } catch (error) {
@@ -148,31 +168,36 @@ const adminQuestController = {
         return res.status(404).json({ error: "Aluno ou Missão não encontrados." });
       }
 
-      // 🏆 ENTREGA DO LOOT (Usando a função unificada)
-      const { deliverQuestRewards } = require('../utils/questRewards');
-      await deliverQuestRewards(user, quest);
+      // 🏆 ENTREGA DO LOOT ATÔMICA
+      const updateOps = await deliverQuestRewards(user, quest);
+
+      // Prepara a atualização do status da missão para o aluno no mesmo comando atômico
+      // Se já existir no array, atualiza. Se não, dá push.
+      const userQuestIndex = user.activeQuests.findIndex(
+        (aq) => aq.questId.toString() === quest._id.toString()
+      );
+
+      if (userQuestIndex !== -1) {
+        updateOps.$set = updateOps.$set || {};
+        updateOps.$set[`activeQuests.${userQuestIndex}.status`] = "COMPLETED";
+        updateOps.$set[`activeQuests.${userQuestIndex}.progress`] = 100;
+      } else {
+        updateOps.$push = updateOps.$push || {};
+        updateOps.$push.activeQuests = {
+          questId: quest._id,
+          progress: 100,
+          status: "COMPLETED",
+        };
+      }
+
+      // Executa a grande atualização atômica (Recompensas + Status)
+      await User.findByIdAndUpdate(user._id, updateOps);
 
       // Atualiza o status da submissão
       submission.status = "APPROVED";
       submission.reviewedBy = adminId;
       submission.reviewedAt = new Date();
       await submission.save();
-
-      // Atualiza o activeQuests do usuário para COMPLETED
-      const userQuestIndex = user.activeQuests.findIndex(
-        (aq) => aq.questId.toString() === quest._id.toString()
-      );
-      if (userQuestIndex !== -1) {
-        user.activeQuests[userQuestIndex].status = "COMPLETED";
-        user.activeQuests[userQuestIndex].progress = 100;
-      } else {
-        user.activeQuests.push({
-          questId: quest._id,
-          progress: 100,
-          status: "COMPLETED",
-        });
-      }
-      await user.save();
 
       if (Log) {
         await Log.create({

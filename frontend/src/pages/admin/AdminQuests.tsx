@@ -13,113 +13,16 @@ import { cn } from '../../utils/cn';
 import {
     Plus, Scroll, Key, Copy, Check, X,
     Eye, Trash2, ToggleLeft, ToggleRight,
-    Clock, Calendar, Flame, Trophy, Search,
+    Clock, Trophy, Search,  
     Loader2, Shield,
-    Gift, Users, Sword, Package, Trash, Crown, Zap
+    Gift, Users, Sword, Package, Trash, 
 } from 'lucide-react';
 
-// ─────────────────────────────────────────────────────────────────
-// TIPOS
-// ─────────────────────────────────────────────────────────────────
-type QuestType = 'DIARIA' | 'SEMANAL' | 'EVENTO' | 'MENSAL' | 'CAMPANHA' | 'FUNCIONALIDADE';
-type ValidationType = 'SECRET_CODE' | 'MANUAL_ADMIN';
-type QuestStatus = 'active' | 'inactive' | 'expired';
-type ItemCategory = 'CONSUMIVEL' | 'PERMANENTE' | 'TICKET' | 'BUFF';
-
-interface QuestKey {
-    code: string;
-    usedBy?: string;   // nome do aluno
-    usedAt?: string;   // ISO date
-}
-
-interface RewardItem {
-    itemId: string;    // ID real do StoreItem
-    name: string;
-    category: ItemCategory;
-    validityDays: number;
-    sendToClassroom: boolean;
-}
-
-interface StoreItem {
-    _id: string;
-    nome: string;
-    tipo: 'ITEM' | 'BUFF';
-    validadeDias: number;
-}
-
-interface Quest {
-    _id: string;
-    title: string;
-    description: string;
-    type: QuestType;
-    rewardPc: number;
-    validationType: ValidationType;
-    status: QuestStatus;
-    expiresAt?: string;
-    createdAt: string;
-    keys: QuestKey[];
-    usedCount: number;
-    rewardItems?: RewardItem[];
-}
-
-interface FormState {
-    title: string;
-    description: string;
-    type: QuestType;
-    rewardPc: number;
-    badgeId: string;
-    validationType: ValidationType;
-    expiresAt: string;
-    generateKeysCount: number;
-    rewardItems: RewardItem[];
-}
-
-// ─────────────────────────────────────────────────────────────────
-// CATÁLOGO DE BADGES DISPONÍVEIS PARA MISSÕES
-// ─────────────────────────────────────────────────────────────────
-const BADGE_OPTIONS: { value: string; label: string; group: string }[] = [
-    // Badges de Acesso — desbloqueiam a vitrine da loja
-    { value: 'AC_BRONZE',     label: '🔓 Acesso: Bronze',      group: 'ACESSO' },
-    { value: 'AC_PRATA',      label: '🔓 Acesso: Prata',       group: 'ACESSO' },
-    { value: 'AC_OURO',       label: '🔓 Acesso: Ouro',        group: 'ACESSO' },
-    { value: 'AC_DIAMANTE',   label: '🔓 Acesso: Diamante',    group: 'ACESSO' },
-    { value: 'AC_EPICO',      label: '🔓 Acesso: Épico',       group: 'ACESSO' },
-    { value: 'AC_LENDARIO',   label: '🔓 Acesso: Lendário',    group: 'ACESSO' },
-    { value: 'AC_SUPREMO',    label: '🔓 Acesso: Supremo',     group: 'ACESSO' },
-    { value: 'AC_MITOLOGICO', label: '🔓 Acesso: Mitológico',  group: 'ACESSO' },
-    { value: 'AC_SOBERANO',   label: '🔓 Acesso: Soberano',    group: 'ACESSO' },
-
-    // Badges de Funcionalidade — desbloqueiam features do sistema
-    { value: 'PODE_TRANSFERIR',       label: '💸 Pode Transferir (PIX Escolar)',      group: 'FUNCIONALIDADE' },
-    { value: 'PODE_FAZER_TRADE',      label: '🔄 Pode Fazer Trade (Mercado P2P)',     group: 'FUNCIONALIDADE' },
-    { value: 'PODE_COMPRAR_VENDER',   label: '🛍️ Marketplace (Compra e Venda)',       group: 'FUNCIONALIDADE' },
-    { value: 'PODE_PEDIR_EMPRESTIMO', label: '🏦 Pode Pedir Empréstimo (ETE Bank)',   group: 'FUNCIONALIDADE' },
-    { value: 'PODE_COMPRAR_NOTAS',    label: '📝 Pode Comprar Notas (M. Notas)',      group: 'FUNCIONALIDADE' },
-    
-    // Badges de Rank — desbloqueiam skills de rank (Exigem Verificação Dupla)
-    { value: 'BRONZE',     label: '🥉 Guardião de Bronze',      group: 'RANK' },
-    { value: 'PRATA',      label: '🥈 Cavaleiro de Prata',      group: 'RANK' },
-    { value: 'OURO',       label: '🥇 Campeão de Ouro',         group: 'RANK' },
-    { value: 'DIAMANTE',   label: '💎 Mestre Diamante',         group: 'RANK' },
-    { value: 'EPICO',      label: '👑 Herói Épico',             group: 'RANK' },
-    { value: 'LENDARIO',   label: '🌟 Lendário da ETE',         group: 'RANK' },
-    { value: 'SUPREMO',    label: '🔥 Supremo Imortal',         group: 'RANK' },
-    { value: 'MITOLOGICO', label: '🔱 Entidade Mitológica',     group: 'RANK' },
-    { value: 'SOBERANO',   label: '⚡ Soberano Absoluto',       group: 'RANK' },
-];
-
-
-// ─────────────────────────────────────────────────────────────────
-// CONFIG VISUAL POR TIPO
-// ─────────────────────────────────────────────────────────────────
-const TYPE_CFG: Record<QuestType, { label: string; icon: any; color: string; border: string; bg: string }> = {
-    DIARIA: { label: 'DIARIA', icon: Clock, color: 'text-blue-400', border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
-    SEMANAL: { label: 'SEMANAL', icon: Calendar, color: 'text-purple-400', border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
-    EVENTO: { label: 'EVENTO', icon: Flame, color: 'text-rose-400', border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
-    MENSAL: { label: 'MENSAL', icon: Trophy, color: 'text-yellow-400', border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' },
-    CAMPANHA: { label: 'CAMPANHA', icon: Crown, color: 'text-fuchsia-400', border: 'border-fuchsia-500/50', bg: 'bg-fuchsia-500/10' },
-    FUNCIONALIDADE: { label: 'FUNCIONALIDADE', icon: Zap, color: 'text-cyan-400', border: 'border-cyan-500/50', bg: 'bg-cyan-500/10' },
-};
+import { 
+    QuestType, QuestStatus, 
+    RewardItem, StoreItem, Quest, FormState, 
+    BADGE_OPTIONS, TYPE_CFG 
+} from './questTypes';
 
 // ─────────────────────────────────────────────────────────────────
 // HELPERS
@@ -127,14 +30,14 @@ const TYPE_CFG: Record<QuestType, { label: string; icon: any; color: string; bor
 const inputCls = 'w-full bg-black/50 border border-slate-700 rounded-lg p-3 text-white text-sm outline-none focus:border-purple-500/70 transition-colors placeholder:text-slate-700 font-mono';
 const selectCls = `${inputCls} cursor-pointer`;
 
-function FormField({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+const FormField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => {
     return (
         <div className={className}>
             <label className="block font-press text-[9px] text-slate-500 uppercase mb-1.5">{label}</label>
             {children}
         </div>
     );
-}
+};
 
 function timeLeft(iso: string) {
     const diff = new Date(iso).getTime() - Date.now();
@@ -144,7 +47,7 @@ function timeLeft(iso: string) {
     return `${h}h`;
 }
 
-function StatusDot({ status }: { status: QuestStatus }) {
+const StatusDot: React.FC<{ status: QuestStatus }> = ({ status }) => {
     return (
         <span className={cn('inline-block w-2 h-2 rounded-full', {
             'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]': status === 'active',
@@ -152,12 +55,12 @@ function StatusDot({ status }: { status: QuestStatus }) {
             'bg-red-500': status === 'expired',
         })} />
     );
-}
+};
 
 // ─────────────────────────────────────────────────────────────────
 // SUB-COMPONENTE: Modal de Chaves
 // ─────────────────────────────────────────────────────────────────
-function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
+const KeysModal: React.FC<{ quest: Quest; onClose: () => void }> = ({ quest, onClose }) => {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'all' | 'used' | 'free'>('all');
     const [copied, setCopied] = useState<string | null>(null);
@@ -326,7 +229,7 @@ function KeysModal({ quest, onClose }: { quest: Quest; onClose: () => void }) {
 // ─────────────────────────────────────────────────────────────────
 // SUB-COMPONENTE: Painel de Criação
 // ─────────────────────────────────────────────────────────────────
-function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: FormState) => Promise<void> }) {
+const CreatePanel: React.FC<{ onClose: () => void; onSave: (form: FormState) => Promise<void> }> = ({ onClose, onSave }) => {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<FormState>({
         title: '',
@@ -608,7 +511,7 @@ function CreatePanel({ onClose, onSave }: { onClose: () => void; onSave: (form: 
 // ─────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────
-export function AdminQuests() {
+export const AdminQuests: React.FC = () => {
     const queryClient = useQueryClient();
 
     // 🔌 FETCH DATA COM O TRADUTOR RESTAURADO
@@ -651,9 +554,25 @@ export function AdminQuests() {
     const totalUsed = quests.reduce((acc, q) => acc + (q.usedCount || 0), 0);
 
     const createMutation = useMutation({
-        mutationFn: (form: FormState) => api.post('/admin/quests', form),
+        mutationFn: (form: FormState) => {
+            const payload = {
+                title: form.title,
+                description: form.description,
+                type: form.type,
+                validationMethod: form.validationType,
+                rewards: {
+                    pc: form.rewardPc,
+                    badgeId: form.badgeId,
+                    items: form.rewardItems
+                },
+                expiresAt: form.expiresAt,
+                generateKeysCount: form.generateKeysCount
+            };
+            return api.post('/admin/quests', payload);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin', 'quests'] });
+            setShowCreate(false);
             toast.success('Missão criada com sucesso!');
         },
         onError: (err: any) => toast.error(err.response?.data?.message || 'Erro ao criar missão')

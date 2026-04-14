@@ -1,18 +1,31 @@
 const Classroom = require("../models/Classroom");
+const User = require("../models/User");
 const { normalizeInventoryItem } = require("./itemHelper");
 
+/**
+ * Prepara as operações atômicas para entrega de loot.
+ * Nota: Esta função agora retorna as operações em vez de salvar o objeto, 
+ * permitindo que o controller execute uma transação atômica única.
+ */
 async function deliverQuestRewards(user, quest) {
-  // 1. Entrega o Dinheiro (PC$)
+  const userId = user._id;
+  const updateOps = {
+    $inc: {},
+    $addToSet: {},
+    $push: {}
+  };
+
+  // 1. Dinheiro (PC$)
   if (quest.rewards?.pc > 0) {
-    user.saldoPc += quest.rewards.pc;
+    updateOps.$inc.saldoPc = quest.rewards.pc;
   }
 
-  // 2. Entrega a Badge (se houver)
-  if (quest.rewards?.badgeId && !user.cargos.includes(quest.rewards.badgeId)) {
-    user.cargos.push(quest.rewards.badgeId);
+  // 2. Badge/Cargo
+  if (quest.rewards?.badgeId) {
+    updateOps.$addToSet.cargos = quest.rewards.badgeId;
   }
 
-  // 🎁 3. O SISTEMA DE ITENS OFICIAL (Mochila Pessoal vs Turma)
+  // 🎁 3. Itens e Buffs
   if (quest.rewardItems && quest.rewardItems.length > 0) {
     for (const item of quest.rewardItems) {
       let expirationDate = null;
@@ -21,36 +34,41 @@ async function deliverQuestRewards(user, quest) {
         expirationDate.setDate(expirationDate.getDate() + item.validityDays);
       }
 
-      // Normaliza o item da Missão
       const normalizedItem = normalizeInventoryItem(item, {
         origin: "PREMIO_MISSAO",
-        acquiredBy: user._id,
+        acquiredBy: userId,
         expiresAt: expirationDate,
         category: item.category || "CONSUMIVEL"
       });
 
       if (item.sendToClassroom) {
-        const turma = await Classroom.findOne({ serie: user.turma });
-        if (turma) {
-          turma.roomInventory.push(normalizedItem);
-          await turma.save();
-        }
+        // Atualização de Turma continua sendo uma chamada separada (escopo diferente)
+        await Classroom.findOneAndUpdate(
+          { serie: user.turma },
+          { $push: { roomInventory: normalizedItem } }
+        );
       } else {
         if (item.category === "BUFF") {
-          user.activeBuffs = user.activeBuffs || [];
-          user.activeBuffs.push({
+          updateOps.$push.activeBuffs = {
             effect: item.itemId.toString(),
             name: item.name,
             source: `Missão: ${quest.title}`,
             expiresAt: expirationDate,
-          });
+          };
         } else {
-          user.inventory = user.inventory || [];
-          user.inventory.push(normalizedItem);
+          updateOps.$push.inventory = normalizedItem;
         }
       }
     }
   }
+
+  // Remove campos vazios
+  if (updateOps.$inc && Object.keys(updateOps.$inc).length === 0) delete updateOps.$inc;
+  if (updateOps.$addToSet && Object.keys(updateOps.$addToSet).length === 0) delete updateOps.$addToSet;
+  if (updateOps.$push && Object.keys(updateOps.$push).length === 0) delete updateOps.$push;
+
+  return updateOps;
 }
 
 module.exports = { deliverQuestRewards };
+

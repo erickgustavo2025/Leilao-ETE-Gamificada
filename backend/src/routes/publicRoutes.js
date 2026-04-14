@@ -6,7 +6,7 @@ const adminController = require('../controllers/adminController');
 const { protect } = require('../middlewares/authMiddleware');
 
 router.get('/stats', publicController.getPublicStats);
-router.get('/config', adminController.getConfig);
+router.get('/config', adminController.getPublicConfig);
 router.get('/profile/:userId', protect, publicController.getPublicProfile);
 
 module.exports = router;

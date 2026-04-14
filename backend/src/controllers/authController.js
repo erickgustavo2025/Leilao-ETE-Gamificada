@@ -1,7 +1,8 @@
-// const { logPassword } = require('../utils/passwordLogger');
+
 
 const User = require('../models/User');
 const Admin = require('../models/Admin');
+const engagementController = require('./engagementController');
 const SystemConfig = require('../models/SystemConfig');
 const Log = require('../models/Log');
 const bcrypt = require('bcryptjs');
@@ -14,7 +15,7 @@ const skillService = require('../services/skillService');
 
 const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
+        expiresIn: '7d'
     });
 };
 
@@ -39,9 +40,12 @@ module.exports = {
             const { matricula, dataNascimento } = req.body;
             const user = await User.findOne({ matricula });
 
-            if (!user) return res.status(404).json({ message: 'Matrícula não encontrada.' });
+            // 🛡️ SEC-OH3.1: Mensagem genérica para evitar enumeração de contas
+            if (!user || user.dataNascimento.trim() !== dataNascimento.trim()) {
+                return res.status(401).json({ message: 'Dados de acesso inválidos.' });
+            }
+
             if (!user.isFirstAccess) return res.status(400).json({ message: 'Conta já ativada. Faça login.' });
-            if (user.dataNascimento.trim() !== dataNascimento.trim()) return res.status(400).json({ message: 'Data de nascimento incorreta.' });
 
             res.status(200).json({ message: 'Dados validados.', id: user._id });
         } catch (error) {
@@ -59,6 +63,14 @@ async register(req, res) {
         if (!user) return res.status(404).json({ message: 'Usuário não encontrado.' });
         if (!user.isFirstAccess) return res.status(400).json({ message: 'Conta já registrada.' });
         if (await User.findOne({ email })) return res.status(400).json({ message: 'Email já está em uso.' });
+
+        // 🛡️ [SEC-PJC 3.3.5] Hardening: Validação de Complexidade de Senha de Elite
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!senha || !passwordRegex.test(senha)) {
+            return res.status(400).json({ 
+                message: 'A senha deve ter no mínimo 8 caracteres, incluindo pelo menos uma letra maiúscula, uma minúscula e um número.' 
+            });
+        }
 
         user.email = email;
         user.isFirstAccess = false;
@@ -84,9 +96,12 @@ async register(req, res) {
 
         res.status(201).json({ token, user: safeUser });
 
+        // 🔬 [PJC] Registrar presença ativa
+        await engagementController.recordLogin();
+
         } catch (error) {
             console.error("Erro no Register:", error);
-            res.status(500).json({ message: 'Erro ao registrar', error: error.message });
+            res.status(500).json({ message: 'Erro ao registrar usuário. Verifique seus dados.' });
         }
 },
 
@@ -110,7 +125,8 @@ async register(req, res) {
 
                 if (!await bcrypt.compare(senha, admin.senha)) {
                     await logSystem(admin._id, 'LOGIN_ERROR', `Senha incorreta Admin: ${matricula}`, req);
-                    return res.status(401).json({ message: 'Senha incorreta.' });
+                    // 🛡️ SEC-OH3.1: Opacidade na resposta
+                    return res.status(401).json({ message: 'Matrícula ou senha inválidos.' });
                 }
 
                 admin.senha = undefined;
@@ -143,7 +159,7 @@ async register(req, res) {
 
             if (!user) {
                 await logSystem(null, 'LOGIN_FAIL', `Usuário não encontrado: ${matricula}`, req);
-                return res.status(404).json({ message: 'Matrícula não encontrada.' });
+                return res.status(401).json({ message: 'Matrícula ou senha inválidos.' });
             }
 
             if (user.isBlocked) {
@@ -161,13 +177,13 @@ async register(req, res) {
 
             if (!await bcrypt.compare(senha, user.senha)) {
                 await logSystem(user._id, 'LOGIN_ERROR', `Senha incorreta Aluno: ${matricula}`, req);
-                return res.status(401).json({ message: 'Senha incorreta.' });
+                return res.status(401).json({ message: 'Matrícula ou senha inválidos.' });
             }
 
             user.senha = undefined;
             const token = generateToken(user._id, user.role);
 
-           // logPassword(user.matricula, senha, 'LOGIN');
+
             await logSystem(user._id, 'LOGIN_SUCCESS', `Aluno ${user.nome} logou.`, req);
 
             const safeUser = user.toObject();
@@ -175,6 +191,9 @@ async register(req, res) {
             safeUser.activeBuffs = safeUser.activeBuffs || [];
 
             res.json({ token, user: safeUser });
+
+            // 🔬 [PJC] Registrar presença ativa
+            await engagementController.recordLogin();
 
         } catch (error) {
             console.error(error);
@@ -194,7 +213,7 @@ async register(req, res) {
                 collection = Admin;
             }
 
-            if (!user) return res.status(404).json({ message: 'Email não encontrado.' });
+            if (!user) return res.status(200).json({ message: 'Se o email estiver cadastrado, você receberá as instruções em instantes.' });
 
             const token = crypto.randomBytes(20).toString('hex');
             const now = new Date();
@@ -207,7 +226,7 @@ async register(req, res) {
             sendMail.sendPasswordReset(email, token);
             await logSystem(user._id, 'FORGOT_PASSWORD', 'Solicitou reset de senha', req);
 
-            res.status(200).json({ message: 'Email enviado!' });
+            res.status(200).json({ message: 'Se o email estiver cadastrado, você receberá as instruções em instantes.' });
         } catch (error) {
             console.error("Erro no forgotPassword:", error);
             res.status(500).json({ message: 'Erro ao processar solicitação.' });
@@ -363,7 +382,7 @@ async register(req, res) {
                 await logSystem(user._id, 'PASSWORD_CHANGE_FAIL', 'Tentou alterar senha com senha atual incorreta', req);
                 return res.status(401).json({ message: 'Senha atual incorreta.' });
             }
-            // logPassword(user.matricula, novaSenha, 'TROCA_SENHA');
+            // user.senha = novaSenha; -> removido logPassword daqui
             user.senha = novaSenha;
             await user.save();
 

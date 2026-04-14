@@ -38,8 +38,8 @@ export function AvatarCropper({ isOpen, onClose, onSave }: AvatarCropperProps) {
             if (croppedImage) {
                 onSave(croppedImage);
             }
-        } catch (e) {
-            console.error(e);
+        } catch {
+            // Silencioso
         }
     };
 

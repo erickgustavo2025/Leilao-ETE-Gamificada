@@ -32,14 +32,24 @@ export interface UserInvestment {
     updatedAt: string;
 }
 
+export interface VinculoAcademico {
+    disciplinaId: string;
+    nomeDisciplina?: string;
+    ano: string;
+    curso: string;
+    turmas: string[];
+    isRedacao?: boolean;
+}
+
 export interface User {
     _id: string;
     id: string;
     nome: string;
     email: string;
     matricula: string;
+    usuario?: string; // Para professores
     dataNascimento?: string;
-    role: 'student' | 'admin' | 'dev' | 'monitor';
+    role: 'student' | 'admin' | 'dev' | 'monitor' | 'professor';
     saldoPc: number;
     maxPcAchieved?: number;
     turma?: string;
@@ -54,6 +64,7 @@ export interface User {
     inventory: InventoryItem[];
     activeBuffs: ActiveBuff[];
     investments: UserInvestment[];
+    disciplinas?: VinculoAcademico[]; // Para professores
     xp?: number;
     achievements?: any[];
 }

@@ -46,7 +46,7 @@ router.put('/points/bulk',
 
 // --- ROTAS DE ADMIN ---
 router.get('/', protect, admin, userController.index);
-router.put('/profile', protect, admin, userController.updateStudentProfile);
+router.put('/profile', protect, admin, validate(schemas.admin.updateProfile), userController.updateStudentProfile);
 router.put('/promote', protect, admin, userController.toggleMonitor);
 router.get('/logs', protect, admin, userController.getAdminLogs);
 router.post('/manual', protect, devOnly, userController.createManualUser);

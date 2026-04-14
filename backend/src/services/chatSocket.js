@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const engagementController = require('../controllers/engagementController');
 
 const MAX_HISTORY = 150;
 const chatHistory = {
@@ -9,21 +10,57 @@ const chatHistory = {
 
 module.exports = (io) => {
 
+    // --- 🔬 MÓDULO CIENTÍFICO: RASTREIO LIVE ---
+    let liveUsersCount = 0;
+
+    const broadcastLiveStats = async () => {
+        const sockets = await io.fetchSockets();
+        let users = 0;
+        let guests = 0;
+
+        sockets.forEach(s => {
+            if (s.user && s.user._id) {
+                users++;
+            } else {
+                guests++;
+            }
+        });
+
+        io.emit('LIVE_STATS_UPDATE', { 
+            online: users,
+            guests: guests
+        });
+        
+        // Atualiza o pico no banco silenciosamente (usa o total)
+        engagementController.updateLivePeak(users + guests);
+    };
+
+    // Atualiza a cada 2 minutos ou na conexão
+    setInterval(broadcastLiveStats, 1000 * 60 * 2);
+
     // ✅ Middleware de autenticação no handshake do socket
     // O frontend deve enviar o token assim:
     // socket = io(URL, { auth: { token: localStorage.getItem('@ETEGamificada:token') } })
     io.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth?.token;
-            if (!token) return next(new Error('Token não fornecido.'));
+            
+            // ✅ MODO GUEST: Não barra a conexão se não houver token
+            if (!token) {
+                socket.user = { role: 'guest' };
+                return next();
+            }
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const user = await User.findById(decoded.id).select('nome role turma avatar isBlocked');
 
-            if (!user) return next(new Error('Usuário não encontrado.'));
+            if (!user) {
+                socket.user = { role: 'guest' };
+                return next();
+            }
+
             if (user.isBlocked) return next(new Error('Conta bloqueada.'));
 
-            // Anexa o user real (do banco) ao socket — cliente não pode forjar isso
             socket.user = {
                 _id: user._id.toString(),
                 nome: user.nome,
@@ -34,27 +71,35 @@ module.exports = (io) => {
 
             next();
         } catch (err) {
-            next(new Error('Token inválido.'));
+            socket.user = { role: 'guest' };
+            next();
         }
     });
 
     io.on('connection', (socket) => {
-        // 🏫 ENTRAR AUTOMATICAMENTE NA SALA DA TURMA (Validado)
-        if (socket.user.turma) {
+        // 🏫 ENTRAR AUTOMATICAMENTE NA SALA DA TURMA (Apenas Alunos Logados)
+        if (socket.user && socket.user._id && socket.user.turma) {
             const turmaRoom = `turma_${socket.user.turma}`;
             socket.join(turmaRoom);
-            console.log(`[Socket] Usuário ${socket.user.nome} entrou na sala ${turmaRoom}`);
         }
 
+        if (socket.user.role === 'guest') {
+            socket.join('public_visitors');
+        }
+
+        // Notifica todos sobre a nova contagem ao conectar
+        broadcastLiveStats();
 
         // 🟢 ENTRAR NA SALA
         socket.on('join_chat_room', ({ room }) => {
-            if (!room) return;
+            if (!room || !socket.user?._id) return; // Bloqueia Guest
 
             // 🛡️ TRAVA DE SEGURANÇA: Alunos só podem entrar na sala da própria turma
             if (room.startsWith('turma_')) {
-                const userTurmaRoom = `turma_${socket.user.turma}`;
-                if (room !== userTurmaRoom && socket.user.role !== 'admin') {
+                const userTurma = socket.user.turma ? socket.user.turma.trim() : null;
+                const requestedTurma = room.replace('turma_', '').trim();
+                
+                if (requestedTurma !== userTurma && socket.user.role !== 'admin') {
                     console.warn(`[SECURITY] Tentativa de invasão de sala: ${socket.user.nome} tentou entrar em ${room}`);
                     return; // Bloqueia o join
                 }
@@ -73,6 +118,8 @@ module.exports = (io) => {
 
         // 📨 ENVIAR MENSAGEM — user vem do socket.user (validado no handshake)
         socket.on('send_message', ({ room, message }) => {
+            if (!socket.user?._id) return; // Bloqueia Guest
+
             // 🛡️ TRAVA DE SEGURANÇA NO TOPO: Validar se o usuário pertence à sala antes de qualquer processamento
             if (room.startsWith('turma_')) {
                 const userTurmaRoom = `turma_${socket.user.turma}`;
@@ -90,9 +137,9 @@ module.exports = (io) => {
             const msgData = {
                 id: Date.now().toString(),
                 text,
-                sender: socket.user, // ✅ Dados reais do banco, não do cliente
+                sender: socket.user, 
                 timestamp: new Date().toISOString(),
-                room // ✅ Adicionado para evitar vazamento de mensagens entre salas no frontend
+                room 
             };
 
             // Gerenciamento de Histórico (Apenas após validação)
@@ -105,6 +152,10 @@ module.exports = (io) => {
 
             // ✅ EMISSÃO SEGURA: Usar io.to(room).emit garante que APENAS os membros da sala recebam.
             io.to(room).emit('receive_message', msgData);
+        });
+
+        socket.on('disconnect', () => {
+            broadcastLiveStats();
         });
     });
 };

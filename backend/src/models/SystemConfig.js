@@ -11,6 +11,7 @@ const SystemConfigSchema = new mongoose.Schema({
 
     // --- ⚙️ SISTEMA (EXISTENTES) ---
     currentYear: { type: Number, default: new Date().getFullYear() },
+    currentTrimester: { type: Number, default: 1, min: 1, max: 3 }, // 🟢 NOVO: Controla o Oráculo e Resets
     vipCode: { type: String, default: 'VIP-2026' },
 
     // BLOQUEIOS

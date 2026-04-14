@@ -2,14 +2,17 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    AreaChart, Area
 } from 'recharts';
 import {
     Activity, PieChart as PieIcon,
     Loader2, AlertCircle, Microscope, GraduationCap, Star,
-    Wallet, Globe, ChevronDown, Calendar
+    Wallet, Globe, ChevronDown, Calendar, Download
 } from 'lucide-react';
+import { PixelButton } from '../../components/ui/PixelButton';
 import { api } from '../../api/axios-config';
+import { toast } from 'sonner';
 import { cn } from '../../utils/cn';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import { SurveyAnalyticsSection } from './components/SurveyAnalyticsSection';
@@ -34,6 +37,17 @@ const renderCustomizedLabel = ({ name, percent }: { name?: string; percent?: num
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────
 export default function AdminAnalytics() {
+    const { data: engagement = [] } = useQuery({
+        queryKey: ['admin', 'analytics', 'engagement'],
+        queryFn: async () => {
+            const response = await api.get('/admin/analytics/engagement?days=30');
+            return response.data.map((d: any) => ({
+                ...d,
+                date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            }));
+        }
+    });
+
     const { data, isLoading, error } = useQuery<AnalyticsData>({
         queryKey: ['admin', 'analytics'],
         queryFn: async () => {
@@ -44,6 +58,41 @@ export default function AdminAnalytics() {
 
     const [activeTab, setActiveTab] = React.useState<'education' | 'financial' | 'performance' | 'general'>('education');
     const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | null>(null);
+    const [isExporting, setIsExporting] = React.useState(false);
+
+    const handleExport = async () => {
+        try {
+            setIsExporting(true);
+            const res = await api.get('/admin/analytics/export');
+            const data = res.data;
+
+            if (!data || data.length === 0) {
+                return toast.error('Nenhum dado disponível para exportar.');
+            }
+
+            // Converter JSON para CSV
+            const headers = Object.keys(data[0]).join(';');
+            const rows = data.map((item: any) => Object.values(item).join(';'));
+            const csvContent = "\ufeff" + [headers, ...rows].join('\n');
+
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const date = new Date().toISOString().split('T')[0];
+            link.href = url;
+            link.setAttribute('download', `RELATORIO_CIENTIFICO_PJC_${date}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast.success('Relatório gerado com sucesso!');
+        } catch {
+            toast.error('Falha ao exportar dados.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const { data: surveys } = useQuery<any[]>({
         queryKey: ['admin', 'surveys', 'list'],
@@ -115,7 +164,95 @@ export default function AdminAnalytics() {
                 </div>
             </div>
 
-            {/* Grid de Gráficos */}
+            {/* 🔬 RELATÓRIO DE ENGAJAMENTO GLOBAL (PJC) */}
+            <div className="grid grid-cols-1 gap-6">
+                <div className="bg-black/40 border border-purple-500/20 rounded-[2rem] p-8 backdrop-blur-md relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <Microscope size={120} className="text-purple-500" />
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative z-10">
+                        <div>
+                            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                                <Activity size={14} className="animate-pulse" />
+                                <span className="text-[9px] font-press uppercase tracking-wider">Estado de Saúde do Sistema</span>
+                            </div>
+                            <h2 className="text-3xl font-vt323 text-white">Rastro Digital & Engajamento Científico</h2>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4">
+                            <PixelButton
+                                onClick={handleExport}
+                                isLoading={isExporting}
+                                variant="primary"
+                                className="flex items-center gap-2 text-[8px]"
+                            >
+                                <Download size={14} /> EXPORTAR QG DE COMANDO (PJC)
+                            </PixelButton>
+                            
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] font-press text-slate-500 uppercase mb-1">Visitas (Passivo)</span>
+                                <span className="text-xl font-vt323 text-purple-400">
+                                    {(engagement || []).reduce((acc: number, curr: any) => acc + (curr.passiveVisits || 0), 0).toLocaleString()} VALIDADAS
+                                </span>
+                            </div>
+                            <div className="w-px h-10 bg-slate-800 hidden md:block" />
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] font-press text-slate-500 uppercase mb-1">Logins (Ativo)</span>
+                                <span className="text-xl font-vt323 text-emerald-400">
+                                    {(engagement || []).reduce((acc: number, curr: any) => acc + (curr.activeLogins || 0), 0).toLocaleString()} PARTICIPANTES
+                                </span> 
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={engagement}>
+                                <defs>
+                                    <linearGradient id="adminVisits" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="adminLogins" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }} 
+                                />
+                                <YAxis hide />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '16px', fontSize: '12px', fontFamily: 'monospace' }}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="passiveVisits" 
+                                    stroke="#a855f7" 
+                                    strokeWidth={3} 
+                                    fill="url(#adminVisits)" 
+                                    name="Visitas Totais"
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="activeLogins" 
+                                    stroke="#10b981" 
+                                    strokeWidth={3} 
+                                    fill="url(#adminLogins)" 
+                                    name="Logins Ativos"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Grid de Gráficos Secundários */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* 1. Uso Diário do GIL */}

@@ -559,53 +559,34 @@ module.exports = {
     async getUserInventoryPublic(req, res) {
         try {
             const { userId } = req.params;
+            if (!mongoose.Types.ObjectId.isValid(userId)) {
+                return res.status(400).json({ error: 'ID de usuário inválido' });
+            }
+
             const user = await User.findById(userId).populate('inventory.itemId');
 
             if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
 
+            // 🛡️ [IDOR/Privacy] Filtra estritamente o que é público
             const publicInventory = user.inventory.map(slot => {
                 const originalItem = slot.itemId;
+                // Ignora itens de sistema e consome apenas dados visuais
                 return {
-                    _id: slot._id,
-                    itemId: slot.itemId?._id,
                     name: originalItem?.nome || slot.name,
                     imagem: originalItem?.imagem || slot.imagem,
                     raridade: originalItem?.raridade || slot.raridade,
-                    basePrice: originalItem?.preco || slot.basePrice || slot.preco || 0,
-                    isHouseItem: originalItem?.isHouseItem || slot.isHouseItem || false,
                     isSkill: originalItem?.isSkill || slot.isSkill || slot.category === 'RANK_SKILL' || false,
                     category: originalItem?.category || slot.category
                 };
-            }).filter(i => i.category !== 'TICKET');
+            }).filter(i => 
+                i.category !== 'TICKET' && 
+                i.category !== 'RANK_SKILL' // Rank skills são privadas ao perfil
+            );
 
-            let classroomItems = [];
-            if (user.turma) {
-                const classroom = await Classroom.findOne({ serie: user.turma }).populate('roomInventory.itemId');
-                if (classroom && classroom.roomInventory) {
-                    const myRoomItems = classroom.roomInventory.filter(item =>
-                        item.acquiredBy && item.acquiredBy.toString() === userId.toString()
-                    );
-                    classroomItems = myRoomItems.map(slot => {
-                        const baseItem = slot.itemId || {};
-                        return {
-                            _id: slot._id,
-                            itemId: baseItem._id,
-                            name: baseItem.nome || slot.name,
-                            imagem: baseItem.imagem || slot.image,
-                            raridade: baseItem.raridade || 'COMUM',
-                            basePrice: baseItem.preco || 0,
-                            isHouseItem: true,
-                            isSkill: false,
-                            category: baseItem.category || 'CONSUMIVEL'
-                        };
-                    });
-                }
-            }
-
-            const finalInventory = [...publicInventory, ...classroomItems];
-            res.json(finalInventory);
+            res.json(publicInventory || []);
         } catch (error) {
-            res.status(500).json({ error: 'Erro ao buscar inventário.' });
+            console.error("Erro no getUserInventoryPublic:", error);
+            res.status(500).json({ error: 'Erro ao buscar inventário público.' });
         }
     },
 

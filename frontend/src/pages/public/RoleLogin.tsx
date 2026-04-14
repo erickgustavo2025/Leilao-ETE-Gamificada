@@ -99,6 +99,12 @@ const roleConfig = {
     glowColor: 'rgba(34, 197, 94, 0.4)',
     icon: Terminal,
   },
+  professor: {
+    title: 'PORTAL PEDAGÓGICO',
+    color: '#A855F7', // Purple-500
+    glowColor: 'rgba(168, 85, 247, 0.4)',
+    icon: GraduationCap,
+  },
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -182,7 +188,15 @@ export function RoleLogin() {
   // ─────────────────────────────────────────────────────────────
   const loginMutation = useMutation({
     mutationFn: async (credentials: { matricula: string; senha: string }) => {
-      const response = await api.post('/auth/login', credentials);
+      const isProfessor = currentPageRole === 'professor';
+      const endpoint = isProfessor ? '/auth/professor/login' : '/auth/login';
+      
+      // Ajusta o payload conforme o endpoint
+      const payload = isProfessor 
+        ? { usuario: credentials.matricula, senha: credentials.senha }
+        : credentials;
+
+      const response = await api.post(endpoint, payload);
       return response.data as { user: { nome: string; role: string }; token: string };
     },
     onSuccess: (data) => {
@@ -203,6 +217,7 @@ export function RoleLogin() {
         currentPageRole === 'monitor' ? '/monitor' :
         currentPageRole === 'dev'     ? '/dev'     :
         currentPageRole === 'admin'   ? '/admin'   :
+        currentPageRole === 'professor' ? '/professor/dashboard' :
         '/dashboard';
 
       localStorage.setItem('@ETEGamificada:lastPath', targetPath);
@@ -384,7 +399,7 @@ export function RoleLogin() {
 
             <div>
               <label className="block text-slate-400 font-vt323 text-xl mb-2 uppercase tracking-wider">
-                {isRestricted ? 'USUÁRIO / MATRÍCULA' : 'MATRÍCULA'}
+                {currentPageRole === 'professor' ? 'USUÁRIO' : (isRestricted ? 'USUÁRIO / MATRÍCULA' : 'MATRÍCULA')}
               </label>
               <div className="relative group">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-slate-400 transition-colors" size={18} />
@@ -395,7 +410,7 @@ export function RoleLogin() {
                   value={matricula}
                   onChange={(e) => setMatricula(e.target.value)}
                   className={`w-full ${isMobile ? 'bg-black/95' : 'bg-black/80 backdrop-blur-sm'} border-2 border-slate-700 pl-10 p-3 text-white font-mono focus:outline-none transition-all focus:border-white focus:bg-black rounded-lg text-base md:text-lg`}
-                  placeholder={isRestricted ? 'admin' : '00000000'}
+                  placeholder={currentPageRole === 'professor' ? 'ex: prof.nome' : (isRestricted ? 'admin' : '00000000')}
                   required
                 />
               </div>

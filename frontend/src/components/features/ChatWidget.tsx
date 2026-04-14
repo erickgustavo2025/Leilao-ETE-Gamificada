@@ -249,13 +249,13 @@ export function ChatWidget() {
                                         {/* ABA 2: TURMA (PERSISTENTE) */}
                                         {user?.turma && (
                                             <button
-                                                onClick={() => handleSwitchRoom(`turma_${user.turma}`, true)}
+                                                onClick={() => handleSwitchRoom(`turma_${user.turma?.trim()}`, true)}
                                                 className={cn(
                                                     "flex-1 py-2 text-[10px] font-press flex justify-center gap-1 transition-all duration-200",
                                                     activeRoom.startsWith('turma_') ? "bg-green-900/40 text-green-300 border-b-2 border-green-500" : "text-slate-500 hover:text-white"
                                                 )}
                                             >
-                                                <Users size={12} /> TURMA
+                                                <Users size={12} /> MINHA TURMA
                                             </button>
                                         )}
                                     </div>

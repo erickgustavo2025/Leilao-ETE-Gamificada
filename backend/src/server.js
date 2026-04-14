@@ -15,9 +15,11 @@ const chatSocket = require('./services/chatSocket');
 const PORT = process.env.PORT || 3000;
 const numCPUs = os.cpus().length;
 
-// ✅ FATOR DE ESCALA: Usar Cluster para Alta Disponibilidade
-if (cluster.isPrimary) {
-    console.log(`🚀 [MASTER] Cluster iniciado. Criando ${numCPUs} processos workers...`);
+// ✅ FATOR DE ESCALA: Usar Cluster apenas em Produção para estabilidade no DEV
+const useCluster = process.env.NODE_ENV === 'production' || process.env.USE_CLUSTER === 'true';
+
+if (cluster.isPrimary && useCluster) {
+    console.log(`🚀 [MASTER] Cluster iniciado (PROD/FORCED). Criando ${numCPUs} processos workers...`);
     
     // Fork workers.
     for (let i = 0; i < numCPUs; i++) {
@@ -33,12 +35,15 @@ if (cluster.isPrimary) {
     // 🛠️ WORKER PROCESS LOGIC
     const startServer = async () => {
         try {
-            console.log(`🔌 [Worker ${process.pid}] Conectando ao Banco de Dados...`);
+            const isStandalone = !cluster.worker;
+            const isFirstWorker = cluster.worker && cluster.worker.id === 1;
+
+            console.log(`🔌 [${isStandalone ? 'Standalone' : 'Worker ' + process.pid}] Conectando ao Banco de Dados...`);
             await connectDB();
 
-            // Só o primary ou um worker específico roda o cron para evitar duplicidade de execuções
-            if (cluster.worker.id === 1) {
-                console.log('⏰ [Cron] Iniciando serviços de agendamento...');
+            // Só o standalone ou o worker 1 roda o cron para evitar duplicidade
+            if (isStandalone || isFirstWorker) {
+                console.log(`⏰ [Cron] Iniciando serviços de agendamento (${isStandalone ? 'Standalone' : 'Worker 1'})...`);
                 cronService.initCron();
             }
 
@@ -72,7 +77,8 @@ if (cluster.isPrimary) {
             });
 
             server.listen(PORT, () => {
-                console.log(`🔥 [Worker ${process.pid}] Servidor rodando na porta ${PORT}`);
+                console.log(`🔥 [${isStandalone ? 'Standalone' : 'Worker ' + process.pid}] Servidor rodando na porta ${PORT}`);
+                if (isStandalone) console.log('💡 DICA: Para usar Cluster no DEV, use: $env:USE_CLUSTER="true"; npm run dev');
             });
 
         } catch (error) {

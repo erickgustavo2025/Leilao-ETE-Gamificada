@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsStudent, loginAsAdmin, BASE_URL } from './helpers/auth';
+import { loginAsStudent, BASE_URL } from './helpers/auth';
 
 // ════════════════════════════════════════════════════════════════════
 // SUITE 2 — LOJA, INVENTÁRIO E PRESENTES
@@ -27,8 +27,7 @@ test.describe('2 · Loja e Inventário', () => {
     // Busca qualquer botão de comprar visível
     const buyBtn = page.locator('button:has-text("COMPRAR"), button:has-text("Comprar")').first();
     await expect(buyBtn).toBeVisible({ timeout: 10000 });
-    // Salva o nome do item (para verificar na mochila)
-    const itemCard = buyBtn.locator('xpath=ancestor::*[contains(@class,"card") or contains(@class,"item")][1]');
+    await page.waitForSelector('.item-card');
     await buyBtn.click();
     // Modal de confirmação (se existir)
     const confirmBtn = page.locator('button:has-text("CONFIRMAR"), button:has-text("Confirmar compra"), button:has-text("COMPRAR AGORA")');

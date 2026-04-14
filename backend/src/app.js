@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/authRoutes');
 const auctionRoutes = require('./routes/auctionRoutes');
 const userRoutes = require('./routes/userRoutes');
+const professorRoutes = require('./routes/professorRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const devRoutes = require('./routes/devRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
@@ -37,6 +38,12 @@ const adminEconomyRoutes = require('./routes/adminEconomyRoutes');
 const adminRegulationRoutes = require('./routes/adminRegulationRoutes');
 const publicRegulationRoutes = require('./routes/publicRegulationRoutes');
 const surveyRoutes = require('./routes/surveyRoutes');
+const quizRoutes = require('./routes/quizRoutes');
+const trainingQuizRoutes = require('./routes/trainingQuizRoutes'); // <--- NOVO
+
+// --- ⚙️ CONTROLADORES E MIDDLEWARES (Engajamento) ---
+const engagementController = require('./controllers/engagementController');
+const { protect, professor, admin } = require('./middlewares/authMiddleware');
 
 // Middlewares e Models
 const { checkMaintenance } = require('./middlewares/maintenanceMiddleware');
@@ -52,21 +59,29 @@ const app = express();
 app.set("trust proxy", 1);
 
 // 🔒 CORS INTELIGENTE (PRODUÇÃO / DEV)
-const allowedOrigins = process.env.FRONTEND_URL 
-    ? process.env.FRONTEND_URL.split(',') 
-    : ['http://localhost:5173',];
+const isDev = process.env.NODE_ENV !== 'production';
+const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : [];
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.warn(`🚨 CORS Bloqueado: Origem não permitida -> ${origin}`);
-            callback(new Error('Acesso negado pelo CORS'));
+        // 1. Permitir requisições sem origem (como apps mobile ou curl)
+        if (!origin) return callback(null, true);
+
+        // 2. No desenvolvimento, permitir qualquer localhost dinamicamente
+        if (isDev && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
+            return callback(null, true);
         }
+
+        // 3. Em produção, verificar lista restrita
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        console.warn(`🚨 CORS Bloqueado: Origem não permitida -> ${origin}`);
+        callback(new Error('Acesso negado pelo CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     credentials: true
 }));
 
@@ -86,6 +101,7 @@ const authLimiter = rateLimit({
     message: { error: "Muitas tentativas de login. Tente novamente em 15 minutos." }
 });
 app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/professor/login', authLimiter);
 
 const questValidationLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
@@ -97,10 +113,21 @@ app.use('/api/quests/validate', questValidationLimiter);
 // RATE LIMITER GERAL (Ajustado para evitar bloqueios em massa na escola)
 const generalLimiter = rateLimit({ 
     windowMs: 15 * 60 * 1000, 
-    max: 300, // Reduzido de 1000 para 300
+    max: 300, 
     message: "Muitas requisições vindas deste IP." 
 });
 app.use('/api/', generalLimiter);
+
+// --- 🔬 MÓDULO CIENTÍFICO (Analytics & Rastreio) ---
+const engagementLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: "Muitas tentativas de registro de rastro. Estabilizando sensores." }
+});
+
+app.post('/api/public/analytics/visit', engagementLimiter, engagementController.recordVisit);
+app.get('/api/professor/analytics/engagement', protect, professor, engagementController.getEngagementTrends);
+app.get('/api/admin/analytics/engagement', protect, admin, engagementController.getEngagementTrends);
 
 // 📂 SERVIR IMAGENS
 let uploadDir = path.join(__dirname, '../public/uploads'); 
@@ -118,6 +145,7 @@ app.use(checkMaintenance);
 app.use('/api/auth', authRoutes);
 app.use('/api/auction', auctionRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/professor', professorRoutes);
 app.use('/api/economy', economyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/dev', devRoutes);
@@ -146,6 +174,8 @@ app.use('/api/admin/economy', adminEconomyRoutes);
 app.use('/api/admin/regulations', adminRegulationRoutes);
 app.use('/api/regulations', publicRegulationRoutes);
 app.use('/api/surveys', surveyRoutes);
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/training-quizzes', trainingQuizRoutes); // <--- NOVO
 
 // Middleware de erro opaco para segurança
 app.use((err, req, res, next) => {

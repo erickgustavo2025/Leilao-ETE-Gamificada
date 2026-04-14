@@ -17,6 +17,8 @@ CORRECAO_*
 Requisitos*
 ULTRA_SAFE*
 passwords.txt
+.txt
+proxyscrape_premium_http_proxies.txt
 
 # Dependências
 node_modules/
@@ -58,3 +60,7 @@ test-results/
 scripts/scratch/
 .agents/
 .gemini/
+start.sh
+stop.sh
+restart.sh
+snapShotGen.py

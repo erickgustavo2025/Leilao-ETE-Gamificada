@@ -1,5 +1,5 @@
 // ARQUIVO: frontend/src/App.tsx
-import React, { useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
@@ -10,10 +10,16 @@ import { LuckyBlockMenu } from './components/layout/LuckyBlockMenu';
 import { ChatWidget } from './components/features/ChatWidget';
 import { AIWidget } from './components/features/AIWidget';
 import { PrivacyModal } from './components/features/PrivacyModal';
-import { Toaster, toast } from 'sonner';
-import { Loader2, Eye, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Toaster } from 'sonner';
 import { api } from './api/axios-config';
 import { queryKeys } from './utils/queryKeys';
+import { useEngagementTracker } from './hooks/useEngagementTracker';
+
+// ⚛️ COMPONENTES MODULARIZADOS (REFATORAÇÃO HARDENING V3.1)
+import { ImpersonateBanner } from './components/layout/ImpersonateBanner';
+import { PathTracker } from './components/layout/PathTracker';
+import { LoadingScreen } from './components/layout/LoadingScreen';
+import { PrivateRoute, PublicRoute } from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +71,7 @@ const MonitorDashboard = lazy(() => import('./pages/monitor/MonitorDashboard').t
 const MonitorLayout = lazy(() => import('./components/layout/MonitorLayout').then(m => ({ default: m.MonitorLayout })));
 const MonitorHistory = lazy(() => import('./pages/monitor/MonitorHistory').then(m => ({ default: m.MonitorHistory })));
 const MonitorScanner = lazy(() => import('./pages/monitor/MonitorScanner').then(m => ({ default: m.MonitorScanner })));
+const ProfessorDashboard = lazy(() => import('./pages/professor/ProfessorDashboard').then(m => ({ default: m.ProfessorDashboard })));
 
 import { ArmadaLogin } from './pages/armada/ArmadaLogin';
 import { ArmadaScanner } from './pages/armada/ArmadaScanner';
@@ -76,9 +83,7 @@ const FeedbackList = lazy(() => import('./pages/dev/FeedbackList').then(m => ({ 
 const DevUsers = lazy(() => import('./pages/dev/DevUsers').then(m => ({ default: m.DevUsers })));
 
 const AdminClasses = lazy(() => import('./pages/admin/AdminClasses').then(m => ({ default: m.AdminClasses })));
-
 const AdminQuests = lazy(() => import('./pages/admin/AdminQuests').then(m => ({ default: m.AdminQuests })));
-
 const AdminStore = lazy(() => import('./pages/admin/AdminStore').then(m => ({ default: m.AdminStore })));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers').then(m => ({ default: m.AdminUsers })));
 const AdminLogs = lazy(() => import('./pages/admin/AdminLogs').then(m => ({ default: m.AdminLogs })));
@@ -97,9 +102,10 @@ const AdminEconomyConfig = lazy(() => import('./pages/admin/AdminEconomyConfig')
 const AdminDisciplinas = lazy(() => import('./pages/admin/AdminDisciplinas').then(m => ({ default: m.AdminDisciplinas })));
 const AdminRegulations = lazy(() => import('./pages/admin/AdminRegulations').then(m => ({ default: m.AdminRegulations })));
 const AdminSurveys = lazy(() => import('./pages/admin/AdminSurveys').then(m => ({ default: m.AdminSurveys })));
+const AdminProfessors = lazy(() => import('./pages/admin/AdminProfessors').then(m => ({ default: m.AdminProfessors })));
 
 // ─────────────────────────────────────────────────────────────
-// Tipos auxiliares
+// CONFIGURAÇÕES GLOBAIS
 // ─────────────────────────────────────────────────────────────
 interface PublicConfig {
   maintenanceMode?: boolean;
@@ -113,259 +119,23 @@ interface UserData {
   nome: string;
   matricula: string;
   turma: string;
+  privacyAccepted?: boolean;
 }
 
-// ─────────────────────────────────────────────────────────────
 const PUBLIC_PATHS = ['/', '/login', '/first-access', '/forgot-password', '/reset-password', '/maintenance', '/politica-privacidade'];
-
 const isPublicPath = (path: string) =>
   PUBLIC_PATHS.includes(path) || path.startsWith('/login/') || path.startsWith('/armada/login');
 
 function AIWidgetWrapper() {
   const { signed } = useAuth();
   const location = useLocation();
-  
   if (!signed || isPublicPath(location.pathname)) return null;
-  
   return <AIWidget />;
-}
-
-const LAST_PATH_KEY = '@ETEGamificada:lastPath';
-
-function getDashboardByRole(role?: string): string {
-  switch (role) {
-    case 'dev': return '/dev';
-    case 'admin': return '/admin/classes';
-    case 'monitor': return '/monitor';
-    default: return '/dashboard';
-  }
-}
-
-const LoadingScreen = () => (
-  <div className="h-screen w-full flex flex-col items-center justify-center bg-[#050505] text-white">
-    <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-    <p className="font-press text-xs text-slate-500 animate-pulse uppercase">Sincronizando Sistema...</p>
-  </div>
-);
-
-interface PrivateRouteProps {
-  children: React.ReactNode;
-  roles?: string[];
-}
-
-function PrivateRoute({ children, roles }: PrivateRouteProps) {
-  const { signed, loading, user, isImpersonating } = useAuth();
-
-  if (loading) return <LoadingScreen />;
-  if (!signed) return <Navigate to="/login" replace />;
-
-  if (roles && user && !isImpersonating) {
-    const typedUser = user as UserData;
-    const hasPermission =
-      roles.includes(typedUser.role) ||
-      (typedUser.cargos && typedUser.cargos.some((cargo) => roles.includes(cargo)));
-
-    if (!hasPermission) {
-      toast.error("Acesso não autorizado.");
-      return <Navigate to={getDashboardByRole(typedUser.role)} replace />;
-    }
-  }
-
-  return <>{children}</>;
-}
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { signed, loading, user, isImpersonating } = useAuth();
-
-  if (loading) return <LoadingScreen />;
-
-  if (signed && user) {
-    const lastPath = localStorage.getItem(LAST_PATH_KEY);
-
-    if (lastPath && !isPublicPath(lastPath)) {
-      return <Navigate to={lastPath} replace />;
-    }
-
-    if (isImpersonating) {
-      return <Navigate to="/dashboard" replace />;
-    }
-
-    return <Navigate to={getDashboardByRole((user as UserData).role)} replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function PathTracker() {
-  const location = useLocation();
-  const { signed, isImpersonating } = useAuth();
-
-  useEffect(() => {
-    if (signed && !isImpersonating && !isPublicPath(location.pathname)) {
-      localStorage.setItem(LAST_PATH_KEY, location.pathname);
-    }
-  }, [location.pathname, signed, isImpersonating]);
-
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// BANNER DE IMPERSONATE
-// ─────────────────────────────────────────────────────────────
-function ImpersonateBanner() {
-  const { isImpersonating, user, exitImpersonate } = useAuth();
-  const navigate = useNavigate();
-  const [expanded, setExpanded] = React.useState(true);
-  const [exiting, setExiting] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!isImpersonating) return;
-    setExpanded(true);
-    const t = setTimeout(() => setExpanded(false), 3000);
-    return () => clearTimeout(t);
-  }, [isImpersonating]);
-
-  React.useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && exiting) {
-        setExiting(false);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [exiting]);
-
-  if (!isImpersonating || !user) return null;
-
-  const typedUser = user as UserData;
-
-  const handleExit = async () => {
-    setExiting(true);
-    try {
-      const restoredPath = await exitImpersonate();
-      navigate(restoredPath && !isPublicPath(restoredPath) ? restoredPath : '/admin/users', { replace: true });
-    } catch {
-      setExiting(false);
-    }
-  };
-
-  const firstName = typedUser.nome.split(' ')[0];
-
-  return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] flex flex-col items-center pointer-events-none">
-
-      {/* BANNER EXPANDIDO */}
-      <div
-        className="pointer-events-auto w-full"
-        style={{
-          maxHeight: expanded ? '56px' : '0px',
-          overflow: 'hidden',
-          transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 md:px-5"
-          style={{
-            background: 'linear-gradient(90deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%)',
-            borderBottom: '1px solid rgba(139, 92, 246, 0.4)',
-            boxShadow: '0 0 24px rgba(139, 92, 246, 0.25), 0 2px 8px rgba(0,0,0,0.5)',
-          }}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative flex-shrink-0">
-              <div className="w-2 h-2 rounded-full bg-violet-400" />
-              <div className="absolute inset-0 w-2 h-2 rounded-full bg-violet-400 animate-ping opacity-60" />
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className="text-[8px] font-press tracking-widest uppercase hidden sm:inline"
-                  style={{ color: 'rgba(167, 139, 250, 0.7)' }}
-                >
-                  espectador
-                </span>
-                <Eye size={10} className="text-violet-400 hidden sm:inline flex-shrink-0" />
-                <span className="font-mono font-semibold text-white text-xs truncate">
-                  {firstName}
-                </span>
-                <span
-                  className="font-mono text-[10px] hidden sm:inline truncate"
-                  style={{ color: 'rgba(196, 181, 253, 0.6)' }}
-                >
-                  {typedUser.matricula} · {typedUser.turma}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={handleExit}
-              disabled={exiting}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-press transition-all duration-150 active:scale-95 disabled:cursor-not-allowed"
-              style={{
-                color: exiting ? 'rgba(248, 113, 113, 0.5)' : 'rgba(248, 113, 113, 1)',
-                border: '1px solid rgba(248, 113, 113, 0.3)',
-                background: 'rgba(248, 113, 113, 0.08)',
-              }}
-            >
-              {exiting ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
-              <span className="hidden sm:inline">{exiting ? 'SAINDO...' : 'ENCERRAR'}</span>
-            </button>
-
-            <button
-              onClick={() => setExpanded(false)}
-              className="w-6 h-6 flex items-center justify-center transition-all duration-150 active:scale-90"
-              style={{
-                color: 'rgba(139, 92, 246, 0.7)',
-                border: '1px solid rgba(139, 92, 246, 0.25)',
-                background: 'rgba(139, 92, 246, 0.08)',
-              }}
-              title="Minimizar"
-            >
-              <ChevronUp size={12} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* PILL RECOLHIDA */}
-      <button
-        onClick={() => setExpanded(true)}
-        className="pointer-events-auto active:scale-95 transition-transform duration-150"
-        style={{
-          opacity: expanded ? 0 : 1,
-          transform: expanded ? 'translateY(-6px)' : 'translateY(0)',
-          transition: 'opacity 0.2s ease, transform 0.2s ease',
-          pointerEvents: expanded ? 'none' : 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          padding: '3px 10px 4px',
-          fontSize: '9px',
-          fontFamily: 'monospace',
-          fontWeight: 600,
-          color: 'rgba(196, 181, 253, 0.9)',
-          background: 'linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%)',
-          border: '1px solid rgba(139, 92, 246, 0.35)',
-          borderTop: 'none',
-          borderRadius: '0 0 6px 6px',
-          boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)',
-        }}
-        title="Expandir"
-      >
-        <Eye size={9} />
-        <span className="max-w-[80px] truncate">{firstName}</span>
-        <ChevronDown size={9} />
-      </button>
-
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────
 function AppContent() {
+  useEngagementTracker();
   const location = useLocation();
   const navigate = useNavigate();
   const { signed, user, loading, isImpersonating } = useAuth();
@@ -373,7 +143,7 @@ function AppContent() {
   const showPrivacyModal = !!(
     signed && 
     user && 
-    !user.privacyAccepted && 
+    !(user as UserData).privacyAccepted && 
     !isImpersonating && 
     !isPublicPath(location.pathname)
   );
@@ -389,26 +159,25 @@ function AppContent() {
 
   useEffect(() => {
     if (!config) return;
-
     const isMaintenance = config.maintenanceMode === true;
     const isLockdown = config.lockdownMode === true;
-
     const typedUser = user as UserData | undefined;
     const role = typedUser?.role;
     const cargos = typedUser?.cargos ?? [];
     const isDev = role === 'dev' || cargos.includes('dev');
     const isAdmin = role === 'admin' || cargos.includes('admin') || isDev;
 
-    const isLoginPath = location.pathname.startsWith('/login');
-    const isMaintenancePath = location.pathname === '/maintenance';
-
     if (isLockdown && !isDev) {
-      if (!isMaintenancePath && !isLoginPath) navigate('/maintenance', { replace: true });
+      if (location.pathname !== '/maintenance' && !location.pathname.startsWith('/login')) {
+        navigate('/maintenance', { replace: true });
+      }
       return;
     }
 
     if (isMaintenance && !isAdmin) {
-      if (!isMaintenancePath && !isLoginPath) navigate('/maintenance', { replace: true });
+      if (location.pathname !== '/maintenance' && !location.pathname.startsWith('/login')) {
+        navigate('/maintenance', { replace: true });
+      }
     }
   }, [config, user, location.pathname, navigate]);
 
@@ -420,34 +189,6 @@ function AppContent() {
     !location.pathname.startsWith('/admin') &&
     !location.pathname.startsWith('/monitor') &&
     !location.pathname.startsWith('/dev');
-
-  useEffect(() => {
-    const handleOpenTrade = (e: Event) => {
-      const detail = (e as CustomEvent<any>).detail;
-      if (detail?.tradeId) {
-        navigate('/market', { state: { tab: 'trades', tradeId: detail.tradeId } });
-        toast.info("Abrindo central de trocas...");
-      } else if (detail?.targetUser) {
-        // O DashboardHome já lida com isso se estiver montado, 
-        // mas aqui garantimos que o evento chegue onde deve.
-        window.dispatchEvent(new CustomEvent('openTradeModalInternal', { detail: detail.targetUser }));
-      }
-    };
-
-    const handleOpenTransfer = (e: Event) => {
-      const detail = (e as CustomEvent<any>).detail;
-      if (detail?.matricula) {
-        window.dispatchEvent(new CustomEvent('openTransferModalInternal', { detail: detail.matricula }));
-      }
-    };
-
-    window.addEventListener('openTradeModal', handleOpenTrade);
-    window.addEventListener('openTransferModal', handleOpenTransfer);
-    return () => {
-      window.removeEventListener('openTradeModal', handleOpenTrade);
-      window.removeEventListener('openTransferModal', handleOpenTransfer);
-    };
-  }, [navigate]);
 
   if (loading) return <LoadingScreen />;
 
@@ -465,11 +206,9 @@ function AppContent() {
       <Suspense fallback={<LoadingScreen />}>
         <AnimatePresence mode='wait'>
           <Routes location={location} key={location.pathname}>
-
             <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginSelection /></PublicRoute>} />
             <Route path="/login/:role" element={<PublicRoute><RoleLogin /></PublicRoute>} />
-
             <Route path="/first-access" element={<FirstAccess />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -485,10 +224,8 @@ function AppContent() {
             <Route path="/loja-notas" element={<PrivateRoute><LojaNotas /></PrivateRoute>} />
             <Route path="/market" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
             <Route path="/dashboard/pesquisa" element={<PrivateRoute><ResearchSurvey /></PrivateRoute>} />
-
             <Route path="/missoes" element={<PrivateRoute><QuestBoard /></PrivateRoute>} />
             <Route path="/regulamentos" element={<PrivateRoute><Regulations /></PrivateRoute>} />
-
             <Route path="/perfil" element={<PrivateRoute><Profile /></PrivateRoute>} />
             <Route path="/banco" element={<PrivateRoute><Banco /></PrivateRoute>} />
             <Route path="/dashboard/gifts" element={<PrivateRoute><Gifts /></PrivateRoute>} />
@@ -515,6 +252,7 @@ function AppContent() {
 
             <Route path="/armada/login" element={<ArmadaLogin />} />
             <Route path="/armada/scanner" element={<PrivateRoute><ArmadaScanner /></PrivateRoute>} />
+            <Route path="/professor/dashboard" element={<PrivateRoute roles={['professor', 'admin']}><ProfessorDashboard /></PrivateRoute>} />
             <Route path="/coming-soon" element={<ComingSoon />} />
 
             <Route path="/admin" element={<Navigate to="/admin/classes" replace />} />
@@ -538,6 +276,7 @@ function AppContent() {
             <Route path="/admin/disciplinas" element={<PrivateRoute roles={['admin']}><AdminDisciplinas /></PrivateRoute>} />
             <Route path="/admin/regulations" element={<PrivateRoute roles={['admin']}><AdminRegulations /></PrivateRoute>} />
             <Route path="/admin/surveys" element={<PrivateRoute roles={['admin']}><AdminSurveys /></PrivateRoute>} />
+            <Route path="/admin/professors" element={<PrivateRoute roles={['admin']}><AdminProfessors /></PrivateRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

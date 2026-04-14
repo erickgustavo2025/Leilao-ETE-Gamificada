@@ -22,8 +22,8 @@ const ChatSessionSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
-// Índice TTL de 7 dias (604800 segundos)
-ChatSessionSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 604800 });
+// Índice TTL de 30 dias (2592000 segundos) para preservar a memória do Oráculo
+ChatSessionSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 2592000 });
 ChatSessionSchema.index({ userId: 1, updatedAt: -1 });
 // Índice para busca rápida de mensagens específicas no feedback
 ChatSessionSchema.index({ "messages.interactionId": 1 });

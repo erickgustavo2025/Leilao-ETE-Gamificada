@@ -3,6 +3,7 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const storeController = require('../controllers/storeController');
 const classroomController = require('../controllers/classroomController');
+const adminProfessorController = require('../controllers/adminProfessorController');
 const { upload, processImageToWebp } = require('../config/upload');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -14,6 +15,12 @@ router.get('/students', adminController.getStudents);
 router.delete('/student/:id', adminController.resetStudent);
 router.put('/student/:id/balance', adminController.updateBalance);
 router.get('/users', adminController.getAllUsers);
+
+// 1.1 GESTÃO DE PROFESSORES (NOVO)
+router.get('/professors', adminProfessorController.index);
+router.post('/professors', adminProfessorController.create);
+router.put('/professors/:id', adminProfessorController.update);
+router.delete('/professors/:id', adminProfessorController.delete);
 
 // 2. GESTÃO DA LOJA (ATUALIZADO)
 router.get('/store/all', storeController.listItems);

@@ -62,7 +62,8 @@ async function embedContent(text) {
       const genAI = new GoogleGenerativeAI(keyData.key);
       const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
       const result = await model.embedContent(text);
-      return result.embedding.values;
+      // 🔥 Força 768 dimensões (Corte técnico para compatibilidade com o Atlas)
+      return result.embedding.values.slice(0, 768);
     } catch (err) {
       if (err?.status === 429 || err?.response?.status === 429) {
         markKeyAsQuoted(keyData.index);

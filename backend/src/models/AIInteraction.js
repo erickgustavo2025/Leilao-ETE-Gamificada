@@ -4,7 +4,7 @@ const AIInteractionSchema = new mongoose.Schema({
     userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     pergunta:     { type: String, required: true, maxlength: 5000 },
     resposta:     { type: String, required: true, maxlength: 15000 },
-    modo:         { type: String, enum: ['SUPORTE', 'TUTOR', 'CONSULTOR', 'GERAL'], default: 'GERAL' },
+    modo:         { type: String, enum: ['SUPORTE', 'TUTOR', 'CONSULTOR', 'GERAL', 'PEDAGOGICO', 'ECONOMIA'], default: 'GERAL' },
     paginaOrigem: { type: String, required: true },
     avaliacaoAluno: { type: Number, min: 1, max: 5, default: null },
 

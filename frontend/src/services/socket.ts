@@ -6,16 +6,21 @@ let socket: Socket;
 
 export const getSocket = () => {
   if (!socket) {
-    // ✅ Pega o token no momento de criar o socket
-    // Assim garante que sempre pega o token atual (mesmo após login)
     const token = localStorage.getItem('@ETEGamificada:token');
 
     socket = io(URL, {
       autoConnect: false,
-      auth: { token } // ✅ Enviado no handshake — validado pelo chatSocket.js no backend
+      auth: { token }
     });
   }
   return socket;
+};
+
+// Conectar explicitamente
+export const connectSocket = () => {
+  const s = getSocket();
+  if (!s.connected) s.connect();
+  return s;
 };
 
 // Utilitário para reconectar com token atualizado (ex: após login)

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const professorAuthController = require('../controllers/professorAuthController');
 const { protect } = require('../middlewares/authMiddleware');
 const validate = require('../middlewares/validateMiddleware');
 const schemas = require('../validators/schemas');
@@ -19,11 +20,13 @@ router.post('/register',
     authController.register
 );
 
-// Login Unificado
 router.post('/login', 
     validate(schemas.auth.login), 
     authController.login
 );
+
+// Login de Professor (Usuário/Senha)
+router.post('/professor/login', professorAuthController.login);
 
 // Recuperação de Senha
 router.post('/forgot-password', validate(schemas.auth.forgotPassword), authController.forgotPassword);

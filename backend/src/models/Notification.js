@@ -7,7 +7,7 @@ const NotificationSchema = new mongoose.Schema({
     link: { type: String }, // Ex: "/trade/view/123"
     data: { type: Object }, // Dados extras (id do trade, etc)
     read: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now, expires: 604800 } // Expira em 7 dias
+    createdAt: { type: Date, default: Date.now, expires: 2592000 } // Expira em 30 dias
 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);

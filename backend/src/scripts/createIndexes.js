@@ -36,6 +36,10 @@ async function createIndexes() {
         await alunos.createIndex({ role: 1 }, { name: 'idx_role' });
         console.log('✅ alunos.role');
 
+        // Ranking por turma (crítico para performance de sala)
+        await alunos.createIndex({ turma: 1, maxPcAchieved: -1 }, { name: 'idx_turma_ranking' });
+        console.log('✅ alunos.turma + maxPcAchieved (Ranking)');
+
         // ════════════════════════════════════════════
         // 🎫 COLLECTION: tickets
         // ════════════════════════════════════════════
@@ -107,6 +111,21 @@ async function createIndexes() {
 
         await marketlistings.createIndex({ seller: 1, status: 1 }, { name: 'idx_seller_status' });
         console.log('✅ marketlistings.seller + status');
+
+        // ════════════════════════════════════════════
+        // 🧠 COLLECTION: chatsessions
+        // ════════════════════════════════════════════
+        const chatsessions = db.collection('chatsessions');
+        await chatsessions.createIndex({ userId: 1, updatedAt: -1 }, { name: 'idx_user_updated' });
+        await chatsessions.createIndex({ updatedAt: 1 }, { expireAfterSeconds: 2592000, name: 'idx_ttl_30days' });
+        console.log('✅ chatsessions.userId + updatedAt (Memory)');
+
+        // ════════════════════════════════════════════
+        // 📝 COLLECTION: trainingquizattempts
+        // ════════════════════════════════════════════
+        const attempts = db.collection('trainingquizattempts');
+        await attempts.createIndex({ userId: 1, quizId: 1, status: 1 }, { name: 'idx_user_quiz_status' });
+        console.log('✅ trainingquizattempts.userId + quizId + status');
 
         console.log('\n🎉 Todos os índices criados com sucesso!');
         console.log('💡 Dica: MongoDB ignora silenciosamente se o índice já existir.');

@@ -215,7 +215,44 @@ const schemas = {
             valuationInicial: z.coerce.number().positive("Valuation deve ser um número positivo"),
             totalAcoes: z.coerce.number().int().min(1, "Total de ações deve ser no mínimo 1")
         })
-    })
+    }),
+
+    // 📜 MISSÕES (ADMIN & ALUNO)
+    quests: {
+        create: z.object({
+            body: z.object({
+                title: z.string().min(3, "Título deve ter no mínimo 3 caracteres"),
+                description: z.string().optional(),
+                type: z.enum(["DIARIA", "SEMANAL", "MENSAL", "EVENTO", "CAMPANHA", "FUNCIONALIDADE"]),
+                rewardPc: z.coerce.number().min(0, "Recompensa não pode ser negativa"),
+                badgeId: z.string().optional().nullable(),
+                validationType: z.enum(["SECRET_CODE", "MANUAL_ADMIN"]),
+                generateKeysCount: z.coerce.number().int().min(0).max(500).optional(),
+                expiresAt: z.preprocess((val) => val === "" ? null : val, z.string().datetime().nullable().optional()),
+                minRank: z.coerce.number().int().min(0).optional(),
+                rewardItems: z.array(z.object({
+                    itemId: z.string(),
+                    name: z.string(),
+                    category: z.string(),
+                    sendToClassroom: z.boolean().optional(),
+                    validityDays: z.coerce.number().int().optional()
+                })).optional()
+            })
+        }),
+        validateCode: z.object({
+            body: z.object({
+                questId: objectIdSchema,
+                secretCode: z.string().min(1, "Código secreto é obrigatório")
+            })
+        }),
+        submitManual: z.object({
+            body: z.object({
+                questId: objectIdSchema,
+                submissionContent: z.string().optional()
+            })
+        })
+    }
 };
+
 
 module.exports = schemas;

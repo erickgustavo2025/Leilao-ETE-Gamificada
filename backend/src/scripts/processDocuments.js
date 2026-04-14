@@ -138,6 +138,7 @@ async function processFile(filePath, categoria) {
                     await DocumentEmbedding.create({
                         chunkText: chunks[i],
                         sourceDocument,
+                        fileId: `MANUAL_${sourceDocument.replace(/\s+/g, '_')}`,
                         categoria,
                         embedding,
                         pageNumber: i + 1

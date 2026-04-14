@@ -43,8 +43,8 @@ export function FeedbackStars({ interactionId, initialRating = 0, sessionId, onR
             // Atualiza o array messages no AIWidget para que, ao fechar e reabrir,
             // o initialRating já chegue correto e as estrelas não ressurjam
             onRated?.(interactionId, value);
-        } catch (err) {
-            console.error('Erro ao enviar feedback:', err);
+        } catch {
+            console.error('Erro ao enviar feedback');
         } finally {
             setIsSubmitting(false);
         }

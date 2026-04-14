@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Image as ImageIcon, Coins, Pencil, XCircle, Home, Tag } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
@@ -53,24 +53,66 @@ interface StoreItem {
   imagem: string;
 }
 
+function StoreItemRow({ item, handleEdit, handleDelete, RANK_STYLES, getImageUrl }: { item: StoreItem; handleEdit: (item: StoreItem) => void; handleDelete: (id: string) => void; RANK_STYLES: Record<string, string>; getImageUrl: (img: string) => string }) {
+  if (!item) return null;
+
+  return (
+    <div className="pb-3">
+      <div className={cn("flex items-center gap-4 bg-slate-900 p-3 rounded border-l-4 relative group", RANK_STYLES[item.raridade]?.split(' ')[1] || 'border-slate-600')}>
+        {item.isHouseItem && (
+          <div className="absolute top-0 right-0 bg-purple-600 text-white text-[8px] font-press px-2 py-0.5 rounded-bl shadow-lg z-10 flex items-center gap-1">
+            <Home size={8} /> BECO: {item.lojaTematica}
+          </div>
+        )}
+
+        <div className="w-16 h-16 bg-black border border-slate-800 flex-shrink-0">
+          <img src={getImageUrl(item.imagem)} alt={item.nome} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/store.png'; }} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={cn("text-[10px] font-vt323 px-1 rounded border uppercase", RANK_STYLES[item.raridade] || "text-slate-500 border-slate-700")}>{item.raridade}</span>
+            <span className="text-[10px] font-vt323 text-slate-400">{item.validadeDias > 0 ? `${item.validadeDias} DIAS` : "INFINITO"}</span>
+          </div>
+          <h3 className="font-vt323 text-2xl text-white truncate leading-none">{item.nome}</h3>
+        </div>
+
+        <div className="text-right flex flex-col items-end gap-2">
+          <span className="text-yellow-400 font-vt323 text-2xl">{item.preco} PC$</span>
+          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-lg border border-slate-800">
+            <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-300 p-1.5"><Pencil size={14} /></button>
+            <div className="w-[1px] h-4 bg-slate-700"></div>
+            <button onClick={() => handleDelete(item._id)} className="text-red-500 hover:text-red-300 p-1.5"><Trash2 size={14} /></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface FormState {
+  editingId: string;
+  nome: string;
+  descricao: string;
+  preco: string;
+  estoque: string;
+  raridade: string;
+  cargoExclusivo: string;
+  validadeDias: string;
+  isHouseItem: boolean;
+  lojaTematica: string;
+}
+
 export function AdminStore() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 🔥 ESTADO DE PREVIEW DE IMAGEM
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    editingId: '',
-    nome: '',
-    descricao: '',
-    preco: '',
-    estoque: '0',
-    raridade: 'Comum',
-    cargoExclusivo: 'Todos',
-    validadeDias: '90',
-    isHouseItem: false,
-    lojaTematica: 'NENHUMA'
+  const [formData, setFormData] = useState<FormState>({
+    editingId: '', nome: '', descricao: '', preco: '', estoque: '0',
+    raridade: 'Comum', cargoExclusivo: 'Todos', validadeDias: '90', isHouseItem: false, lojaTematica: 'NENHUMA'
   });
 
   const { data: items = [], isLoading } = useQuery<StoreItem[]>({
@@ -115,22 +157,26 @@ export function AdminStore() {
     }
   });
 
-  const handleChange = (e: any) => {
-    const { name, value, type, checked } = e.target;
-    
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const target = e.target;
+    const name = target.name;
+    const value = target.value;
+    const type = target.type;
+    const checked = (target as HTMLInputElement).checked;
+
     if (name === 'raridade' && PRICE_TABLE[value] !== undefined && formData.preco === '') {
-       setFormData(prev => ({ ...prev, raridade: value, preco: PRICE_TABLE[value].toString() }));
-       return;
+      setFormData(prev => ({ ...prev, raridade: value, preco: PRICE_TABLE[value].toString() }));
+      return;
     }
 
     if (name === 'isHouseItem' && !checked) {
-        setFormData(prev => ({ ...prev, isHouseItem: false, lojaTematica: 'NENHUMA' }));
-        return;
+      setFormData(prev => ({ ...prev, isHouseItem: false, lojaTematica: 'NENHUMA' }));
+      return;
     }
 
     if (name === 'isHouseItem' && checked && formData.lojaTematica === 'NENHUMA') {
-        setFormData(prev => ({ ...prev, isHouseItem: true, lojaTematica: 'VASSOURAS' }));
-        return;
+      setFormData(prev => ({ ...prev, isHouseItem: true, lojaTematica: 'VASSOURAS' }));
+      return;
     }
 
     setFormData(prev => ({
@@ -140,20 +186,42 @@ export function AdminStore() {
   };
 
   // 🔥 HANDLER DE IMAGEM CORRIGIDO (O bypass do React Strict Mode)
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (imagePreview && imagePreview.startsWith('blob:')) {
-          URL.revokeObjectURL(imagePreview); // Limpa só na hora de trocar
+        URL.revokeObjectURL(imagePreview); // Limpa só na hora de trocar
       }
       const url = URL.createObjectURL(file);
       setImagePreview(url);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // 🧹 CLEANUP DE MEMÓRIA (ObjectURL)
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData.nome || !formData.preco) return toast.error("Preencha nome e preço!");
+    
+    // 🛡️ VALIDAÇÃO DE ELITE
+    if (!formData.nome.trim() || formData.nome.length < 3) {
+      return toast.error("Nome do item muito curto!");
+    }
+    
+    const priceNum = Number(formData.preco);
+    if (isNaN(priceNum) || priceNum < 0) {
+      return toast.error("Preço inválido!");
+    }
+
+    if (!imagePreview && !formData.editingId) {
+      return toast.error("Selecione uma imagem para o item!");
+    }
 
     const fd = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -244,10 +312,10 @@ export function AdminStore() {
                   </div>
                   <input type="checkbox" name="isHouseItem" checked={formData.isHouseItem} onChange={handleChange} className="w-10 h-5 rounded-full accent-purple-600" />
                 </div>
-                
+
                 {formData.isHouseItem && (
                   <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-slate-800">
-                    <label className="text-[9px] font-press text-purple-400 mb-1 flex items-center gap-1"><Tag size={10}/> CATEGORIA DA LOJA</label>
+                    <label className="text-[9px] font-press text-purple-400 mb-1 flex items-center gap-1"><Tag size={10} /> CATEGORIA DA LOJA</label>
                     <select name="lojaTematica" value={formData.lojaTematica} onChange={handleChange} className="w-full bg-black border border-purple-900/50 text-purple-300 p-2 text-xs font-press outline-none focus:border-purple-500">
                       {BECO_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
@@ -294,17 +362,17 @@ export function AdminStore() {
                 <label className="text-[10px] font-press text-slate-400 mb-2 block">IMAGEM DO ITEM</label>
                 <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed cursor-pointer bg-slate-800/50 group border-slate-700 hover:border-purple-500 rounded-lg overflow-hidden relative">
                   {imagePreview ? (
-                      <>
-                        <img src={imagePreview} alt="Preview" className="h-full w-full object-contain p-2" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="text-[8px] font-press text-white">ALTERAR IMAGEM</span>
-                        </div>
-                      </>
-                  ) : (
-                      <div className="flex flex-col items-center">
-                        <ImageIcon className="text-slate-500 mb-1 group-hover:text-purple-400 transition-colors" />
-                        <span className="text-[8px] font-press text-slate-500 group-hover:text-purple-400 transition-colors">FAZER UPLOAD</span>
+                    <>
+                      <img src={imagePreview} alt="Preview" className="h-full w-full object-contain p-2" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-[8px] font-press text-white">ALTERAR IMAGEM</span>
                       </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <ImageIcon className="text-slate-500 mb-1 group-hover:text-purple-400 transition-colors" />
+                      <span className="text-[8px] font-press text-slate-500 group-hover:text-purple-400 transition-colors">FAZER UPLOAD</span>
+                    </div>
                   )}
                   <input ref={fileInputRef} type="file" name="imagem" className="hidden" accept="image/*" onChange={handleImageChange} />
                 </label>
@@ -317,41 +385,21 @@ export function AdminStore() {
           </PixelCard>
 
           {/* LISTA DE ITENS */}
-          <div className="lg:col-span-2 space-y-3 overflow-y-auto max-h-[85vh] pr-2 pb-20 custom-scrollbar">
+          <div className="lg:col-span-2 min-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700" style={{ maxHeight: 'calc(100vh - 250px)' }}>
             {isLoading ? (
               <div className="text-center py-10 text-slate-500 font-press animate-pulse">CARREGANDO LOJA...</div>
             ) : items.length === 0 ? (
               <div className="text-center py-10 text-slate-500 font-vt323 text-xl">NENHUM ITEM CADASTRADO</div>
             ) : (
-              items.map(item => (
-                <div key={item._id} className={cn("flex items-center gap-4 bg-slate-900 p-3 rounded border-l-4 relative group", RANK_STYLES[item.raridade]?.split(' ')[1] || 'border-slate-600')}>
-                  {item.isHouseItem && (
-                    <div className="absolute top-0 right-0 bg-purple-600 text-white text-[8px] font-press px-2 py-0.5 rounded-bl shadow-lg z-10 flex items-center gap-1">
-                      <Home size={8} /> BECO: {item.lojaTematica}
-                    </div>
-                  )}
-
-                  <div className="w-16 h-16 bg-black border border-slate-700 flex-shrink-0">
-                    <img src={getImageUrl(item.imagem)} alt={item.nome} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/store.png'; }} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={cn("text-[10px] font-vt323 px-1 rounded border uppercase", RANK_STYLES[item.raridade] || "text-slate-500 border-slate-700")}>{item.raridade}</span>
-                      <span className="text-[10px] font-vt323 text-slate-400">{item.validadeDias > 0 ? `${item.validadeDias} DIAS` : "INFINITO"}</span>
-                    </div>
-                    <h3 className="font-vt323 text-2xl text-white truncate leading-none">{item.nome}</h3>
-                  </div>
-
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <span className="text-yellow-400 font-vt323 text-2xl">{item.preco} PC$</span>
-                    <div className="flex items-center gap-1 bg-black/30 p-1 rounded-lg border border-slate-800">
-                      <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-300 p-1.5"><Pencil size={14} /></button>
-                      <div className="w-[1px] h-4 bg-slate-700"></div>
-                      <button onClick={() => handleDelete(item._id)} className="text-red-500 hover:text-red-300 p-1.5"><Trash2 size={14} /></button>
-                    </div>
-                  </div>
-                </div>
+              items.map((item) => (
+                <StoreItemRow
+                  key={item._id}
+                  item={item}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                  RANK_STYLES={RANK_STYLES}
+                  getImageUrl={getImageUrl}
+                />
               ))
             )}
           </div>

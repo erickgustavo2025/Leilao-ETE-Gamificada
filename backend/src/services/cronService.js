@@ -62,12 +62,19 @@ const distributeDividends = async () => {
 
 const updatePriceCache = async () => {
     try {
-        console.log('📈 [CRON-GIL] Iniciando atualização de preços (APIs Gratuitas)...');
+        console.log('📈 [CRON-GIL] Iniciando atualização de preços (Fontes Blindadas)...');
 
         // 1. ATUALIZAR AÇÕES (Yahoo Finance)
         const stockSymbols = STOCKS.map(s => `${s}.SA`);
         try {
-            const results = await yahooFinance.quote(stockSymbols);
+            // Tenta buscar com timeout e tratando possíveis erros de rede
+            const results = await yahooFinance.quote(stockSymbols).catch(err => {
+                if (err.message.includes('fetch failed')) {
+                    throw new Error('Falha de conexão com os servidores do Yahoo Finance (Posível bloqueio de rede)');
+                }
+                throw err;
+            });
+
             const stockOps = results.map(quote => {
                 const symbol = quote.symbol.replace('.SA', '');
                 return {
@@ -93,17 +100,33 @@ const updatePriceCache = async () => {
             if (stockOps.length > 0) {
                 await PriceCache.bulkWrite(stockOps, { ordered: false });
             }
-            console.log(`✅ [CRON-GIL] ${results.length} Ações atualizadas via Yahoo Finance (Bulk).`);
+            console.log(`✅ [CRON-GIL] ${results.length} Ações atualizadas.`);
         } catch (err) {
-            console.error('❌ [CRON-GIL] Erro no Yahoo Finance:', err.message);
+            console.error('⚠️ [CRON-GIL] Falha no Yahoo Finance (Ações):', err.message);
         }
 
-        // 2. ATUALIZAR CRIPTOS (Binance API Pública)
-        try {
-            const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr');
-            const tickers = response.data;
-            const cryptoOps = [];
+        // 2. ATUALIZAR CRIPTOS (Binance com FALLBACK de DNS)
+        const binanceUrls = [
+            'https://api.binance.com/api/v3/ticker/24hr',
+            'https://api1.binance.com/api/v3/ticker/24hr',
+            'https://api2.binance.com/api/v3/ticker/24hr',
+            'https://api3.binance.com/api/v3/ticker/24hr'
+        ];
 
+        let tickers = null;
+        for (const url of binanceUrls) {
+            try {
+                const response = await axios.get(url, { timeout: 10000 });
+                tickers = response.data;
+                if (tickers) break;
+            } catch (err) {
+                console.warn(`⚠️ [CRON-GIL] Falha na URL Binance (${url}): ${err.code || err.message}`);
+                continue;
+            }
+        }
+
+        if (tickers) {
+            const cryptoOps = [];
             for (const crypto of CRYPTOS) {
                 const pair = `${crypto}USDT`;
                 const ticker = tickers.find(t => t.symbol === pair);
@@ -132,14 +155,14 @@ const updatePriceCache = async () => {
 
             if (cryptoOps.length > 0) {
                 await PriceCache.bulkWrite(cryptoOps, { ordered: false });
+                console.log(`✅ [CRON-GIL] ${cryptoOps.length} Criptos atualizadas via Binance.`);
             }
-            console.log(`✅ [CRON-GIL] ${cryptoOps.length} Criptos atualizadas via Binance (Bulk).`);
-        } catch (err) {
-            console.error('❌ [CRON-GIL] Erro na Binance:', err.message);
+        } else {
+            console.error('❌ [CRON-GIL] Todas as APIs da Binance falharam. Verifique sua conexão com a internet.');
         }
 
     } catch (error) {
-        console.error('❌ [CRON-GIL] Erro crítico na atualização:', error);
+        console.error('❌ [CRON-GIL] Erro inesperado na atualização:', error);
     }
 };
 
@@ -182,9 +205,34 @@ const initCron = () => {
 
     cron.schedule('0 0 * * *', async () => {
         try {
-            await Item.updateMany({ expirationDate: { $lte: new Date() } }, { status: 'expired' });
+            console.log('🕒 [Cron Meia-Noite] Iniciando rotinas de manutenção...');
+            
+            // 1. Manutenção de Itens (Expiração de vantagens temporárias)
+            const expired = await Item.updateMany(
+                { expirationDate: { $lte: new Date() }, status: { $ne: 'expired' } }, 
+                { status: 'expired' }
+            );
+            if (expired.modifiedCount > 0) {
+                console.log(`📦 [Maintenance] ${expired.modifiedCount} itens temporários expiraram.`);
+            }
+            
+            // 2. Oráculo GIL: Re-aprendizado Total (RAG)
+            console.log('🤖 [RAG-Sync] Atualizando base de conhecimento da IA...');
+            const { cleanAndReindex } = require('../scripts/cleanAndReindex');
+            await cleanAndReindex();
+
+            // 3. Análise de Gaps (PJC) - Agora isolada para clareza
+            console.log('📊 [PJC-Analysis] Analisando gaps das disciplinas...');
+            const Disciplina = require('../models/Disciplina');
+            const PJCDataService = require('../services/PJCDataService');
+            const disciplinas = await Disciplina.find();
+            for (const disc of disciplinas) {
+                await PJCDataService.generateGapAnalysis(disc._id).catch(() => {});
+            }
+
+            console.log('✅ [Cron Meia-Noite] Todas as rotinas concluídas com sucesso.');
         } catch (error) {
-            console.error('❌ Erro no Cron de Itens:', error);
+            console.error('❌ [Cron Meia-Noite] Erro crítico nas rotinas:', error);
         }
     });
 

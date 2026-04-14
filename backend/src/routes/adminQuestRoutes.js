@@ -1,14 +1,16 @@
-// ARQUIVO: backend/src/routes/adminQuestRoutes.js
 const express = require('express');
 const router = express.Router();
 const adminQuestController = require('../controllers/adminQuestController');
 const { protect, admin } = require('../middlewares/authMiddleware');
+const validate = require('../middlewares/validateMiddleware');
+const schemas = require('../validators/schemas');
 
 // TODAS as rotas aqui exigem que o usuário esteja logado E seja Admin
 router.use(protect, admin);
 
 router.get('/', adminQuestController.getAllQuests);
-router.post('/', adminQuestController.createQuest);
+router.post('/', validate(schemas.quests.create), adminQuestController.createQuest);
+
 router.patch('/:id/toggle', adminQuestController.toggleQuest);
 router.delete('/:id', adminQuestController.deleteQuest);
 

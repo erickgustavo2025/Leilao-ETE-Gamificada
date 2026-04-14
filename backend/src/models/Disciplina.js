@@ -8,8 +8,11 @@ const disciplinaSchema = new mongoose.Schema({
     },
     professor: {
         type: String,
-        required: true,
         trim: true
+    },
+    professorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Professor'
     },
     ano: {
         type: String,
@@ -32,7 +35,16 @@ const disciplinaSchema = new mongoose.Schema({
     ativa: {
         type: Boolean,
         default: true
-    }
+    },
+    ementa: {
+        type: String,
+        default: ''
+    },
+    // 🟢 NOVO: Tópicos estruturados para RAG e Simulados
+    ementaTopics: [{
+        trimestre: { type: Number, required: true, min: 1, max: 3 },
+        assuntos: [{ type: String, trim: true }]
+    }]
 }, {
     timestamps: true
 });

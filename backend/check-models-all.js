@@ -13,7 +13,8 @@ async function checkAllKeys() {
 
   console.log(`🔍 Iniciando auditoria em ${keys.length} chaves...\n`);
 
-  const modelInventory = {}; // { modelName: count }
+  const chatInventory = {}; 
+  const embedInventory = {};
   
   for (const item of keys) {
     const suffix = item.key.slice(-4);
@@ -28,15 +29,18 @@ async function checkAllKeys() {
         continue;
       }
 
-      const available = data.models
+      const chat = data.models
         .filter(m => m.supportedGenerationMethods.includes("generateContent"))
         .map(m => m.name.replace('models/', ''));
 
-      console.log(`   ✅ ${available.length} modelos encontrados.`);
+      const embed = data.models
+        .filter(m => m.supportedGenerationMethods.includes("embedContent"))
+        .map(m => m.name.replace('models/', ''));
+
+      console.log(`   ✅ Chat: ${chat.length} | Embedding: ${embed.length}`);
       
-      available.forEach(m => {
-        modelInventory[m] = (modelInventory[m] || 0) + 1;
-      });
+      chat.forEach(m => chatInventory[m] = (chatInventory[m] || 0) + 1);
+      embed.forEach(m => embedInventory[m] = (embedInventory[m] || 0) + 1);
 
     } catch (e) {
       console.error(`   ❌ Falha na requisição: ${e.message}`);
@@ -44,21 +48,23 @@ async function checkAllKeys() {
     console.log("-------------------------------------------------");
   }
 
-  console.log("\n📊 RELATÓRIO DE DISPONIBILIDADE (Interseção):");
-  const commonModels = Object.entries(modelInventory)
+  const getCommon = (inv) => Object.entries(inv)
     .filter(([_, count]) => count === keys.length)
     .map(([name, _]) => name);
 
-  if (commonModels.length > 0) {
-    console.log("✨ Modelos disponíveis em TODAS as chaves:");
-    commonModels.forEach(m => console.log(`   - ${m}`));
-  } else {
-    console.warn("⚠️ Nenhum modelo é comum a todas as chaves.");
-    console.log("Modelos mais frequentes:");
-    Object.entries(modelInventory)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .forEach(([name, count]) => console.log(`   - ${name} (${count}/${keys.length} chaves)`));
+  const commonChat = getCommon(chatInventory);
+  const commonEmbed = getCommon(embedInventory);
+
+  console.log("\n📊 RELATÓRIO DE DISPONIBILIDADE (Interseção):");
+  
+  if (commonChat.length > 0) {
+    console.log("🤖 Chat disponíveis em TODAS as chaves:");
+    commonChat.forEach(m => console.log(`   - ${m}`));
+  }
+
+  if (commonEmbed.length > 0) {
+    console.log("\n📐 Embedding disponíveis em TODAS as chaves:");
+    commonEmbed.forEach(m => console.log(`   - ${m}`));
   }
 }
 

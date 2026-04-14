@@ -32,7 +32,7 @@ export function EventsModal({ isOpen, onClose }: EventsModalProps) {
             color: 'text-red-400',
             bg: 'bg-red-900/20',
             border: 'border-red-500',
-            action: () => window.open('http://89.116.73.177:3000/', '_blank'),
+            action: () => window.open(import.meta.env.VITE_INTERGIL_URL || "http://localhost:3000/", '_blank'),
             btnText: 'VISITAR SITE',
             isExternal: true
         },

@@ -21,14 +21,20 @@ if (process.env.SMTP_HOST) {
         }
     });
     
-    // Verifica a conexão ao iniciar
-    transporter.verify(function (error, success) {
-        if (error) {
-            console.error('❌ Erro na conexão SMTP:', error);
-        } else {
-            console.log('✅ Servidor SMTP pronto para enviar emails via Pool');
-        }
-    });
+    // ✅ Otimização: Só verifica a conexão se NÃO estiver em testes
+    // E apenas uma vez (no Master ou no Worker id 1) para não estourar o limite do Gmail
+    const isPrimary = !require('cluster').isWorker;
+    const isFirstWorker = require('cluster').isWorker && require('cluster').worker.id === 1;
+
+    if (process.env.NODE_ENV !== 'test' && (isPrimary || isFirstWorker)) {
+        transporter.verify(function (error, success) {
+            if (error) {
+                console.error('❌ [Mail] Erro na conexão SMTP:', error.message);
+            } else {
+                console.log('✅ [Mail] Servidor SMTP pronto (Pool ativo)');
+            }
+        });
+    }
 }
 
 const sendMailHelper = async (to, subject, text, html) => {
@@ -49,9 +55,11 @@ const sendMailHelper = async (to, subject, text, html) => {
             html: html 
         });
 
-        console.log(`📧 Email despachado para ${to}. ID: ${info.messageId}`);
+        const workerId = require('cluster').isWorker ? `[Worker ${require('cluster').worker.id}]` : '[Primary]';
+        console.log(`${workerId} 📧 Email despachado para ${to}. ID: ${info.messageId}`);
     } catch (error) {
-        console.error('Erro ao enviar email:', error);
+        const workerId = require('cluster').isWorker ? `[Worker ${require('cluster').worker.id}]` : '[Primary]';
+        console.error(`${workerId} ❌ Erro ao enviar email:`, error);
         throw error; 
     }
 };

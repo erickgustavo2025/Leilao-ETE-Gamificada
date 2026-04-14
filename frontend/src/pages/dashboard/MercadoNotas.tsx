@@ -1,14 +1,9 @@
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { 
-  GraduationCap, 
   TrendingUp, 
-  DollarSign, 
   AlertCircle, 
   CheckCircle2, 
   Clock,
-  ArrowRight,
   Calculator
 } from 'lucide-react';
 import { toast } from 'sonner';

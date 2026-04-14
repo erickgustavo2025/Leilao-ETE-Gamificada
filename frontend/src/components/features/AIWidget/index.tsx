@@ -12,6 +12,7 @@ import { ChatBubble } from './ChatBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { cn } from '../../../utils/cn';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { TrainingQuizPlayer } from '../TrainingQuizPlayer'; // <--- ADICIONADO
 
 interface Message {
     role: 'user' | 'ai';
@@ -41,6 +42,7 @@ export function AIWidget() {
         { role: 'ai', content: 'Olá! Sou o Oráculo GIL. Como posso ajudar na sua jornada hoje? 🔮' }
     ]);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [activeTrainingId, setActiveTrainingId] = useState<string | null>(null); // <--- NOVO
 
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -72,8 +74,17 @@ export function AIWidget() {
                     modo: data.modo,
                     interactionId: data.interactionId,
                     userRating: 0,
+                    metadata: data.metadata,
                 },
             ]);
+
+            // 🚀 AUTOMAÇÃO PJC 2.0: Abre o desafio automaticamente se sugerido
+            if (data.metadata?.suggestedQuiz) {
+                setTimeout(() => {
+                    setActiveTrainingId(data.metadata.suggestedQuiz._id);
+                }, 1500); // 1.5s de delay para o aluno ler a mensagem final
+            }
+
             if (!currentSessionId) {
                 setCurrentSessionId(data.sessionId);
                 queryClient.invalidateQueries({ queryKey: ['ai-sessions'] });
@@ -141,12 +152,13 @@ export function AIWidget() {
                 interactionId: m.interactionId,
                 userRating: m.userRating ?? 0,
                 modo: m.modo,
+                metadata: m.metadata, // <--- ADICIONADO
             }));
             setMessages(history.length > 0 ? history : [{ role: 'ai', content: 'Continuando nossa conversa... 🔮' }]);
             setCurrentSessionId(sessionId);
             setView('chat');
-        } catch (err) {
-            console.error('Erro ao carregar sessão:', err);
+        } catch {
+            console.error('Erro ao carregar sessão');
         }
     };
 
@@ -338,6 +350,7 @@ export function AIWidget() {
                                         message={msg}
                                         sessionId={currentSessionId}
                                         onRated={handleMessageRated}
+                                        onStartQuiz={(id) => setActiveTrainingId(id)}
                                     />
                                 ))}
                                 {askMutation.isPending && <TypingIndicator />}
@@ -372,6 +385,14 @@ export function AIWidget() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* 🎮 PLAYER DO SIMULADO PJC 2.0 */}
+            {activeTrainingId && (
+                <TrainingQuizPlayer 
+                    quizId={activeTrainingId} 
+                    onClose={() => setActiveTrainingId(null)}
+                />
+            )}
         </>
     );
 }

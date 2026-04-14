@@ -325,7 +325,25 @@ export function LoginSelection() {
         ))}
       </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="mt-12 md:mt-16 text-center z-10">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="mt-12 md:mt-16 text-center z-10 flex flex-col items-center gap-6">
+        
+        {/* 👩‍🏫 ACESSO PROFESSOR (NOVO) */}
+        <motion.button
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleCardClick('/login/professor')}
+          className={`
+            group flex items-center gap-3 px-8 py-3 rounded-xl
+            ${ctaBlurClass} border border-white/10 hover:border-purple-500/50
+            hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] transition-all duration-300
+          `}
+        >
+          <GraduationCap size={18} className="text-purple-400 group-hover:text-purple-300 transition-colors" />
+          <span className="font-press text-[10px] md:text-xs text-gray-300 group-hover:text-white tracking-widest uppercase">
+            Sou Professor(a)
+          </span>
+        </motion.button>
+
         <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full ${ctaBlurClass} border border-white/10`}>
           <motion.div className="w-2 h-2 bg-green-500 rounded-full" animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }} />
           <span className="font-mono text-xs text-gray-400 tracking-widest uppercase">Sistema Online</span>

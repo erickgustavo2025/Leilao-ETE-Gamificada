@@ -129,7 +129,7 @@ export function ResearchSurvey() {
     const { survey } = status;
 
     return (
-        <PageTransition className="min-h-screen bg-[#050505] text-slate-300 p-4 md:p-8 pt-24 md:pt-32">
+        <PageTransition className="min-h-screen bg-[#050505] text-slate-300 p-4 md:p-8 pt-20 md:pt-32">
             <div className="max-w-3xl mx-auto pb-20">
                 {/* 🚀 AVISO PARA NOVATOS / VOLTAR */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
@@ -151,19 +151,18 @@ export function ResearchSurvey() {
                     </button>
                 </div>
                 {/* Header Dinâmico */}
-                <div className="relative mb-12 p-8 bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/30 rounded-[2rem] overflow-hidden">
+                <div className="relative mb-8 md:mb-12 p-6 md:p-8 bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/30 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden">
                     <div className="absolute top-0 right-0 p-4">
                         <div className="flex items-center gap-2 bg-yellow-400/20 border border-yellow-400/40 px-3 py-1 rounded-full animate-pulse">
                             <Zap size={14} className="text-yellow-400" />
                             <span className="font-vt323 text-xl text-yellow-400">+{survey.rewardAmount} PC$</span>
                         </div>
                     </div>
-                    
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30">
-                            <ClipboardList className="text-blue-400" size={24} />
+                    <div className="flex items-center gap-4 md:gap-6 mb-6">
+                        <div className="p-2 md:p-3 bg-blue-500/20 rounded-xl md:rounded-2xl border border-blue-500/30">
+                            <ClipboardList className="text-blue-400" size={20} />
                         </div>
-                        <h1 className="font-vt323 text-5xl text-white leading-none capitalize">{survey.title}</h1>
+                        <h1 className="font-vt323 text-3xl md:text-5xl text-white leading-none capitalize">{survey.title}</h1>
                     </div>
                     <p className="text-slate-300 font-mono text-sm leading-relaxed max-w-xl">
                         {survey.description || 'Sua opinião é fundamental para validarmos o uso da Inteligência Artificial no ensino técnico. Responda com sinceridade e ajude a ciência acadêmica!'}
@@ -190,23 +189,24 @@ export function ResearchSurvey() {
 
                             {/* TIPOS DE INPUT */}
                             {q.type === 'rating' && (
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2 md:gap-3">
                                     {[1, 2, 3, 4, 5].map(val => (
                                         <button
                                             key={val}
                                             type="button"
                                             onClick={() => handleAnswer(q.id, val)}
-                                            className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all ${
+                                            className={`w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl border flex items-center justify-center transition-all ${
                                                 answers[q.id] === val 
                                                 ? 'bg-blue-500 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
                                                 : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
                                             }`}
                                         >
-                                            <span className="font-press text-[10px]">{val}</span>
+                                            <span className="font-press text-[9px] md:text-[10px]">{val}</span>
                                         </button>
                                     ))}
-                                    <div className="flex flex-col justify-center ml-4 text-[9px] font-mono text-slate-500 uppercase">
+                                    <div className="flex flex-row md:flex-col items-center md:items-start md:justify-center gap-3 md:gap-0 mt-2 md:mt-0 ml-0 md:ml-4 text-[8px] md:text-[9px] font-mono text-slate-500 uppercase w-full md:w-auto">
                                         <span>5 = Muito Bom</span>
+                                        <span className="md:hidden">|</span>
                                         <span>1 = Ruim</span>
                                     </div>
                                 </div>

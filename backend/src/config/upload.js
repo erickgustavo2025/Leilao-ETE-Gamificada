@@ -45,7 +45,10 @@ const uploadDocument = multer({
         const isPdf = file.mimetype === 'application/pdf';
         const isDoc = file.mimetype === 'application/msword' || file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         
-        if (extname || isPdf || isDoc) return cb(null, true);
+        // 🛡️ [W7] Validação rigorosa: Deve coincidir Extensão AND Mimetype
+        if ((isPdf && extname) || (isDoc && extname) || (allowedTypes.test(path.extname(file.originalname).toLowerCase()) && file.mimetype.startsWith('image/'))) {
+            return cb(null, true);
+        }
         cb(new Error('Apenas Imagens, PDF ou DOC/DOCX são permitidos.'));
     }
 });

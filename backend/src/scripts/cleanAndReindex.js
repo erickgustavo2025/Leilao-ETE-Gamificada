@@ -15,37 +15,21 @@ async function cleanAndReindex() {
     console.log('╚══════════════════════════════════════════╝');
     console.log('');
 
-    if (!process.env.MONGO_URI) {
-        console.error('❌ MONGO_URI não encontrado no .env');
-        process.exit(1);
-    }
-
-    const hasAnyKey = process.env.GEMINI_API_KEY ||
-        Object.keys(process.env).some(k => k.match(/^GEMINI_KEY_\d+$/));
-
-    if (!hasAnyKey) {
-        console.error('❌ Nenhuma chave Gemini encontrada. Configure GEMINI_KEY_1 (ou GEMINI_API_KEY) no .env');
-        process.exit(1);
-    }
+    const isInternalCall = mongoose.connection.readyState === 1;
 
     try {
-        // ── FASE 1: LIMPEZA ───────────────────────────────────────────
-        console.log('🔌 Conectando ao MongoDB...');
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ Conectado.\n');
+        if (!isInternalCall) {
+            console.log('🔌 Conectando ao MongoDB...');
+            await mongoose.connect(process.env.MONGO_URI);
+            console.log('✅ Conectado.\n');
+        }
 
         console.log('🗑️  Limpando coleção de embeddings...');
         const { deletedCount } = await DocumentEmbedding.deleteMany({});
         console.log(`✅ ${deletedCount} documentos removidos.\n`);
 
         // ── FASE 2: RE-INDEXAÇÃO ──────────────────────────────────────
-        // Reutiliza a conexão existente — não desconecta para reconectar.
-        // O processDocuments.js exporta processAll() para uso como módulo.
-        console.log('🚀 Iniciando re-indexação...');
-        console.log('   Modelo de embedding: gemini-embedding-001 (768 dims)');
-        console.log('   Rotação de chaves: ativa\n');
-
-        // Importação dinâmica para garantir que o .env já foi carregado
+        console.log('🚀 Iniciando re-indexação de documentos (Questões, PDFs, Ementas)...');
         const { processAll } = require('./processDocuments');
         await processAll();
 
@@ -53,20 +37,29 @@ async function cleanAndReindex() {
         const total = await DocumentEmbedding.countDocuments();
         console.log('');
         console.log('╔══════════════════════════════════════════╗');
-        console.log(`║  ✨ Concluído! ${String(total).padStart(4)} chunks indexados.    ║`);
+        console.log(`║  ✨ RAG ATUALIZADO! ${String(total).padStart(4)} chunks prontos. ║`);
         console.log('║                                          ║');
-        console.log('║  ⚠️  Atlas Vector Search:                ║');
-        console.log('║     Índice "vector_index" = 768 dims     ║');
+        console.log('║  🤖 Oráculo GIL aprendeu tudo de novo.   ║');
         console.log('╚══════════════════════════════════════════╝');
         console.log('');
 
     } catch (error) {
         console.error('\n❌ Erro durante o processo:', error.message);
-        process.exit(1);
+        if (!isInternalCall) throw error;
     } finally {
-        await mongoose.disconnect();
-        console.log('🔌 Desconectado do MongoDB.');
+        if (!isInternalCall) {
+            await mongoose.disconnect();
+            console.log('🔌 Desconectado do MongoDB.');
+        }
     }
 }
 
-cleanAndReindex();
+// Execução standalone
+if (require.main === module) {
+    cleanAndReindex().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
+
+module.exports = { cleanAndReindex };
